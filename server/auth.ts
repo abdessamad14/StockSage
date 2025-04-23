@@ -5,7 +5,9 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User as SelectUser } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import { users, User as SelectUser } from "@shared/schema";
 
 declare global {
   namespace Express {
@@ -113,12 +115,41 @@ export function setupAuth(app: Express) {
     ),
   );
 
-  passport.serializeUser((user, done) => done(null, user.id));
+  passport.serializeUser((user, done) => {
+    console.log(`Serializing user:`, user.id);
+    done(null, user.id);
+  });
+  
   passport.deserializeUser(async (id: number, done) => {
     try {
+      console.log(`Deserializing user with ID: ${id}`);
+      
+      // Try direct database query first
+      try {
+        const [user] = await db.select().from(users).where(eq(users.id, id));
+        
+        if (user) {
+          console.log(`User found via direct query: ${user.username}`);
+          return done(null, user);
+        } else {
+          console.log(`User not found via direct query for ID: ${id}`);
+        }
+      } catch (directErr) {
+        console.error(`Error in direct query during deserialization:`, directErr);
+      }
+      
+      // Fall back to storage method
       const user = await storage.getUser(id);
+      
+      if (!user) {
+        console.error(`User with ID ${id} not found during deserialization`);
+        return done(null, false);
+      }
+      
+      console.log(`User deserialized: ${user.username}`);
       done(null, user);
     } catch (err) {
+      console.error(`Error during user deserialization:`, err);
       done(err);
     }
   });
