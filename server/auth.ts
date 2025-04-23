@@ -42,29 +42,45 @@ export function setupAuth(app: Express) {
   app.use(passport.session());
 
   passport.use(
-    new LocalStrategy(async (username, password, done) => {
-      try {
-        const user = await storage.getUserByUsername(username);
-        
-        if (!user) {
-          return done(null, false);
+    new LocalStrategy(
+      { 
+        usernameField: 'username',
+        passwordField: 'password',
+        passReqToCallback: true
+      },
+      async (req, username, password, done) => {
+        try {
+          // Get the tenantId from the request body
+          const { tenantId } = req.body;
+          
+          // Get the user by username
+          const user = await storage.getUserByUsername(username);
+          
+          if (!user) {
+            return done(null, false, { message: 'Invalid username or password' });
+          }
+          
+          // If tenant ID is provided, check if it matches the user's tenant
+          if (tenantId && user.tenantId !== tenantId) {
+            return done(null, false, { message: 'Invalid company ID' });
+          }
+          
+          // For demo purposes, allow direct password comparison
+          if (password === user.password) {
+            return done(null, user);
+          }
+          
+          // In a production app, we would use password hashing
+          // if (!(await comparePasswords(password, user.password))) {
+          //   return done(null, false, { message: 'Invalid username or password' });
+          // }
+          
+          return done(null, false, { message: 'Invalid username or password' });
+        } catch (err) {
+          return done(err);
         }
-        
-        // For demo purposes, allow direct password comparison
-        if (password === user.password) {
-          return done(null, user);
-        }
-        
-        // In a production app, we would use password hashing
-        // if (!(await comparePasswords(password, user.password))) {
-        //   return done(null, false);
-        // }
-        
-        return done(null, false);
-      } catch (err) {
-        return done(err);
       }
-    }),
+    ),
   );
 
   passport.serializeUser((user, done) => done(null, user.id));
@@ -98,8 +114,24 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", (err: any, user: Express.User | false, info: { message?: string }) => {
+      if (err) {
+        return next(err);
+      }
+      
+      if (!user) {
+        return res.status(401).json({ message: info?.message || 'Authentication failed' });
+      }
+      
+      req.login(user, (err) => {
+        if (err) {
+          return next(err);
+        }
+        
+        return res.status(200).json(user);
+      });
+    })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {
