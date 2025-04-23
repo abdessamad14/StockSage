@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route, RouteProps } from "wouter";
+import AppShell from "@/components/AppShell";
 
 export function ProtectedRoute({
   path,
@@ -31,7 +32,9 @@ export function ProtectedRoute({
 
   return (
     <Route path={path}>
-      <Component />
+      <AppShell>
+        <Component />
+      </AppShell>
     </Route>
   );
 }
