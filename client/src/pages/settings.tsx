@@ -53,6 +53,21 @@ export default function SettingsPage() {
     queryKey: ['/api/settings'],
     enabled: isAdmin, // Only admins can access settings
   });
+  
+  // If user is not an admin, show access denied message before any hooks are used
+  if (!isAdmin) {
+    return (
+      <div className="p-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          <h2 className="font-semibold flex items-center">
+            <AlertTriangle className="h-5 w-5 mr-2" />
+            {t('access_denied')}
+          </h2>
+          <p className="mt-2 text-sm">{t('settings_admin_only')}</p>
+        </div>
+      </div>
+    );
+  }
 
   // Toggle dark mode
   useEffect(() => {
