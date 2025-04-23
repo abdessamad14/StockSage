@@ -1,0 +1,22 @@
+[vite] connecting...
+[vite] connected.
+Warning: validateDOMNesting(...): <a> cannot appear as a descendant of &lt;a&gt;.
+    at a
+    at a
+    at https://4b18a206-3655-4821-b4c7-c77b74ca2924-00-smzmlda7jbc.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=963ec348:337:18
+    at div
+    at BottomBar (https://4b18a206-3655-4821-b4c7-c77b74ca2924-00-smzmlda7jbc.spock.replit.dev/src/components/BottomBar.tsx:22:37)
+    at div
+    at AppShell (https://4b18a206-3655-4821-b4c7-c77b74ca2924-00-smzmlda7jbc.spock.replit.dev/src/components/AppShell.tsx:26:36)
+    at Route (https://4b18a206-3655-4821-b4c7-c77b74ca2924-00-smzmlda7jbc.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=963ec348:323:16)
+    at ProtectedRoute (https://4b18a206-3655-4821-b4c7-c77b74ca2924-00-smzmlda7jbc.spock.replit.dev/src/lib/protected-route.tsx:23:3)
+    at Switch (https://4b18a206-3655-4821-b4c7-c77b74ca2924-00-smzmlda7jbc.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=963ec348:379:17)
+    at Router
+    at Provider (https://4b18a206-3655-4821-b4c7-c77b74ca2924-00-smzmlda7jbc.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=963ec348:48:15)
+    at TooltipProvider (https://4b18a206-3655-4821-b4c7-c77b74ca2924-00-smzmlda7jbc.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=963ec348:59:5)
+    at I18nProvider (https://4b18a206-3655-4821-b4c7-c77b74ca2924-00-smzmlda7jbc.spock.replit.dev/src/lib/i18n.tsx:246:32)
+    at AuthProvider (https://4b18a206-3655-4821-b4c7-c77b74ca2924-00-smzmlda7jbc.spock.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at QueryClientProvider (https://4b18a206-3655-4821-b4c7-c77b74ca2924-00-smzmlda7jbc.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=963ec348:2805:3)
+    at App
+    at I18nProvider (https://4b18a206-3655-4821-b4c7-c77b74ca2924-00-smzmlda7jbc.spock.replit.dev/src/lib/i18n.tsx?v=aJPGJtfJn5HEV3DFxDvRj:246:32)
+    at AuthProvider (https://4b18a206-3655-4821-b4c7-c77b74ca2924-00-smzmlda7jbc.spock.replit.dev/src/lib/auth.tsx?v=aJPGJtfJn5HEV3DFxDvRj:38:32)
