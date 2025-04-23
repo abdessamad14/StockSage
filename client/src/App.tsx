@@ -15,6 +15,7 @@ import Suppliers from "@/pages/suppliers";
 import Orders from "@/pages/orders";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
+import Users from "@/pages/users";
 import { AuthProvider } from "@/hooks/use-auth";
 import { I18nProvider } from "@/lib/i18n";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -32,6 +33,7 @@ function Router() {
       <ProtectedRoute path="/orders" component={Orders} />
       <ProtectedRoute path="/reports" component={Reports} />
       <ProtectedRoute path="/settings" component={Settings} />
+      <ProtectedRoute path="/users" component={Users} />
       <Route component={NotFound} />
     </Switch>
   );

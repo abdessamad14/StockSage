@@ -55,7 +55,8 @@ type OrderFormValues = z.infer<typeof orderFormSchema>;
 export default function Orders() {
   const { t } = useI18n();
   const { toast } = useToast();
-  const { isAdmin } = useAuth();
+  const { user } = useAuth();
+  const isAdmin = user && user.role === 'admin';
   const [isOrderFormOpen, setIsOrderFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);

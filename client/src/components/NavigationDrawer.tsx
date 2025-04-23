@@ -11,7 +11,8 @@ import {
   ClipboardList, 
   BarChart2, 
   Settings, 
-  LogOut
+  LogOut,
+  UserCog
 } from 'lucide-react';
 
 interface NavigationDrawerProps {
@@ -117,6 +118,14 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
             <Link href="/reports" className={`flex items-center px-4 py-3 ${isActive('/reports') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
               <BarChart2 className="w-6 h-6 mr-3" />
               <span>{t('reports')}</span>
+            </Link>
+          )}
+          
+          {/* Users */}
+          {isAdmin && (
+            <Link href="/users" className={`flex items-center px-4 py-3 ${isActive('/users') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+              <UserCog className="w-6 h-6 mr-3" />
+              <span>{t('users')}</span>
             </Link>
           )}
           
