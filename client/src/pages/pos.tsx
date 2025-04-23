@@ -291,9 +291,9 @@ export default function POS() {
                     <SelectValue placeholder={t('select_customer')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">{t('cash_customer')}</SelectItem>
+                    <SelectItem value="0">{t('cash_customer')}</SelectItem>
                     {loadingCustomers ? (
-                      <SelectItem value="" disabled>{t('loading')}</SelectItem>
+                      <SelectItem value="loading" disabled>{t('loading')}</SelectItem>
                     ) : (
                       customers?.map(customer => (
                         <SelectItem key={customer.id} value={customer.id.toString()}>
