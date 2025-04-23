@@ -193,24 +193,98 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err: any, user: Express.User | false, info: { message?: string }) => {
-      if (err) {
-        return next(err);
+  app.post("/api/login", async (req, res, next) => {
+    try {
+      const { username, password, tenantId } = req.body;
+      
+      if (!username || !password || !tenantId) {
+        return res.status(400).json({ message: 'Username, password and company ID are required' });
       }
       
-      if (!user) {
-        return res.status(401).json({ message: info?.message || 'Authentication failed' });
+      console.log(`Login attempt for ${username} with tenant ${tenantId}`);
+      
+      // Try to use both direct SQL and storage methods for maximum compatibility
+      
+      // Option 1: Try direct SQL query
+      try {
+        const result = await pool.query('SELECT * FROM users WHERE username = $1 AND tenant_id = $2', [username, tenantId]);
+        console.log('Direct SQL query result length:', result.rows.length);
+        
+        if (result.rows.length > 0) {
+          const userFromSql = result.rows[0];
+          
+          // Simple password check for test users
+          if (password === userFromSql.password) {
+            console.log('User authenticated with direct password comparison');
+            
+            // Log in the user
+            req.login(userFromSql, (err) => {
+              if (err) {
+                console.error('Login error:', err);
+                return res.status(500).json({ message: 'Error during login' });
+              }
+              
+              console.log(`User ${username} logged in successfully via SQL direct`);
+              return res.status(200).json(userFromSql);
+            });
+            return;
+          }
+        }
+      } catch (sqlErr) {
+        console.error('Error using direct SQL:', sqlErr);
       }
       
-      req.login(user, (err) => {
+      // Option 2: Try ORM + manual search
+      try {
+        const allUsers = await db.select().from(users);
+        const user = allUsers.find(u => u.username === username && u.tenantId === tenantId);
+        
+        if (user) {
+          // Simple password check
+          if (password === user.password) {
+            console.log('User authenticated via ORM with direct password comparison');
+            
+            // Log in the user
+            req.login(user, (err) => {
+              if (err) {
+                console.error('Login error:', err);
+                return res.status(500).json({ message: 'Error during login' });
+              }
+              
+              console.log(`User ${username} logged in successfully via ORM`);
+              return res.status(200).json(user);
+            });
+            return;
+          }
+        } else {
+          console.log(`User ${username} not found in tenant ${tenantId}`);
+        }
+      } catch (ormErr) {
+        console.error('Error using ORM:', ormErr);
+      }
+      
+      // Option 3: Use Passport's normal flow as fallback
+      passport.authenticate("local", (err: any, user: Express.User | false, info: { message?: string }) => {
         if (err) {
           return next(err);
         }
         
-        return res.status(200).json(user);
-      });
-    })(req, res, next);
+        if (!user) {
+          return res.status(401).json({ message: info?.message || 'Authentication failed' });
+        }
+        
+        req.login(user, (err) => {
+          if (err) {
+            return next(err);
+          }
+          
+          return res.status(200).json(user);
+        });
+      })(req, res, next);
+    } catch (error) {
+      console.error('Login error:', error);
+      return res.status(500).json({ message: 'Server error' });
+    }
   });
 
   app.post("/api/logout", (req, res, next) => {
