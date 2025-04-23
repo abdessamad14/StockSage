@@ -15,7 +15,15 @@ import {
 } from "@shared/schema";
 
 // Interface for storage operations
+import session from "express-session";
+import createMemoryStore from "memorystore";
+
+const MemoryStore = createMemoryStore(session);
+
 export interface IStorage {
+  // Session management
+  sessionStore: session.SessionStore;
+  
   // User management
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -77,6 +85,8 @@ export interface IStorage {
 }
 
 export class MemStorage implements IStorage {
+  public sessionStore: session.SessionStore;
+  
   private users: Map<number, User>;
   private products: Map<number, Product>;
   private customers: Map<number, Customer>;
@@ -104,6 +114,10 @@ export class MemStorage implements IStorage {
   private currentSettingsId: number;
 
   constructor() {
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000, // prune expired entries every 24h
+    });
+    
     this.users = new Map();
     this.products = new Map();
     this.customers = new Map();
