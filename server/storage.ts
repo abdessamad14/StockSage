@@ -532,9 +532,18 @@ export class MemStorage implements IStorage {
       customer = await this.getCustomer(sale.customerId, tenantId);
     }
     
+    // Add product information to each sale item
+    const itemsWithProducts = await Promise.all(items.map(async (item) => {
+      const product = await this.getProduct(item.productId, tenantId);
+      return {
+        ...item,
+        product
+      };
+    }));
+    
     return {
       ...sale,
-      items,
+      items: itemsWithProducts,
       customer
     };
   }
@@ -565,16 +574,26 @@ export class MemStorage implements IStorage {
     this.sales.set(id, newSale);
     
     const saleItems: SaleItem[] = [];
+    const saleItemsWithProducts = [];
+    
     for (const item of items) {
       const itemId = this.currentSaleItemId++;
       const newItem: SaleItem = { ...item, id: itemId, saleId: id };
       saleItems.push(newItem);
       
-      // Update product quantity
+      // Update product quantity and associate product with sale item
       const product = this.products.get(item.productId);
       if (product) {
         product.quantity -= item.quantity;
         this.products.set(product.id, product);
+        
+        // Add the product info to the sale item
+        saleItemsWithProducts.push({
+          ...newItem,
+          product
+        });
+      } else {
+        saleItemsWithProducts.push(newItem);
       }
     }
     
@@ -594,7 +613,7 @@ export class MemStorage implements IStorage {
     
     return {
       ...newSale,
-      items: saleItems,
+      items: saleItemsWithProducts,
       customer
     };
   }
@@ -611,9 +630,18 @@ export class MemStorage implements IStorage {
       supplier = await this.getSupplier(order.supplierId, tenantId);
     }
     
+    // Add product information to each order item
+    const itemsWithProducts = await Promise.all(items.map(async (item) => {
+      const product = await this.getProduct(item.productId, tenantId);
+      return {
+        ...item,
+        product
+      };
+    }));
+    
     return {
       ...order,
-      items,
+      items: itemsWithProducts,
       supplier
     };
   }
@@ -640,10 +668,23 @@ export class MemStorage implements IStorage {
     this.orders.set(id, newOrder);
     
     const orderItems: OrderItem[] = [];
+    const orderItemsWithProducts = [];
+    
     for (const item of items) {
       const itemId = this.currentOrderItemId++;
       const newItem: OrderItem = { ...item, id: itemId, orderId: id };
       orderItems.push(newItem);
+      
+      // Associate product with order item
+      const product = this.products.get(item.productId);
+      if (product) {
+        orderItemsWithProducts.push({
+          ...newItem,
+          product
+        });
+      } else {
+        orderItemsWithProducts.push(newItem);
+      }
     }
     
     this.orderItems.set(id, orderItems);
@@ -655,7 +696,7 @@ export class MemStorage implements IStorage {
     
     return {
       ...newOrder,
-      items: orderItems,
+      items: orderItemsWithProducts,
       supplier
     };
   }
