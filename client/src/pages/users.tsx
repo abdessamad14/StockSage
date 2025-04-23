@@ -361,6 +361,11 @@ export default function UsersPage() {
                       <FormControl>
                         <Input {...field} readOnly={!!editingUser} />
                       </FormControl>
+                      {!editingUser && (
+                        <p className="text-xs text-muted-foreground">
+                          Choose a unique username for this user to log in with
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
