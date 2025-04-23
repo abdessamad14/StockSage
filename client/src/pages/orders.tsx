@@ -212,14 +212,14 @@ export default function Orders() {
     })
     .filter(order => {
       // Status filter
-      if (statusFilter) {
+      if (statusFilter && statusFilter !== 'all') {
         return order.status === statusFilter;
       }
       return true;
     })
     .filter(order => {
       // Supplier filter
-      if (supplierFilter) {
+      if (supplierFilter && supplierFilter > 0) {
         return order.supplierId === supplierFilter;
       }
       return true;
@@ -334,7 +334,7 @@ export default function Orders() {
               </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">{t('all_statuses')}</SelectItem>
+              <SelectItem value="all">{t('all_statuses')}</SelectItem>
               <SelectItem value="pending">{t('pending')}</SelectItem>
               <SelectItem value="in_transit">{t('in_transit')}</SelectItem>
               <SelectItem value="received">{t('received')}</SelectItem>
@@ -345,8 +345,8 @@ export default function Orders() {
         
         <div className="flex">
           <Select 
-            value={supplierFilter?.toString() || ""}
-            onValueChange={(value) => setSupplierFilter(value ? parseInt(value) : null)}
+            value={supplierFilter?.toString() || "all"}
+            onValueChange={(value) => setSupplierFilter(value !== "all" ? parseInt(value) : null)}
           >
             <SelectTrigger className="w-full">
               <div className="flex items-center gap-2">
@@ -357,7 +357,7 @@ export default function Orders() {
               </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">{t('all_suppliers')}</SelectItem>
+              <SelectItem value="all">{t('all_suppliers')}</SelectItem>
               {suppliers.map(supplier => (
                 <SelectItem key={supplier.id} value={supplier.id.toString()}>
                   {supplier.name}
