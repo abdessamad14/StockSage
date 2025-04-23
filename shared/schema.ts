@@ -17,6 +17,16 @@ export const users = pgTable("users", {
   active: boolean("active").notNull().default(true),
 });
 
+// Product Categories table
+export const productCategories = pgTable("product_categories", {
+  id: serial("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  parent_id: integer("parent_id"),
+  active: boolean("active").notNull().default(true),
+});
+
 // Products table
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
@@ -24,7 +34,7 @@ export const products = pgTable("products", {
   name: text("name").notNull(),
   barcode: text("barcode"),
   description: text("description"),
-  category: text("category"),
+  categoryId: integer("category_id").references(() => productCategories.id),
   costPrice: doublePrecision("cost_price").notNull(),
   sellingPrice: doublePrecision("selling_price").notNull(),
   quantity: integer("quantity").notNull().default(0),
@@ -171,6 +181,7 @@ export const settings = pgTable("settings", {
 
 // Insert schemas for each table
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
+export const insertProductCategorySchema = createInsertSchema(productCategories).omit({ id: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });
 export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true });
 export const insertSupplierSchema = createInsertSchema(suppliers).omit({ id: true });
@@ -184,6 +195,7 @@ export const insertSettingsSchema = createInsertSchema(settings).omit({ id: true
 
 // Define types for insert operations
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertProductCategory = z.infer<typeof insertProductCategorySchema>;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
@@ -197,6 +209,7 @@ export type InsertSettings = z.infer<typeof insertSettingsSchema>;
 
 // Define types for select operations
 export type User = typeof users.$inferSelect;
+export type ProductCategory = typeof productCategories.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Customer = typeof customers.$inferSelect;
 export type Supplier = typeof suppliers.$inferSelect;
