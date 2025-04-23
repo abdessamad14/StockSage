@@ -7,6 +7,7 @@ import {
   Product,
   Customer,
   Supplier,
+  ProductCategory,
   ProductWithStockStatus,
   loginSchema,
   SaleWithItems,
@@ -23,9 +24,11 @@ import {
   InsertCustomer,
   InsertSupplier,
   InsertProduct,
+  InsertProductCategory,
   InsertInventoryAdjustment,
   insertUserSchema,
   insertProductSchema,
+  insertProductCategorySchema,
   insertCustomerSchema,
   insertSupplierSchema,
   insertSaleSchema,
@@ -167,6 +170,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!success) {
         return res.status(404).json({ message: "Product not found" });
+      }
+      
+      return res.status(204).send();
+    } catch (error) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Product Categories routes
+  app.get('/api/product-categories', async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const categories = await storage.getProductCategories(req.user.tenantId);
+      return res.json(categories);
+    } catch (error) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.get('/api/product-categories/:id', async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const id = parseInt(req.params.id);
+      const category = await storage.getProductCategory(id, req.user.tenantId);
+      
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      return res.json(category);
+    } catch (error) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.post('/api/product-categories', authorize(['admin']), async (req, res) => {
+    try {
+      const categoryData = insertProductCategorySchema.parse({
+        ...req.body,
+        tenantId: req.user.tenantId
+      });
+      
+      const category = await storage.createProductCategory(categoryData);
+      return res.status(201).json(category);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.put('/api/product-categories/:id', authorize(['admin']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const category = await storage.updateProductCategory(id, req.user.tenantId, updates);
+      
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      return res.json(category);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.delete('/api/product-categories/:id', authorize(['admin']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteProductCategory(id, req.user.tenantId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Category not found" });
       }
       
       return res.status(204).send();

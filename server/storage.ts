@@ -38,6 +38,13 @@ export interface IStorage {
   updateProduct(id: number, tenantId: string, updates: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: number, tenantId: string): Promise<boolean>;
   
+  // Product Categories management
+  getProductCategory(id: number, tenantId: string): Promise<ProductCategory | undefined>;
+  getProductCategories(tenantId: string): Promise<ProductCategory[]>;
+  createProductCategory(category: InsertProductCategory): Promise<ProductCategory>;
+  updateProductCategory(id: number, tenantId: string, updates: Partial<InsertProductCategory>): Promise<ProductCategory | undefined>;
+  deleteProductCategory(id: number, tenantId: string): Promise<boolean>;
+  
   // Customer management
   getCustomer(id: number, tenantId: string): Promise<Customer | undefined>;
   getCustomers(tenantId: string, search?: string): Promise<Customer[]>;
@@ -89,6 +96,7 @@ export class MemStorage implements IStorage {
   
   private users: Map<number, User>;
   private products: Map<number, Product>;
+  private productCategories: Map<number, ProductCategory>;
   private customers: Map<number, Customer>;
   private suppliers: Map<number, Supplier>;
   private sales: Map<number, Sale>;
@@ -102,6 +110,7 @@ export class MemStorage implements IStorage {
   
   private currentUserId: number;
   private currentProductId: number;
+  private currentProductCategoryId: number;
   private currentCustomerId: number;
   private currentSupplierId: number;
   private currentSaleId: number;
@@ -120,6 +129,7 @@ export class MemStorage implements IStorage {
     
     this.users = new Map();
     this.products = new Map();
+    this.productCategories = new Map();
     this.customers = new Map();
     this.suppliers = new Map();
     this.sales = new Map();
@@ -133,6 +143,7 @@ export class MemStorage implements IStorage {
     
     this.currentUserId = 1;
     this.currentProductId = 1;
+    this.currentProductCategoryId = 1;
     this.currentCustomerId = 1;
     this.currentSupplierId = 1;
     this.currentSaleId = 1;
@@ -179,18 +190,39 @@ export class MemStorage implements IStorage {
     };
     this.updateSettings("demo-tenant", demoSettings);
     
+    // Create demo product categories
+    const categories = [
+      { name: "Laitages", description: "Produits laitiers", color: "#A7C7E7" },
+      { name: "Boulangerie", description: "Pains et viennoiseries", color: "#C19A6B" },
+      { name: "Boissons", description: "Boissons fraiches et chaudes", color: "#FF6B6B" },
+      { name: "Épicerie", description: "Produits d'épicerie", color: "#77DD77" },
+    ];
+    
+    const categoryMap = new Map<string, number>();
+    
+    for (const category of categories) {
+      const newCategory = this.createProductCategory({
+        ...category,
+        tenantId: "demo-tenant",
+        active: true
+      });
+      categoryMap.set(category.name, newCategory.id);
+    }
+    
     // Create demo products
     const products = [
-      { name: "Lait Centrale 1L", barcode: "6001234567890", costPrice: 10, sellingPrice: 12.5, quantity: 50, category: "Laitages" },
-      { name: "Pain sucré", barcode: "6001234567891", costPrice: 1.5, sellingPrice: 2.5, quantity: 8, category: "Boulangerie" },
-      { name: "Coca Cola 1.5L", barcode: "6001234567892", costPrice: 12, sellingPrice: 15, quantity: 30, category: "Boissons" },
-      { name: "Yaourt Jaouda", barcode: "6001234567893", costPrice: 4.5, sellingPrice: 5.75, quantity: 25, category: "Laitages" }
+      { name: "Lait Centrale 1L", barcode: "6001234567890", costPrice: 10, sellingPrice: 12.5, quantity: 50, categoryName: "Laitages" },
+      { name: "Pain sucré", barcode: "6001234567891", costPrice: 1.5, sellingPrice: 2.5, quantity: 8, categoryName: "Boulangerie" },
+      { name: "Coca Cola 1.5L", barcode: "6001234567892", costPrice: 12, sellingPrice: 15, quantity: 30, categoryName: "Boissons" },
+      { name: "Yaourt Jaouda", barcode: "6001234567893", costPrice: 4.5, sellingPrice: 5.75, quantity: 25, categoryName: "Laitages" }
     ];
     
     for (const product of products) {
+      const { categoryName, ...rest } = product;
       this.createProduct({
-        ...product,
+        ...rest,
         tenantId: "demo-tenant",
+        categoryId: categoryMap.get(categoryName) || null,
         minStockLevel: 10,
         description: "",
         unit: "pièce",
@@ -289,9 +321,17 @@ export class MemStorage implements IStorage {
     }
     
     if (options?.category) {
-      products = products.filter(
-        (product) => product.category === options.category
-      );
+      // First find the category ID for the given category name
+      const categoryId = Array.from(this.productCategories.values()).find(
+        category => category.name === options.category && category.tenantId === tenantId
+      )?.id;
+      
+      if (categoryId) {
+        products = products.filter(product => product.categoryId === categoryId);
+      } else {
+        // If category name is not found, return empty array
+        products = [];
+      }
     }
     
     if (options?.lowStock) {
@@ -329,6 +369,54 @@ export class MemStorage implements IStorage {
     if (!product || product.tenantId !== tenantId) return false;
     
     return this.products.delete(id);
+  }
+  
+  // Product Category management
+  async getProductCategory(id: number, tenantId: string): Promise<ProductCategory | undefined> {
+    const category = this.productCategories.get(id);
+    if (category && category.tenantId === tenantId) {
+      return category;
+    }
+    return undefined;
+  }
+  
+  async getProductCategories(tenantId: string): Promise<ProductCategory[]> {
+    return Array.from(this.productCategories.values()).filter(
+      (category) => category.tenantId === tenantId
+    );
+  }
+  
+  async createProductCategory(category: InsertProductCategory): Promise<ProductCategory> {
+    const id = this.currentProductCategoryId++;
+    const newCategory: ProductCategory = { ...category, id };
+    this.productCategories.set(id, newCategory);
+    return newCategory;
+  }
+  
+  async updateProductCategory(id: number, tenantId: string, updates: Partial<InsertProductCategory>): Promise<ProductCategory | undefined> {
+    const category = this.productCategories.get(id);
+    if (!category || category.tenantId !== tenantId) return undefined;
+    
+    const updatedCategory = { ...category, ...updates };
+    this.productCategories.set(id, updatedCategory);
+    return updatedCategory;
+  }
+  
+  async deleteProductCategory(id: number, tenantId: string): Promise<boolean> {
+    const category = this.productCategories.get(id);
+    if (!category || category.tenantId !== tenantId) return false;
+    
+    // Check if any products are using this category
+    const productsUsingCategory = Array.from(this.products.values()).some(
+      (product) => product.categoryId === id && product.tenantId === tenantId
+    );
+    
+    if (productsUsingCategory) {
+      // Can't delete a category that's in use
+      return false;
+    }
+    
+    return this.productCategories.delete(id);
   }
   
   // Customer management
