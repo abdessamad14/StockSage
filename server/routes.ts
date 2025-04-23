@@ -67,6 +67,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication (this adds /api/login, /api/logout, /api/register, and /api/user endpoints)
   setupAuth(app);
   
+  // Debug endpoint to list all users in the database - FOR TESTING ONLY!
+  app.get('/api/debug/users', async (req, res) => {
+    try {
+      // Get all users in the database
+      const allUsers = await db.select().from(users);
+      console.log(`Found ${allUsers.length} users in database`);
+      
+      // Return only public user info, not passwords
+      const safeUsers = allUsers.map(user => ({
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        tenantId: user.tenantId,
+        role: user.role
+      }));
+      
+      return res.json(safeUsers);
+    } catch (error) {
+      console.error("Error in debug endpoint:", error);
+      return res.status(500).json({ message: "Server error", error: String(error) });
+    }
+  });
+  
   // Add a special dev login endpoint for testing purposes
   app.post('/api/test-login', async (req, res) => {
     try {
@@ -78,54 +101,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Test login attempt for ${username} with tenant ${tenantId}`);
       
-      // Special case for admin2
-      if (username === 'admin2' && tenantId === 'tenant_1') {
-        console.log('Using direct admin2 login bypass');
+      // Let's add some extra debugging
+      if (username === 'superadmin') {
+        console.log('Trying direct superadmin login');
         
-        // Get admin2 user directly from DB
-        const [user] = await db.select().from(users).where(eq(users.username, 'admin2'));
+        // Try direct SQL query
+        const result = await pool.query('SELECT * FROM users WHERE username = $1', ['superadmin']);
+        console.log('Direct SQL query result:', result.rows);
         
-        if (!user) {
-          console.log('Admin2 user not found in direct query');
-          return res.status(401).json({ message: 'Admin user not found' });
+        if (result.rows.length > 0) {
+          const userFromSql = result.rows[0];
+          console.log('User found via direct SQL. Logging in...');
+          
+          // Log in using the result from SQL
+          req.login(userFromSql, (err) => {
+            if (err) {
+              console.error('SQL login error:', err);
+              return res.status(500).json({ message: 'Error during SQL login' });
+            }
+            
+            console.log(`Superadmin logged in via SQL`);
+            return res.status(200).json(userFromSql);
+          });
+          return;
+        } else {
+          console.log('User not found even with direct SQL');
         }
+      }
+      
+      // Try our ORM approach
+      try {
+        const allUsers = await db.select().from(users);
+        console.log('All users in DB:', allUsers.map(u => `${u.id}: ${u.username} (${u.tenantId})`));
         
-        // Log in the user directly
-        req.login(user, (err) => {
-          if (err) {
-            console.error('Admin login error:', err);
-            return res.status(500).json({ message: 'Error during admin login' });
+        // Manual search for matching username
+        const matchingUsers = allUsers.filter(u => u.username === username);
+        console.log('Matching users:', matchingUsers.length);
+        
+        if (matchingUsers.length > 0) {
+          const user = matchingUsers[0];
+          
+          // Check tenant ID
+          if (user.tenantId !== tenantId) {
+            console.log(`TenantId mismatch: User: ${user.tenantId}, Provided: ${tenantId}`);
+            return res.status(401).json({ message: 'Invalid tenant ID' });
           }
           
-          console.log(`Admin user logged in via direct bypass`);
-          return res.status(200).json(user);
-        });
-        return;
-      }
-      
-      // Normal flow for other users
-      const user = await storage.getUserByUsername(username);
-      
-      if (!user) {
-        console.log(`User ${username} not found`);
-        return res.status(401).json({ message: 'User not found' });
-      }
-      
-      if (user.tenantId !== tenantId) {
-        console.log(`TenantId mismatch: User: ${user.tenantId}, Provided: ${tenantId}`);
-        return res.status(401).json({ message: 'Invalid tenant ID' });
-      }
-      
-      // Log in the user directly
-      req.login(user, (err) => {
-        if (err) {
-          console.error('Login error:', err);
-          return res.status(500).json({ message: 'Error during login' });
+          // Log in the user directly
+          req.login(user, (err) => {
+            if (err) {
+              console.error('Login error:', err);
+              return res.status(500).json({ message: 'Error during login' });
+            }
+            
+            console.log(`User ${username} logged in via manual search`);
+            return res.status(200).json(user);
+          });
+          return;
         }
-        
-        console.log(`User ${username} logged in via test endpoint`);
-        return res.status(200).json(user);
-      });
+      } catch (error) {
+        console.error('Error during ORM search:', error);
+      }
+      
+      // If we get here, we couldn't find the user
+      console.log(`User ${username} not found`);
+      return res.status(401).json({ message: 'User not found' });
     } catch (error) {
       console.error('Test login error:', error);
       res.status(500).json({ message: 'Server error' });
