@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/hooks/use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Settings, insertSettingsSchema } from "@shared/schema";
@@ -42,7 +42,8 @@ type SettingsForm = z.infer<typeof formSchema>;
 
 export default function SettingsPage() {
   const { t } = useI18n();
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
+  const isAdmin = user && user.role === 'admin';
   const { language, setLanguage } = useI18n();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("general");
