@@ -15,6 +15,7 @@ import Suppliers from "@/pages/suppliers";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
 import { AuthProvider } from "@/hooks/use-auth";
+import { I18nProvider } from "@/lib/i18n";
 import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
@@ -38,10 +39,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <I18nProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </I18nProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

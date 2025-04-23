@@ -1,5 +1,4 @@
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { useAuth } from './auth';
 
 // Define available languages
 type Language = 'fr' | 'ar';
@@ -264,19 +263,16 @@ const I18nContext = createContext<I18nContextType>({
 });
 
 export const I18nProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
   const [language, setLanguageState] = useState<Language>('fr');
 
-  // Load language preference from localStorage or user settings
+  // Load language preference from localStorage only
   useEffect(() => {
     const storedLang = localStorage.getItem('language');
     
     if (storedLang && (storedLang === 'fr' || storedLang === 'ar')) {
       setLanguageState(storedLang);
-    } else if (user?.language && (user.language === 'fr' || user.language === 'ar')) {
-      setLanguageState(user.language);
     }
-  }, [user]);
+  }, []);
 
   // Set language with side effects
   const setLanguage = (lang: Language) => {
