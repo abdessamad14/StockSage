@@ -12,7 +12,8 @@ import {
   BarChart2, 
   Settings, 
   LogOut,
-  UserCog
+  UserCog,
+  Receipt
 } from 'lucide-react';
 
 interface NavigationDrawerProps {
@@ -35,6 +36,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
   const canManageCustomers = isAdmin || user?.role === 'cashier';
   const canManageSuppliers = isAdmin;
   const canViewReports = isAdmin;
+  const canViewSalesHistory = isAdmin || user?.role === 'cashier';
   const canManageSettings = isAdmin;
   const canUsePOS = isAdmin || user?.role === 'cashier';
 
@@ -118,6 +120,14 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
             <Link href="/reports" className={`flex items-center px-4 py-3 ${isActive('/reports') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
               <BarChart2 className="w-6 h-6 mr-3" />
               <span>{t('reports')}</span>
+            </Link>
+          )}
+          
+          {/* Sales History */}
+          {canViewSalesHistory && (
+            <Link href="/sales-history" className={`flex items-center px-4 py-3 ${isActive('/sales-history') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+              <Receipt className="w-6 h-6 mr-3" />
+              <span>{t('sales_history')}</span>
             </Link>
           )}
           
