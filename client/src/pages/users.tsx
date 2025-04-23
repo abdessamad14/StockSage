@@ -282,6 +282,7 @@ export default function UsersPage() {
                   <TableRow>
                     <TableHead>Username</TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Company ID</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Role</TableHead>
@@ -294,6 +295,7 @@ export default function UsersPage() {
                     <TableRow key={user.id}>
                       <TableCell>{user.username}</TableCell>
                       <TableCell>{user.name}</TableCell>
+                      <TableCell>{user.tenantId}</TableCell>
                       <TableCell>{user.email || '-'}</TableCell>
                       <TableCell>{user.phone || '-'}</TableCell>
                       <TableCell>
