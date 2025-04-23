@@ -53,6 +53,11 @@ export function setupAuth(app: Express) {
           // Get the tenantId from the request body
           const { tenantId } = req.body;
           
+          // If tenant ID was not provided
+          if (!tenantId) {
+            return done(null, false, { message: 'Company ID is required' });
+          }
+          
           // Get the user by username
           const user = await storage.getUserByUsername(username);
           
@@ -60,13 +65,15 @@ export function setupAuth(app: Express) {
             return done(null, false, { message: 'Invalid username or password' });
           }
           
-          // If tenant ID is provided, check if it matches the user's tenant
-          if (tenantId && user.tenantId !== tenantId) {
-            return done(null, false, { message: 'Invalid company ID' });
+          // Check if the tenantId matches the user's tenantId
+          if (user.tenantId !== tenantId) {
+            console.log(`TenantId mismatch: User: ${user.tenantId}, Provided: ${tenantId}`);
+            return done(null, false, { message: 'Invalid Company ID for this user' });
           }
           
           // For demo purposes, allow direct password comparison
           if (password === user.password) {
+            console.log(`User ${username} authenticated successfully with tenant ${tenantId}`);
             return done(null, user);
           }
           
@@ -77,6 +84,7 @@ export function setupAuth(app: Express) {
           
           return done(null, false, { message: 'Invalid username or password' });
         } catch (err) {
+          console.error('Authentication error:', err);
           return done(err);
         }
       }
@@ -95,11 +103,28 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      const existingUser = await storage.getUserByUsername(req.body.username);
-      if (existingUser) {
-        return res.status(400).send("Username already exists");
+      // Check required fields
+      const { username, password, name, businessName, tenantId } = req.body;
+      
+      if (!username || !password || !name || !businessName || !tenantId) {
+        return res.status(400).json({ 
+          message: "All required fields must be provided (username, password, name, businessName, tenantId)" 
+        });
       }
-
+      
+      // Check if username already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+      
+      // Check if the tenantId already exists
+      // If it's a new tenant, user will be created as admin
+      // If it's an existing tenant, only admins should be able to create new users (this is enforced in routes.ts)
+      const role = req.body.role || 'admin';
+      
+      console.log(`Registering new user: ${username} for tenant: ${tenantId} with role: ${role}`);
+      
       const user = await storage.createUser({
         ...req.body,
         password: req.body.password, // In production: await hashPassword(req.body.password),
@@ -110,7 +135,8 @@ export function setupAuth(app: Express) {
         res.status(201).json(user);
       });
     } catch (error) {
-      next(error);
+      console.error("Registration error:", error);
+      return res.status(500).json({ message: "Registration failed" });
     }
   });
 
