@@ -27,8 +27,10 @@ export interface IStorage {
   // User management
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUsersByTenant(tenantId: string): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
   
   // Product management
   getProduct(id: number, tenantId: string): Promise<Product | undefined>;
@@ -274,6 +276,12 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getUsersByTenant(tenantId: string): Promise<User[]> {
+    return Array.from(this.users.values()).filter(
+      (user) => user.tenantId === tenantId
+    );
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
     const user: User = { ...insertUser, id };
@@ -288,6 +296,11 @@ export class MemStorage implements IStorage {
     const updatedUser = { ...user, ...updates };
     this.users.set(id, updatedUser);
     return updatedUser;
+  }
+  
+  async deleteUser(id: number): Promise<boolean> {
+    if (!this.users.has(id)) return false;
+    return this.users.delete(id);
   }
   
   // Product management

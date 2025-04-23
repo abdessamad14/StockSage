@@ -1,494 +1,365 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useI18n } from "@/lib/i18n";
-import { useAuth } from "@/hooks/use-auth";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { User, InsertUser, Role } from "@shared/schema";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { apiRequest } from '@/lib/queryClient';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
+import { Plus, Pencil, Trash2, User, UserCog, UserMinus } from 'lucide-react';
 
+// UI Components
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, RefreshCw, Plus, User as UserIcon, UserCog, Check, X, Pencil, Trash2 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Loader2 } from 'lucide-react';
+import AppShell from '@/components/AppShell';
 
 // User form schema
 const userFormSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  name: z.string().min(1, "Name is required"),
-  businessName: z.string().min(1, "Business name is required"),
-  email: z.string().email("Invalid email format").optional().or(z.literal('')),
-  phone: z.string().optional(),
-  role: z.enum(["admin", "cashier", "merchant", "supporter", "viewer"]),
+  username: z.string().min(3, 'Username must be at least 3 characters'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')),
+  role: z.enum(['admin', 'merchant', 'cashier']),
   active: z.boolean().default(true),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
 
 export default function UsersPage() {
-  const { t } = useI18n();
-  const { toast } = useToast();
   const { user } = useAuth();
-  const isAdmin = user && user.role === 'admin';
-  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
-  const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [deletingUser, setDeletingUser] = useState<any>(null);
+
+  // Role display mapping
+  const roleDisplay = {
+    admin: { label: 'Admin', color: 'bg-blue-500 hover:bg-blue-600' },
+    merchant: { label: 'Merchant', color: 'bg-green-500 hover:bg-green-600' },
+    cashier: { label: 'Cashier', color: 'bg-amber-500 hover:bg-amber-600' },
+    supporter: { label: 'Support', color: 'bg-purple-500 hover:bg-purple-600' },
+    viewer: { label: 'Viewer', color: 'bg-gray-500 hover:bg-gray-600' },
+  };
 
   // Fetch users
-  const {
-    data: users = [],
-    isLoading,
-    isError,
-    refetch
-  } = useQuery({
+  const { data: users = [], isLoading } = useQuery({
     queryKey: ['/api/users'],
-    enabled: !!isAdmin,
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/users');
+      return await res.json();
+    },
   });
 
-  // Create user mutation
-  const createUserMutation = useMutation({
-    mutationFn: async (data: UserFormValues) => {
-      const userData = {
-        ...data,
-        tenantId: user?.tenantId || "default", // Use current user's tenantId
-      };
-      const res = await apiRequest('POST', '/api/users', userData);
-      return res.json();
+  // Add user mutation
+  const addUserMutation = useMutation({
+    mutationFn: async (values: UserFormValues) => {
+      const res = await apiRequest('POST', '/api/users', values);
+      return await res.json();
     },
     onSuccess: () => {
-      toast({
-        title: t('success'),
-        description: t('user_created'),
-      });
-      addUserForm.reset();
-      setIsAddUserDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
-    },
-    onError: (error) => {
+      setIsAddUserOpen(false);
+      form.reset();
       toast({
-        title: t('error'),
-        description: error instanceof Error ? error.message : t('create_user_error'),
-        variant: "destructive",
+        title: 'Success',
+        description: 'User added successfully',
       });
-    }
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to add user',
+        variant: 'destructive',
+      });
+    },
   });
 
   // Update user mutation
   const updateUserMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number, data: Partial<UserFormValues> }) => {
-      const res = await apiRequest('PUT', `/api/users/${id}`, data);
-      return res.json();
+    mutationFn: async (values: UserFormValues & { id: number }) => {
+      const { id, ...userData } = values;
+      const res = await apiRequest('PATCH', `/api/users/${id}`, userData);
+      return await res.json();
     },
     onSuccess: () => {
-      toast({
-        title: t('success'),
-        description: t('user_updated'),
-      });
-      editUserForm.reset();
-      setIsEditUserDialogOpen(false);
-      setSelectedUser(null);
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
-    },
-    onError: (error) => {
+      setEditingUser(null);
+      form.reset();
       toast({
-        title: t('error'),
-        description: error instanceof Error ? error.message : t('update_user_error'),
-        variant: "destructive",
+        title: 'Success',
+        description: 'User updated successfully',
       });
-    }
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update user',
+        variant: 'destructive',
+      });
+    },
   });
 
   // Delete user mutation
   const deleteUserMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest('DELETE', `/api/users/${id}`);
+      const res = await apiRequest('DELETE', `/api/users/${id}`);
+      return id;
     },
     onSuccess: () => {
-      toast({
-        title: t('success'),
-        description: t('user_deleted'),
-      });
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
-    },
-    onError: (error) => {
+      setDeletingUser(null);
       toast({
-        title: t('error'),
-        description: error instanceof Error ? error.message : t('delete_user_error'),
-        variant: "destructive",
+        title: 'Success',
+        description: 'User deleted successfully',
       });
-    }
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete user',
+        variant: 'destructive',
+      });
+    },
   });
 
-  // Toggle user active status
-  const toggleUserStatus = (id: number, active: boolean) => {
-    updateUserMutation.mutate({ 
-      id, 
-      data: { active: !active } 
+  // Form definition
+  const form = useForm<UserFormValues>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      username: '',
+      password: '',
+      name: '',
+      email: '',
+      phone: '',
+      role: 'cashier',
+      active: true,
+    },
+  });
+
+  // Open edit user dialog
+  const handleEditUser = (user: any) => {
+    setEditingUser(user);
+    form.reset({
+      username: user.username,
+      // Don't set password as we don't want to change it necessarily
+      password: '',
+      name: user.name,
+      email: user.email || '',
+      phone: user.phone || '',
+      role: user.role,
+      active: user.active,
     });
   };
 
-  // Form for adding new users
-  const addUserForm = useForm<UserFormValues>({
-    resolver: zodResolver(userFormSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-      name: "",
-      businessName: user?.businessName || "",
-      email: "",
-      phone: "",
-      role: "cashier",
-      active: true,
-    }
-  });
-
-  // Form for editing users
-  const editUserForm = useForm<Partial<UserFormValues>>({
-    resolver: zodResolver(userFormSchema.partial()),
-    defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-      role: undefined,
-      active: true,
-    }
-  });
-
-  // Update edit form when selected user changes
-  useEffect(() => {
-    if (selectedUser) {
-      editUserForm.reset({
-        name: selectedUser.name,
-        email: selectedUser.email || "",
-        phone: selectedUser.phone || "",
-        role: selectedUser.role as Role,
-        active: selectedUser.active,
-      });
-    }
-  }, [selectedUser, editUserForm]);
-
-  // Handle add user form submission
-  const onAddUserSubmit = (data: UserFormValues) => {
-    createUserMutation.mutate(data);
-  };
-
-  // Handle edit user form submission
-  const onEditUserSubmit = (data: Partial<UserFormValues>) => {
-    if (selectedUser) {
-      updateUserMutation.mutate({ id: selectedUser.id, data });
+  // Submit handler
+  const onSubmit = (values: UserFormValues) => {
+    if (editingUser) {
+      updateUserMutation.mutate({ ...values, id: editingUser.id });
+    } else {
+      addUserMutation.mutate(values);
     }
   };
 
-  // Filter users based on search
-  const filteredUsers = users.filter(user => {
-    if (!searchQuery) return true;
-    
-    const query = searchQuery.toLowerCase();
-    return (
-      user.username.toLowerCase().includes(query) ||
-      user.name.toLowerCase().includes(query) ||
-      (user.email && user.email.toLowerCase().includes(query))
-    );
-  });
-
-  // Get role badge
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return <Badge variant="default" className="bg-purple-100 text-purple-800 hover:bg-purple-100">{t('admin')}</Badge>;
-      case 'cashier':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">{t('cashier')}</Badge>;
-      case 'merchant':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">{t('merchant')}</Badge>;
-      case 'supporter':
-        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">{t('supporter')}</Badge>;
-      case 'viewer':
-        return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">{t('viewer')}</Badge>;
-      default:
-        return <Badge variant="outline">{role}</Badge>;
-    }
-  };
-
-  // If not admin, show access denied
-  if (!isAdmin) {
-    return (
-      <div className="p-4">
-        <Card className="bg-amber-50 border border-amber-200 p-4">
-          <div className="flex items-center gap-2 text-amber-700">
-            <AlertTriangle className="h-5 w-5" />
-            <h3 className="font-semibold">{t('access_denied')}</h3>
-          </div>
-          <p className="mt-2 text-sm text-amber-700">{t('users_admin_only')}</p>
-        </Card>
-      </div>
-    );
-  }
-
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="p-4">
-        <div className="flex justify-between items-center mb-4">
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="h-9 w-32" />
-        </div>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-32 mb-2" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-6 w-full mb-2" />
-            <Skeleton className="h-6 w-full mb-2" />
-            <Skeleton className="h-6 w-full mb-2" />
-            <Skeleton className="h-6 w-full" />
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Error state
-  if (isError) {
-    return (
-      <div className="p-4">
-        <Card className="bg-red-50 border border-red-200 p-4">
-          <div className="flex items-center gap-2 text-red-700">
-            <AlertTriangle className="h-5 w-5" />
-            <h3 className="font-semibold">{t('error')}</h3>
-          </div>
-          <p className="mt-2 text-sm text-red-700">{t('users_load_error')}</p>
-          <Button 
-            onClick={() => refetch()} 
-            variant="outline" 
-            className="mt-4 text-red-700 border-red-300"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            {t('retry')}
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
+  // Render page
   return (
-    <div className="p-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-        <h1 className="text-xl font-bold">{t('user_management')}</h1>
-        
-        <Button onClick={() => setIsAddUserDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          {t('new_user')}
-        </Button>
-      </div>
-      
-      {/* Search */}
-      <div className="mb-4">
-        <div className="relative">
-          <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={t('search_users')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+    <AppShell>
+      <div className="container mx-auto p-4">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">User Management</h1>
+          {user?.role === 'admin' && (
+            <Button onClick={() => setIsAddUserOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Add User
+            </Button>
+          )}
         </div>
-      </div>
-      
-      {/* Users table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserCog className="h-5 w-5" />
-            {t('users')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredUsers.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <UserIcon className="h-12 w-12 mx-auto mb-3 opacity-20" />
-              <p>{searchQuery ? t('no_users_found') : t('no_users')}</p>
-              <Button 
-                variant="link" 
-                onClick={() => setIsAddUserDialogOpen(true)}
-                className="mt-2"
-              >
-                {t('create_first_user')}
-              </Button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Users</CardTitle>
+              <CardDescription>
+                Manage users for your business
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
               <Table>
+                <TableCaption>List of all users in your business</TableCaption>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('name')}</TableHead>
-                    <TableHead>{t('username')}</TableHead>
-                    <TableHead>{t('email')}</TableHead>
-                    <TableHead>{t('role')}</TableHead>
-                    <TableHead>{t('status')}</TableHead>
-                    <TableHead className="text-right">{t('actions')}</TableHead>
+                    <TableHead>Username</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow key={user.id} className={!user.active ? "opacity-60" : ""}>
-                      <TableCell className="font-medium">{user.name}</TableCell>
+                  {users.map((user: any) => (
+                    <TableRow key={user.id}>
                       <TableCell>{user.username}</TableCell>
-                      <TableCell>{user.email || "-"}</TableCell>
-                      <TableCell>{getRoleBadge(user.role)}</TableCell>
+                      <TableCell>{user.name}</TableCell>
+                      <TableCell>{user.email || '-'}</TableCell>
+                      <TableCell>{user.phone || '-'}</TableCell>
                       <TableCell>
-                        {user.active ? (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            <Check className="h-3 w-3 mr-1" /> {t('active')}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                            <X className="h-3 w-3 mr-1" /> {t('inactive')}
-                          </Badge>
-                        )}
+                        <Badge className={roleDisplay[user.role as keyof typeof roleDisplay]?.color || 'bg-gray-500'}>
+                          {roleDisplay[user.role as keyof typeof roleDisplay]?.label || user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.active ? 'default' : 'outline'}>
+                          {user.active ? 'Active' : 'Inactive'}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setIsEditUserDialogOpen(true);
-                            }}
-                            title={t('edit')}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditUser(user)}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => toggleUserStatus(user.id, user.active)}
-                            title={user.active ? t('deactivate') : t('activate')}
-                            className={user.active ? "text-red-600 hover:text-red-700" : "text-green-600 hover:text-green-700"}
-                          >
-                            {user.active ? <X className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                          </Button>
-                          {user.id !== user?.id && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                if (confirm(t('confirm_delete_user'))) {
-                                  deleteUserMutation.mutate(user.id);
-                                }
-                              }}
-                              title={t('delete')}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-destructive"
+                                onClick={() => setDeletingUser(user)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete {deletingUser?.name}? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setDeletingUser(null)}>
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => {
+                                    if (deletingUser) {
+                                      deleteUserMutation.mutate(deletingUser.id);
+                                    }
+                                  }}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Add User Dialog */}
-      <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>{t('add_user')}</DialogTitle>
-          </DialogHeader>
-          
-          <Form {...addUserForm}>
-            <form onSubmit={addUserForm.handleSubmit(onAddUserSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Add/Edit User Dialog */}
+        <Dialog 
+          open={isAddUserOpen || editingUser !== null} 
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsAddUserOpen(false);
+              setEditingUser(null);
+              form.reset();
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {editingUser ? 'Edit User' : 'Add New User'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingUser 
+                  ? 'Update user information and permissions.'
+                  : 'Create a new user for your business.'}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
-                  control={addUserForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('name')}</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={addUserForm.control}
+                  control={form.control}
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('username')}</FormLabel>
+                      <FormLabel>Username</FormLabel>
                       <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <FormField
-                control={addUserForm.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('password')}</FormLabel>
-                    <FormControl>
-                      <Input type="password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={addUserForm.control}
-                name="businessName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('business_name')}</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={addUserForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('email')}</FormLabel>
-                      <FormControl>
-                        <Input type="email" {...field} />
+                        <Input {...field} readOnly={!!editingUser} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -496,124 +367,13 @@ export default function UsersPage() {
                 />
                 
                 <FormField
-                  control={addUserForm.control}
-                  name="phone"
+                  control={form.control}
+                  name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('phone')}</FormLabel>
+                      <FormLabel>{editingUser ? 'New Password (leave blank to keep current)' : 'Password'}</FormLabel>
                       <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <FormField
-                control={addUserForm.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('role')}</FormLabel>
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={t('select_role')} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="admin">{t('admin')}</SelectItem>
-                        <SelectItem value="cashier">{t('cashier')}</SelectItem>
-                        <SelectItem value="merchant">{t('merchant')}</SelectItem>
-                        <SelectItem value="supporter">{t('supporter')}</SelectItem>
-                        <SelectItem value="viewer">{t('viewer')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      {t('role_description')}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={addUserForm.control}
-                name="active"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel>{t('active')}</FormLabel>
-                      <FormDescription>
-                        {t('active_description')}
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsAddUserDialogOpen(false)}
-                >
-                  {t('cancel')}
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={createUserMutation.isPending}
-                >
-                  {createUserMutation.isPending ? t('creating') : t('create')}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Edit User Dialog */}
-      <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>{t('edit_user')}: {selectedUser?.name}</DialogTitle>
-          </DialogHeader>
-          
-          <Form {...editUserForm}>
-            <form onSubmit={editUserForm.handleSubmit(onEditUserSubmit)} className="space-y-4">
-              <FormField
-                control={editUserForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('name')}</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={editUserForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('email')}</FormLabel>
-                      <FormControl>
-                        <Input type="email" {...field} />
+                        <Input type="password" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -621,11 +381,11 @@ export default function UsersPage() {
                 />
                 
                 <FormField
-                  control={editUserForm.control}
-                  name="phone"
+                  control={form.control}
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('phone')}</FormLabel>
+                      <FormLabel>Full Name</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -633,79 +393,112 @@ export default function UsersPage() {
                     </FormItem>
                   )}
                 />
-              </div>
-              
-              <FormField
-                control={editUserForm.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('role')}</FormLabel>
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                    >
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email (optional)</FormLabel>
+                        <FormControl>
+                          <Input type="email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone (optional)</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Role</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="admin">Administrator</SelectItem>
+                          <SelectItem value="merchant">Merchant</SelectItem>
+                          <SelectItem value="cashier">Cashier</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="active"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={t('select_role')} />
-                        </SelectTrigger>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="admin">{t('admin')}</SelectItem>
-                        <SelectItem value="cashier">{t('cashier')}</SelectItem>
-                        <SelectItem value="merchant">{t('merchant')}</SelectItem>
-                        <SelectItem value="supporter">{t('supporter')}</SelectItem>
-                        <SelectItem value="viewer">{t('viewer')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      {t('role_description')}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={editUserForm.control}
-                name="active"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel>{t('active')}</FormLabel>
-                      <FormDescription>
-                        {t('active_description')}
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsEditUserDialogOpen(false)}
-                >
-                  {t('cancel')}
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={updateUserMutation.isPending}
-                >
-                  {updateUserMutation.isPending ? t('saving') : t('save')}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-    </div>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Active</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Inactive users cannot log in to the system.
+                        </p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                
+                <DialogFooter>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsAddUserOpen(false);
+                      setEditingUser(null);
+                      form.reset();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit"
+                    disabled={addUserMutation.isPending || updateUserMutation.isPending}
+                  >
+                    {(addUserMutation.isPending || updateUserMutation.isPending) && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    {editingUser ? 'Update User' : 'Add User'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </AppShell>
   );
 }
