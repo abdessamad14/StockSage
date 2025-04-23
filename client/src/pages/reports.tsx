@@ -66,7 +66,7 @@ export default function Reports() {
   // Fetch report data
   const { data: reportData, isLoading, isError, refetch } = useQuery({
     queryKey: [`/api/${reportType}`, getDateRangeParams()],
-    enabled: isAdmin, // Only admins can access reports
+    // Allow all users to access reports
   });
 
   // Handle download report
@@ -77,21 +77,6 @@ export default function Reports() {
       description: t('report_download_not_implemented'),
     });
   };
-
-  // If user doesn't have permission
-  if (!isAdmin) {
-    return (
-      <div className="p-4">
-        <Card className="bg-amber-50 border border-amber-200 p-4">
-          <div className="flex items-center gap-2 text-amber-700">
-            <AlertTriangle className="h-5 w-5" />
-            <h3 className="font-semibold">{t('access_denied')}</h3>
-          </div>
-          <p className="mt-2 text-sm text-amber-700">{t('reports_admin_only')}</p>
-        </Card>
-      </div>
-    );
-  }
 
   // Loading state
   if (isLoading) {
