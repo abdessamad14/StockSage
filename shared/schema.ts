@@ -23,6 +23,7 @@ export const productCategories = pgTable("product_categories", {
   tenantId: text("tenant_id").notNull(),
   name: text("name").notNull(),
   description: text("description"),
+  color: text("color").default("#A7C7E7"),
   parent_id: integer("parent_id"),
   active: boolean("active").notNull().default(true),
 });
