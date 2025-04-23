@@ -38,6 +38,7 @@ export default function AuthPage() {
     defaultValues: {
       username: '',
       password: '',
+      tenantId: '',
     },
   });
 
@@ -93,6 +94,20 @@ export default function AuthPage() {
               <TabsContent value="login">
                 <Form {...loginForm}>
                   <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                    <FormField
+                      control={loginForm.control}
+                      name="tenantId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company ID</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter your company ID" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                     <FormField
                       control={loginForm.control}
                       name="username"
@@ -190,7 +205,7 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>Email</FormLabel>
                             <FormControl>
-                              <Input type="email" placeholder="Your email" {...field} />
+                              <Input type="email" placeholder="Your email" {...field} value={field.value || ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -204,7 +219,7 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>Phone</FormLabel>
                             <FormControl>
-                              <Input placeholder="Your phone number" {...field} />
+                              <Input placeholder="Your phone number" {...field} value={field.value || ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

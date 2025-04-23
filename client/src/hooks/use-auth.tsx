@@ -35,13 +35,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       const res = await apiRequest("POST", "/api/login", credentials);
+      
+      if (!res.ok) {
+        // Attempt to parse error message from response
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Login failed. Please check your credentials.');
+      }
+      
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Login successful",
-        description: `Welcome back, ${user.name}!`,
+        description: `Welcome back, ${user.name}!${user.businessName ? ` (${user.businessName})` : ''}`,
       });
     },
     onError: (error: Error) => {
