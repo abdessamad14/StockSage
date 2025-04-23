@@ -72,10 +72,25 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user;
   }
+  
+  async getUsersByTenant(tenantId: string): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.tenantId, tenantId));
+  }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
+  }
+  
+  async deleteUser(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(users).where(eq(users.id, id));
+      // Different PostgreSQL drivers might use different properties for affected rows count
+      return (result.rowCount > 0) || (result.count > 0);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      return false;
+    }
   }
 
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined> {
