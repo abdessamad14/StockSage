@@ -202,8 +202,8 @@ export default function SalesHistory() {
         </Select>
         
         <Select
-          value={customerFilter?.toString() || ""}
-          onValueChange={(value) => setCustomerFilter(value ? parseInt(value) : null)}
+          value={customerFilter?.toString() || "all"}
+          onValueChange={(value) => setCustomerFilter(value !== "all" && value !== "loading" ? parseInt(value) : null)}
         >
           <SelectTrigger>
             <div className="flex items-center gap-2">
@@ -212,9 +212,9 @@ export default function SalesHistory() {
             </div>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">{t('all_customers')}</SelectItem>
+            <SelectItem value="all">{t('all_customers')}</SelectItem>
             {isLoadingCustomers ? (
-              <SelectItem value="" disabled>{t('loading')}</SelectItem>
+              <SelectItem value="loading" disabled>{t('loading')}</SelectItem>
             ) : (
               customers?.map(customer => (
                 <SelectItem key={customer.id} value={customer.id.toString()}>
