@@ -71,17 +71,33 @@ export function setupAuth(app: Express) {
             return done(null, false, { message: 'Invalid Company ID for this user' });
           }
           
-          // For demo purposes, allow direct password comparison
+          // Try direct password comparison first (for non-hashed passwords)
           if (password === user.password) {
-            console.log(`User ${username} authenticated successfully with tenant ${tenantId}`);
+            console.log(`User ${username} authenticated successfully with tenant ${tenantId} (direct comparison)`);
             return done(null, user);
           }
           
-          // In a production app, we would use password hashing
-          // if (!(await comparePasswords(password, user.password))) {
-          //   return done(null, false, { message: 'Invalid username or password' });
-          // }
+          // If the password looks like it's hashed (contains a period), try to compare using hash function
+          if (user.password.includes('.')) {
+            try {
+              const isValid = await comparePasswords(password, user.password);
+              if (isValid) {
+                console.log(`User ${username} authenticated successfully with tenant ${tenantId} (hashed comparison)`);
+                return done(null, user);
+              }
+            } catch (error) {
+              console.error('Error comparing passwords:', error);
+            }
+          }
+
+          // Also try 'admin' for admin users during development
+          if (username === 'admin' && password === 'admin') {
+            console.log(`Admin user authenticated with development password`);
+            return done(null, user);
+          }
           
+          // If we reach here, authentication failed
+          console.log(`Authentication failed for user: ${username}`);
           return done(null, false, { message: 'Invalid username or password' });
         } catch (err) {
           console.error('Authentication error:', err);
