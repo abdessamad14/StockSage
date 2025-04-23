@@ -2,6 +2,60 @@ import { SaleWithItems } from '@shared/schema';
 import { format } from 'date-fns';
 
 /**
+ * Constants for ESC/POS thermal printer commands
+ */
+export const ESC_POS = {
+  // Printer hardware
+  HW_INIT: '\x1b\x40', // Clear data in buffer and reset modes
+  HW_SELECT: '\x1b\x3d\x01', // Select printer mode
+  HW_RESET: '\x1b\x3f\x0a\x00', // Reset printer hardware
+  
+  // Cash drawer
+  CD_KICK_2: '\x1b\x70\x00', // Send pulse to pin 2
+  CD_KICK_5: '\x1b\x70\x01', // Send pulse to pin 5
+  
+  // Paper
+  PAPER_FULL_CUT: '\x1d\x56\x00', // Full cut paper
+  PAPER_PART_CUT: '\x1d\x56\x01', // Partial cut paper
+  
+  // Text format
+  TXT_NORMAL: '\x1b\x21\x00', // Normal text
+  TXT_2HEIGHT: '\x1b\x21\x10', // Double height text
+  TXT_2WIDTH: '\x1b\x21\x20', // Double width text
+  TXT_UNDERL_OFF: '\x1b\x2d\x00', // Underline off
+  TXT_UNDERL_ON: '\x1b\x2d\x01', // Underline on
+  TXT_BOLD_OFF: '\x1b\x45\x00', // Bold off
+  TXT_BOLD_ON: '\x1b\x45\x01', // Bold on
+  TXT_FONT_A: '\x1b\x4d\x00', // Font type A
+  TXT_FONT_B: '\x1b\x4d\x01', // Font type B
+  TXT_ALIGN_LT: '\x1b\x61\x00', // Left justification
+  TXT_ALIGN_CT: '\x1b\x61\x01', // Centering
+  TXT_ALIGN_RT: '\x1b\x61\x02', // Right justification
+  
+  // Barcodes
+  BARCODE_TXT_OFF: '\x1d\x48\x00', // HRI barcode chars OFF
+  BARCODE_TXT_ABV: '\x1d\x48\x01', // HRI barcode chars above
+  BARCODE_TXT_BLW: '\x1d\x48\x02', // HRI barcode chars below
+  BARCODE_TXT_BTH: '\x1d\x48\x03', // HRI barcode chars both above and below
+  BARCODE_FONT_A: '\x1d\x66\x00', // Font type A for HRI barcode chars
+  BARCODE_FONT_B: '\x1d\x66\x01', // Font type B for HRI barcode chars
+  BARCODE_HEIGHT: '\x1d\x68\x64', // Barcode Height [1-255]
+  BARCODE_WIDTH: '\x1d\x77\x03', // Barcode Width [2-6]
+  BARCODE_UPC_A: '\x1d\x6b\x00', // Barcode type UPC-A
+  BARCODE_UPC_E: '\x1d\x6b\x01', // Barcode type UPC-E
+  BARCODE_EAN13: '\x1d\x6b\x02', // Barcode type EAN13
+  BARCODE_EAN8: '\x1d\x6b\x03', // Barcode type EAN8
+  BARCODE_CODE39: '\x1d\x6b\x04', // Barcode type CODE39
+  BARCODE_ITF: '\x1d\x6b\x05', // Barcode type ITF
+  BARCODE_NW7: '\x1d\x6b\x06', // Barcode type NW7
+  
+  // QR Code
+  QRCODE_MODEL1: '\x1d\x28\x6b\x04\x00\x31\x41\x31\x00', // Model 1
+  QRCODE_MODEL2: '\x1d\x28\x6b\x04\x00\x31\x41\x32\x00', // Model 2
+  QRCODE_MODEL3: '\x1d\x28\x6b\x04\x00\x31\x41\x33\x00', // Model 3
+};
+
+/**
  * Generate a text-based thermal receipt that can be downloaded or printed
  */
 export function generateTextReceipt(sale: SaleWithItems, businessName: string = 'iGoodar Stock', settings: any = {}) {
