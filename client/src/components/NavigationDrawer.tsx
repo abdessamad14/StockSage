@@ -1,4 +1,4 @@
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/hooks/use-auth';
 import { useI18n } from '@/lib/i18n';
 import { Link, useLocation } from 'wouter';
 import { 
@@ -19,13 +19,23 @@ interface NavigationDrawerProps {
 }
 
 export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
-  const { user, logout, isAdmin, canManageProducts, canManageInventory, canManageCustomers, canManageSuppliers, canViewReports, canManageSettings, canUsePOS } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const { t, language, setLanguage } = useI18n();
   const [location] = useLocation();
 
   const handleLogout = () => {
-    logout();
+    logoutMutation.mutate();
   };
+  
+  // Role-based permissions
+  const isAdmin = user?.role === 'admin';
+  const canManageProducts = isAdmin || user?.role === 'cashier';
+  const canManageInventory = isAdmin || user?.role === 'cashier';
+  const canManageCustomers = isAdmin || user?.role === 'cashier';
+  const canManageSuppliers = isAdmin;
+  const canViewReports = isAdmin;
+  const canManageSettings = isAdmin;
+  const canUsePOS = isAdmin || user?.role === 'cashier';
 
   const isActive = (path: string) => {
     return location === path;
@@ -49,90 +59,72 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
       <div className="overflow-y-auto h-[calc(100%-144px)]">
         <div className="py-2">
           {/* Dashboard */}
-          <Link href="/">
-            <a className={`flex items-center px-4 py-3 ${isActive('/') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
-              <LayoutDashboard className="w-6 h-6 mr-3" />
-              <span>{t('dashboard')}</span>
-            </a>
+          <Link href="/" className={`flex items-center px-4 py-3 ${isActive('/') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+            <LayoutDashboard className="w-6 h-6 mr-3" />
+            <span>{t('dashboard')}</span>
           </Link>
           
           {/* POS */}
           {canUsePOS && (
-            <Link href="/pos">
-              <a className={`flex items-center px-4 py-3 ${isActive('/pos') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
-                <Store className="w-6 h-6 mr-3" />
-                <span>{t('pos')}</span>
-              </a>
+            <Link href="/pos" className={`flex items-center px-4 py-3 ${isActive('/pos') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+              <Store className="w-6 h-6 mr-3" />
+              <span>{t('pos')}</span>
             </Link>
           )}
           
           {/* Products */}
           {canManageProducts && (
-            <Link href="/products">
-              <a className={`flex items-center px-4 py-3 ${isActive('/products') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
-                <Package className="w-6 h-6 mr-3" />
-                <span>{t('products')}</span>
-              </a>
+            <Link href="/products" className={`flex items-center px-4 py-3 ${isActive('/products') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+              <Package className="w-6 h-6 mr-3" />
+              <span>{t('products')}</span>
             </Link>
           )}
           
           {/* Inventory */}
           {canManageInventory && (
-            <Link href="/inventory">
-              <a className={`flex items-center px-4 py-3 ${isActive('/inventory') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
-                <Database className="w-6 h-6 mr-3" />
-                <span>{t('inventory')}</span>
-              </a>
+            <Link href="/inventory" className={`flex items-center px-4 py-3 ${isActive('/inventory') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+              <Database className="w-6 h-6 mr-3" />
+              <span>{t('inventory')}</span>
             </Link>
           )}
           
           {/* Customers */}
           {canManageCustomers && (
-            <Link href="/customers">
-              <a className={`flex items-center px-4 py-3 ${isActive('/customers') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
-                <Users className="w-6 h-6 mr-3" />
-                <span>{t('customers')}</span>
-              </a>
+            <Link href="/customers" className={`flex items-center px-4 py-3 ${isActive('/customers') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+              <Users className="w-6 h-6 mr-3" />
+              <span>{t('customers')}</span>
             </Link>
           )}
           
           {/* Suppliers */}
           {canManageSuppliers && (
-            <Link href="/suppliers">
-              <a className={`flex items-center px-4 py-3 ${isActive('/suppliers') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
-                <Truck className="w-6 h-6 mr-3" />
-                <span>{t('suppliers')}</span>
-              </a>
+            <Link href="/suppliers" className={`flex items-center px-4 py-3 ${isActive('/suppliers') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+              <Truck className="w-6 h-6 mr-3" />
+              <span>{t('suppliers')}</span>
             </Link>
           )}
           
           {/* Orders */}
           {isAdmin && (
-            <Link href="/orders">
-              <a className={`flex items-center px-4 py-3 ${isActive('/orders') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
-                <ClipboardList className="w-6 h-6 mr-3" />
-                <span>{t('orders')}</span>
-              </a>
+            <Link href="/orders" className={`flex items-center px-4 py-3 ${isActive('/orders') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+              <ClipboardList className="w-6 h-6 mr-3" />
+              <span>{t('orders')}</span>
             </Link>
           )}
           
           {/* Reports */}
           {canViewReports && (
-            <Link href="/reports">
-              <a className={`flex items-center px-4 py-3 ${isActive('/reports') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
-                <BarChart2 className="w-6 h-6 mr-3" />
-                <span>{t('reports')}</span>
-              </a>
+            <Link href="/reports" className={`flex items-center px-4 py-3 ${isActive('/reports') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+              <BarChart2 className="w-6 h-6 mr-3" />
+              <span>{t('reports')}</span>
             </Link>
           )}
           
           {/* Settings */}
           {canManageSettings && (
-            <Link href="/settings">
-              <a className={`flex items-center px-4 py-3 ${isActive('/settings') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
-                <Settings className="w-6 h-6 mr-3" />
-                <span>{t('settings')}</span>
-              </a>
+            <Link href="/settings" className={`flex items-center px-4 py-3 ${isActive('/settings') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+              <Settings className="w-6 h-6 mr-3" />
+              <span>{t('settings')}</span>
             </Link>
           )}
         </div>
