@@ -67,22 +67,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User routes
   app.get('/api/users', authorize(['admin']), async (req, res) => {
     try {
-      const users = Array.from(await storage.getUser(1) ? [await storage.getUser(1)] : []);
+      // Get all users for the current tenant
+      const users = await storage.getUsersByTenant(req.user.tenantId);
       return res.json(users);
     } catch (error) {
+      console.error("Error getting users:", error);
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.get('/api/users/:id', authorize(['admin']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = await storage.getUser(id);
+      
+      // Only allow access to users in the same tenant
+      if (!user || user.tenantId !== req.user.tenantId) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      return res.json(user);
+    } catch (error) {
+      console.error("Error getting user:", error);
       return res.status(500).json({ message: "Server error" });
     }
   });
   
   app.post('/api/users', authorize(['admin']), async (req, res) => {
     try {
-      const userData = insertUserSchema.parse(req.body);
+      // Create new user with admin's tenant ID
+      const userData = insertUserSchema.parse({
+        ...req.body,
+        tenantId: req.user.tenantId, // Ensure the user is created in the same tenant
+        businessName: req.user.businessName // Use the same business name as the admin
+      });
+      
+      // Check if username already exists
+      const existingUser = await storage.getUserByUsername(userData.username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+      
       const user = await storage.createUser(userData);
       return res.status(201).json(user);
     } catch (error) {
+      console.error("Error creating user:", error);
       if (error instanceof ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
       }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.patch('/api/users/:id', authorize(['admin']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Get the user to be updated
+      const existingUser = await storage.getUser(id);
+      
+      // Check if user exists and belongs to admin's tenant
+      if (!existingUser || existingUser.tenantId !== req.user.tenantId) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Handle password updates
+      const updates = { ...req.body };
+      
+      // If password field is empty or not provided, remove it from updates
+      if (!updates.password) {
+        delete updates.password;
+      }
+      
+      // Never allow changing tenant ID or username
+      delete updates.tenantId;
+      delete updates.username;
+      
+      const updatedUser = await storage.updateUser(id, updates);
+      return res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.delete('/api/users/:id', authorize(['admin']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Get the user to be deleted
+      const existingUser = await storage.getUser(id);
+      
+      // Check if user exists and belongs to admin's tenant
+      if (!existingUser || existingUser.tenantId !== req.user.tenantId) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Don't allow deleting the last admin
+      if (existingUser.role === 'admin') {
+        const admins = (await storage.getUsersByTenant(req.user.tenantId))
+          .filter(u => u.role === 'admin');
+        
+        if (admins.length <= 1) {
+          return res.status(400).json({ message: "Cannot delete the last admin user" });
+        }
+      }
+      
+      // Check if the user is trying to delete themselves
+      if (existingUser.id === req.user.id) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+      
+      const success = await storage.deleteUser(id);
+      if (!success) {
+        return res.status(500).json({ message: "Failed to delete user" });
+      }
+      
+      return res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting user:", error);
       return res.status(500).json({ message: "Server error" });
     }
   });
