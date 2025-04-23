@@ -12,6 +12,7 @@ import POS from "@/pages/pos";
 import Inventory from "@/pages/inventory";
 import Customers from "@/pages/customers";
 import Suppliers from "@/pages/suppliers";
+import Orders from "@/pages/orders";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -28,6 +29,7 @@ function Router() {
       <ProtectedRoute path="/inventory" component={Inventory} />
       <ProtectedRoute path="/customers" component={Customers} />
       <ProtectedRoute path="/suppliers" component={Suppliers} />
+      <ProtectedRoute path="/orders" component={Orders} />
       <ProtectedRoute path="/reports" component={Reports} />
       <ProtectedRoute path="/settings" component={Settings} />
       <Route component={NotFound} />
