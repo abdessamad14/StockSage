@@ -3,7 +3,7 @@ import { ZodError } from "zod";
 import { Server, createServer } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq } from "drizzle-orm";
 import { users } from "@shared/schema";
 import {
