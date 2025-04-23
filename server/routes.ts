@@ -64,6 +64,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication (this adds /api/login, /api/logout, /api/register, and /api/user endpoints)
   setupAuth(app);
   
+  // Add a special dev login endpoint for testing purposes
+  app.post('/api/test-login', async (req, res) => {
+    try {
+      const { username, tenantId } = req.body;
+      
+      if (!username || !tenantId) {
+        return res.status(400).json({ message: 'Username and tenantId are required' });
+      }
+      
+      console.log(`Test login attempt for ${username} with tenant ${tenantId}`);
+      
+      // Find user directly
+      const user = await storage.getUserByUsername(username);
+      
+      if (!user) {
+        console.log(`User ${username} not found`);
+        return res.status(401).json({ message: 'User not found' });
+      }
+      
+      if (user.tenantId !== tenantId) {
+        console.log(`TenantId mismatch: User: ${user.tenantId}, Provided: ${tenantId}`);
+        return res.status(401).json({ message: 'Invalid tenant ID' });
+      }
+      
+      // Log in the user directly
+      req.login(user, (err) => {
+        if (err) {
+          console.error('Login error:', err);
+          return res.status(500).json({ message: 'Error during login' });
+        }
+        
+        console.log(`User ${username} logged in via test endpoint`);
+        return res.status(200).json(user);
+      });
+    } catch (error) {
+      console.error('Test login error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+  
   // User routes
   app.get('/api/users', authorize(['admin']), async (req, res) => {
     try {

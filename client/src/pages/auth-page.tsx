@@ -31,7 +31,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState<string>('login');
-  const { user, isLoading, loginMutation, registerMutation } = useAuth();
+  const { user, isLoading, loginMutation, registerMutation, testLoginMutation } = useAuth();
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -284,12 +284,34 @@ export default function AuthPage() {
               </TabsContent>
             </Tabs>
           </CardContent>
-          <CardFooter className="text-center text-sm text-muted-foreground">
+          <CardFooter className="flex flex-col gap-2 text-center text-sm text-muted-foreground">
             {activeTab === 'login' ? (
               <p className="w-full">Don't have an account? <Button variant="link" className="p-0" onClick={() => setActiveTab('register')}>Register</Button></p>
             ) : (
               <p className="w-full">Already have an account? <Button variant="link" className="p-0" onClick={() => setActiveTab('login')}>Login</Button></p>
             )}
+            
+            <div className="w-full border-t pt-2 mt-2">
+              <p className="mb-2">Test logins:</p>
+              <div className="flex gap-2 justify-center">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => testLoginMutation.mutate({ username: 'admin2', tenantId: 'tenant_1' })}
+                  disabled={testLoginMutation.isPending}
+                >
+                  Admin Test
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => testLoginMutation.mutate({ username: 'demo', tenantId: 'demo-tenant' })}
+                  disabled={testLoginMutation.isPending}
+                >
+                  Demo Test
+                </Button>
+              </div>
+            </div>
           </CardFooter>
         </Card>
         

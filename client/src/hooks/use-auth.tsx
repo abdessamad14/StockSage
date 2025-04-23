@@ -15,6 +15,7 @@ type AuthContextType = {
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
+  testLoginMutation: UseMutationResult<SelectUser, Error, {username: string, tenantId: string}>;
 };
 
 type LoginData = Pick<InsertUser, "username" | "password"> & { tenantId?: string };
@@ -108,6 +109,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
   });
+  
+  // Special test login bypassing password check
+  const testLoginMutation = useMutation({
+    mutationFn: async (credentials: {username: string, tenantId: string}) => {
+      console.log("Using test login with:", credentials);
+      const res = await apiRequest("POST", "/api/test-login", credentials);
+      
+      if (!res.ok) {
+        // Attempt to parse error message from response
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Test login failed');
+      }
+      
+      return await res.json();
+    },
+    onSuccess: (user: SelectUser) => {
+      queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "Test login successful",
+        description: `Welcome back, ${user.name}!${user.businessName ? ` (${user.businessName})` : ''}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Test login failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <AuthContext.Provider
@@ -118,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginMutation,
         logoutMutation,
         registerMutation,
+        testLoginMutation,
       }}
     >
       {children}
