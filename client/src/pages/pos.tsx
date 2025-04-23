@@ -15,7 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Check } from "lucide-react";
 import { 
   Search, FileScan, ShoppingCart, Plus, Minus, Trash2, 
-  User, CreditCard, DollarSign, Smartphone, Banknote, Printer, ChevronsRight
+  User, CreditCard, DollarSign, Smartphone, Banknote, Printer, ChevronsRight,
+  Receipt, History
 } from "lucide-react";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 
@@ -380,16 +381,27 @@ export default function POS() {
                 </div>
               </div>
               
-              {/* Payment Button */}
-              <Button 
-                className="w-full" 
-                size="lg"
-                disabled={cart.items.length === 0}
-                onClick={() => setShowPaymentDialog(true)}
-              >
-                <CreditCard className="mr-2 h-4 w-4" />
-                {t('payment')}
-              </Button>
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-2">
+                <Button 
+                  variant="outline"
+                  className="w-full" 
+                  size="default"
+                  onClick={() => window.location.href = '/sales-history'}
+                >
+                  <History className="mr-2 h-4 w-4" />
+                  {t('sales_history')}
+                </Button>
+                <Button 
+                  className="w-full" 
+                  size="default"
+                  disabled={cart.items.length === 0}
+                  onClick={() => setShowPaymentDialog(true)}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  {t('payment')}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -555,7 +567,7 @@ export default function POS() {
             </div>
           </div>
           
-          <DialogFooter>
+          <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
             <Button 
               type="button" 
               variant="outline" 
@@ -564,6 +576,15 @@ export default function POS() {
             >
               <Printer className="mr-2 h-4 w-4" />
               {t('print_receipt')}
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={() => window.location.href = '/sales-history'}
+              className="flex-1"
+            >
+              <Receipt className="mr-2 h-4 w-4" />
+              {t('view_sales')}
             </Button>
             <Button 
               type="button" 
