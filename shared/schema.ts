@@ -232,13 +232,21 @@ export const loginSchema = z.object({
 export type LoginCredentials = z.infer<typeof loginSchema>;
 
 // Extended types with related data
+export type SaleItemWithProduct = SaleItem & {
+  product?: Product;
+};
+
 export type SaleWithItems = Sale & {
-  items: SaleItem[];
+  items: SaleItemWithProduct[];
   customer?: Customer;
 };
 
+export type OrderItemWithProduct = OrderItem & {
+  product?: Product;
+};
+
 export type OrderWithItems = Order & {
-  items: OrderItem[];
+  items: OrderItemWithProduct[];
   supplier?: Supplier;
 };
 
