@@ -57,6 +57,103 @@ export const ESC_POS = {
 
 /**
  * Generate a text-based thermal receipt that can be downloaded or printed
+ * This version includes ESC/POS commands for thermal printers
+ */
+export function generateThermalReceipt(sale: SaleWithItems, businessName: string = 'iGoodar Stock', settings: any = {}) {
+  const commands = [];
+  
+  // Initialize printer
+  commands.push(ESC_POS.HW_INIT);
+  commands.push(ESC_POS.TXT_ALIGN_CT);
+  commands.push(ESC_POS.TXT_BOLD_ON);
+  commands.push(businessName);
+  commands.push('\n');
+  commands.push(ESC_POS.TXT_BOLD_OFF);
+  
+  // Header
+  if (settings.receiptHeader) {
+    commands.push(settings.receiptHeader + '\n');
+  }
+  
+  commands.push(ESC_POS.TXT_ALIGN_LT);
+  commands.push('--------------------------------\n');
+  
+  // Sale info
+  commands.push(`N° Facture: ${sale.invoiceNumber || ''}\n`);
+  const date = sale.date ? new Date(sale.date) : new Date();
+  commands.push(`Date: ${format(date, 'dd/MM/yyyy HH:mm')}\n`);
+  commands.push(`Client: ${sale.customer?.name || 'Client occasionnel'}\n`);
+  if (sale.customer?.phone) {
+    commands.push(`Tél.: ${sale.customer.phone}\n`);
+  }
+  
+  commands.push('--------------------------------\n');
+  commands.push('Article         Qté     Prix\n');
+  commands.push('--------------------------------\n');
+  
+  // Items
+  if (Array.isArray(sale.items)) {
+    sale.items.forEach(item => {
+      const productName = item.product?.name || `Produit #${item.productId}`;
+      const truncatedName = productName.length > 14 ? productName.substring(0, 11) + '...' : productName;
+      const quantity = item.quantity.toString();
+      const price = (item.unitPrice * item.quantity).toFixed(2);
+      const currency = settings.currency || 'MAD';
+      
+      commands.push(`${truncatedName.padEnd(14)}${quantity.padStart(3)}    ${price.padStart(6)} ${currency}\n`);
+      
+      // If there's a discount, show it
+      if (item.discount && item.discount > 0) {
+        commands.push(`  Remise: ${item.discount.toFixed(2)} ${currency}\n`);
+      }
+    });
+  }
+  
+  commands.push('--------------------------------\n');
+  
+  // Totals
+  const currency = settings.currency || 'MAD';
+  commands.push(`Sous-total: ${(sale.totalAmount + (sale.discountAmount || 0)).toFixed(2)} ${currency}\n`);
+  if (sale.discountAmount && sale.discountAmount > 0) {
+    commands.push(`Remise: - ${sale.discountAmount.toFixed(2)} ${currency}\n`);
+  }
+  if (sale.taxAmount && sale.taxAmount > 0) {
+    commands.push(`Taxe: ${sale.taxAmount.toFixed(2)} ${currency}\n`);
+  }
+  commands.push(ESC_POS.TXT_BOLD_ON);
+  commands.push(`Total: ${sale.totalAmount.toFixed(2)} ${currency}\n`);
+  commands.push(ESC_POS.TXT_BOLD_OFF);
+  commands.push('--------------------------------\n');
+  
+  // Payment info
+  commands.push(`Méthode: ${sale.paymentMethod || 'Espèces'}\n`);
+  if (sale.paymentMethod !== 'credit') {
+    commands.push(`Montant payé: ${(sale.paidAmount || sale.totalAmount).toFixed(2)} ${currency}\n`);
+    if (sale.changeAmount && sale.changeAmount > 0) {
+      commands.push(`Monnaie rendue: ${sale.changeAmount.toFixed(2)} ${currency}\n`);
+    }
+  }
+  
+  commands.push('--------------------------------\n');
+  
+  // Footer
+  commands.push(ESC_POS.TXT_ALIGN_CT);
+  if (settings.receiptFooter) {
+    commands.push(settings.receiptFooter + '\n');
+  } else {
+    commands.push('Merci pour votre achat\n');
+    commands.push('شكرا لشرائكم\n');
+  }
+  
+  // Add space for cutting
+  commands.push('\n\n\n\n');
+  commands.push(ESC_POS.PAPER_PART_CUT);
+  
+  return commands.join('');
+}
+
+/**
+ * Generate a text-based receipt that can be downloaded or printed
  */
 export function generateTextReceipt(sale: SaleWithItems, businessName: string = 'iGoodar Stock', settings: any = {}) {
   // Get settings with defaults
@@ -477,5 +574,48 @@ export function printHtmlReceipt(content: string) {
       iframe.contentWindow?.print();
       document.body.removeChild(iframe);
     }, 500);
+  }
+}
+
+/**
+ * Download thermal receipt (raw ESC/POS commands)
+ */
+export function downloadThermalReceipt(sale: SaleWithItems, businessName: string = 'iGoodar Stock', settings: any = {}) {
+  const content = generateThermalReceipt(sale, businessName, settings);
+  const date = sale.date ? new Date(sale.date) : new Date();
+  const dateStr = format(date, 'yyyyMMdd_HHmmss');
+  const filename = `thermal_receipt_${sale.invoiceNumber || dateStr}.bin`;
+  
+  const blob = new Blob([content], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Send receipt to thermal printer
+ * Note: For a real implementation, you would need a backend service or
+ * native app integration to communicate directly with a printer
+ */
+export function printThermalReceipt(sale: SaleWithItems, businessName: string = 'iGoodar Stock', settings: any = {}, printerAddress?: string) {
+  // This is a placeholder function. In a real implementation, you would:
+  // 1. Generate thermal receipt commands
+  const receiptData = generateThermalReceipt(sale, businessName, settings);
+  
+  // 2. Send to printer via WebUSB, WebBluetooth, or a backend service
+  if (printerAddress) {
+    // In a real app, this would send data to the printer
+    console.log(`Sending receipt to printer at ${printerAddress}`);
+    console.log('Receipt data:', receiptData);
+    return true;
+  } else {
+    // If no printer is available, download the file instead
+    downloadThermalReceipt(sale, businessName, settings);
+    return false;
   }
 }

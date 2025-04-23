@@ -2,7 +2,7 @@ import { IStorage } from './storage';
 import { db, pool } from './db';
 import session from 'express-session';
 import connectPg from 'connect-pg-simple';
-import { eq, and, gte, lte, like, or, desc } from 'drizzle-orm';
+import { eq, and, gte, lte, like, or, desc, sql } from 'drizzle-orm';
 import {
   users,
   products,
