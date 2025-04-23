@@ -36,7 +36,7 @@ import {
 // Role-based access control middleware
 const authorize = (roles: string[]) => {
   return (req: Request, res: Response, next: Function) => {
-    if (!req.isAuthenticated()) {
+    if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
     
@@ -87,7 +87,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Product routes
   app.get('/api/products', async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
+      if (!req.isAuthenticated() || !req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
@@ -242,6 +242,222 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
       }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+
+  // Supplier routes
+  app.get('/api/suppliers', async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const search = req.query.search as string;
+      const suppliers = await storage.getSuppliers(req.user.tenantId, search);
+      return res.json(suppliers);
+    } catch (error) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.get('/api/suppliers/:id', async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const id = parseInt(req.params.id);
+      const supplier = await storage.getSupplier(id, req.user.tenantId);
+      
+      if (!supplier) {
+        return res.status(404).json({ message: "Supplier not found" });
+      }
+      
+      return res.json(supplier);
+    } catch (error) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.post('/api/suppliers', authorize(['admin']), async (req, res) => {
+    try {
+      const supplierData = insertSupplierSchema.parse({
+        ...req.body,
+        tenantId: req.user.tenantId
+      });
+      
+      const supplier = await storage.createSupplier(supplierData);
+      return res.status(201).json(supplier);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Orders routes
+  app.get('/api/orders', authorize(['admin']), async (req, res) => {
+    try {
+      const options = {
+        status: req.query.status as string,
+        supplierId: req.query.supplierId ? parseInt(req.query.supplierId as string) : undefined
+      };
+      
+      const orders = await storage.getOrders(req.user.tenantId, options);
+      return res.json(orders);
+    } catch (error) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.get('/api/orders/:id', authorize(['admin']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const order = await storage.getOrder(id, req.user.tenantId);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      return res.json(order);
+    } catch (error) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.post('/api/orders', authorize(['admin']), async (req, res) => {
+    try {
+      const orderData = insertOrderSchema.parse({
+        ...req.body.order,
+        tenantId: req.user.tenantId,
+        date: new Date(),
+        createdBy: req.user.id
+      });
+      
+      const items = req.body.items;
+      const order = await storage.createOrder(orderData, items);
+      return res.status(201).json(order);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Sales routes
+  app.get('/api/sales', async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const options = {
+        startDate: req.query.startDate ? new Date(req.query.startDate as string) : undefined,
+        endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined,
+        customerId: req.query.customerId ? parseInt(req.query.customerId as string) : undefined
+      };
+      
+      const sales = await storage.getSales(req.user.tenantId, options);
+      return res.json(sales);
+    } catch (error) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.get('/api/sales/:id', async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const id = parseInt(req.params.id);
+      const sale = await storage.getSale(id, req.user.tenantId);
+      
+      if (!sale) {
+        return res.status(404).json({ message: "Sale not found" });
+      }
+      
+      return res.json(sale);
+    } catch (error) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.post('/api/sales', async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const saleData = insertSaleSchema.parse({
+        ...req.body.sale,
+        tenantId: req.user.tenantId,
+        date: new Date(),
+        createdBy: req.user.id
+      });
+      
+      const items = req.body.items;
+      const sale = await storage.createSale(saleData, items);
+      return res.status(201).json(sale);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Settings routes
+  app.get('/api/settings', authorize(['admin']), async (req, res) => {
+    try {
+      const settings = await storage.getSettings(req.user.tenantId);
+      return res.json(settings || {});
+    } catch (error) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.put('/api/settings', authorize(['admin']), async (req, res) => {
+    try {
+      const settings = await storage.updateSettings(req.user.tenantId, req.body);
+      return res.json(settings);
+    } catch (error) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Dashboard route
+  app.get('/api/dashboard', async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const data = await storage.getDashboardData(req.user.tenantId);
+      return res.json(data);
+    } catch (error) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Reports route (admin only)
+  app.get('/api/reports', authorize(['admin']), async (req, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "reports_admin_only" });
+      }
+      
+      // Here you would typically generate and return reports
+      // For now, we'll return a placeholder
+      return res.json({
+        salesByDay: [],
+        topProducts: [],
+        stockLevels: []
+      });
+    } catch (error) {
       return res.status(500).json({ message: "Server error" });
     }
   });
