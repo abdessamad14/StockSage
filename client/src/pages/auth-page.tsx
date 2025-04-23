@@ -293,7 +293,7 @@ export default function AuthPage() {
             
             <div className="w-full border-t pt-2 mt-2">
               <p className="mb-2">Test logins:</p>
-              <div className="flex gap-2 justify-center">
+              <div className="flex gap-2 justify-center flex-wrap">
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -301,6 +301,14 @@ export default function AuthPage() {
                   disabled={testLoginMutation.isPending}
                 >
                   Admin Test
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => testLoginMutation.mutate({ username: 'superadmin', tenantId: 'tenant_1' })}
+                  disabled={testLoginMutation.isPending}
+                >
+                  SuperAdmin Test
                 </Button>
                 <Button 
                   variant="outline" 
