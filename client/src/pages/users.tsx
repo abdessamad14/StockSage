@@ -99,22 +99,54 @@ export default function UsersPage() {
   };
 
   // Fetch users
-  const { data: users = [], isLoading } = useQuery({
+  const { 
+    data: users = [], 
+    isLoading,
+    isError,
+    error,
+    refetch
+  } = useQuery({
     queryKey: ['/api/users'],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/users');
-      return await res.json();
+      try {
+        const res = await apiRequest('GET', '/api/users');
+        
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to fetch users');
+        }
+        
+        return await res.json();
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        throw err;
+      }
     },
+    // Refresh every 5 seconds to ensure we have the latest data
+    refetchInterval: 5000,
   });
 
   // Add user mutation
   const addUserMutation = useMutation({
     mutationFn: async (values: UserFormValues) => {
       const res = await apiRequest('POST', '/api/users', values);
+      
+      if (!res.ok) {
+        // Attempt to parse error message from response
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to add user');
+      }
+      
       return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (newUser) => {
+      // Force refresh the users list
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      
+      // Manually update the cache with the new user to ensure it shows immediately
+      const currentUsers = queryClient.getQueryData<any[]>(['/api/users']) || [];
+      queryClient.setQueryData(['/api/users'], [...currentUsers, newUser]);
+      
       setIsAddUserOpen(false);
       form.reset();
       toast({
@@ -123,6 +155,7 @@ export default function UsersPage() {
       });
     },
     onError: (error: any) => {
+      console.error('Error adding user:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to add user',
