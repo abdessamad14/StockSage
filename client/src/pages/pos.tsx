@@ -5,6 +5,13 @@ import { useStore } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { ProductWithStockStatus, Customer } from "@shared/schema";
+import { 
+  generateTextReceipt, 
+  generateHtmlReceipt, 
+  downloadTextFile, 
+  downloadHtmlFile, 
+  printHtmlReceipt 
+} from "@/lib/receipt-utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Check } from "lucide-react";
+import { Check, Download } from "lucide-react";
 import { 
   Search, FileScan, ShoppingCart, Plus, Minus, Trash2, 
   User, CreditCard, DollarSign, Smartphone, Banknote, Printer, ChevronsRight,
@@ -157,13 +164,70 @@ export default function POS() {
     setShowPaymentDialog(false);
   };
 
+  // Fetch settings for receipts
+  const { data: settings } = useQuery({
+    queryKey: ['/api/settings'],
+  });
+  
   // Handle print receipt
   const handlePrintReceipt = () => {
-    // In a real app, this would connect to a printer
-    toast({
-      title: t('print_receipt'),
-      description: t('print_receipt_not_implemented'),
-    });
+    if (!completedSale) return;
+    
+    try {      
+      // Generate HTML receipt
+      const htmlContent = generateHtmlReceipt(
+        completedSale, 
+        settings?.businessName || 'iGoodar Stock', 
+        settings || {}
+      );
+      
+      // Print receipt
+      printHtmlReceipt(htmlContent);
+      
+      toast({
+        title: t('print_receipt'),
+        description: t('success'),
+      });
+    } catch (error) {
+      console.error("Print error:", error);
+      toast({
+        title: t('error'),
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Handle download receipt
+  const handleDownloadReceipt = () => {
+    if (!completedSale) return;
+    
+    try {
+      // Generate text receipt
+      const textContent = generateTextReceipt(
+        completedSale, 
+        settings?.businessName || 'iGoodar Stock', 
+        settings || {}
+      );
+      
+      // Create filename from invoice number
+      const filename = `receipt-${completedSale.invoiceNumber || 'unknown'}.txt`;
+      
+      // Download receipt
+      downloadTextFile(textContent, filename);
+      
+      toast({
+        title: t('download_receipt'),
+        description: t('success'),
+      });
+    } catch (error) {
+      console.error("Download error:", error);
+      toast({
+        title: t('error'),
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -567,21 +631,30 @@ export default function POS() {
             </div>
           </div>
           
-          <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
+          <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row sm:flex-wrap">
             <Button 
               type="button" 
               variant="outline" 
               onClick={handlePrintReceipt}
-              className="flex-1"
+              className="flex-1 min-w-fit"
             >
               <Printer className="mr-2 h-4 w-4" />
               {t('print_receipt')}
             </Button>
             <Button 
               type="button" 
+              variant="outline" 
+              onClick={handleDownloadReceipt}
+              className="flex-1 min-w-fit"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {t('download_receipt')}
+            </Button>
+            <Button 
+              type="button" 
               variant="outline"
               onClick={() => window.location.href = '/sales-history'}
-              className="flex-1"
+              className="flex-1 min-w-fit"
             >
               <Receipt className="mr-2 h-4 w-4" />
               {t('view_sales')}
@@ -589,7 +662,7 @@ export default function POS() {
             <Button 
               type="button" 
               onClick={() => setCompletedSale(null)}
-              className="flex-1"
+              className="flex-1 min-w-fit"
             >
               <ChevronsRight className="mr-2 h-4 w-4" />
               {t('continue')}
