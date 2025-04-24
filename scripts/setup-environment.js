@@ -7,10 +7,15 @@
  * and sets up the appropriate configuration for each environment.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
-const dotenv = require('dotenv');
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+
+// Get the directory name in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load existing .env file if it exists
 try {
@@ -20,12 +25,12 @@ try {
 }
 
 // Function to check if running in Replit environment
-function isReplitEnvironment() {
+const isReplitEnvironment = () => {
   return process.env.REPL_ID && process.env.REPL_OWNER && process.env.REPL_SLUG;
-}
+};
 
 // Function to generate a random string for session secret
-function generateSessionSecret(length = 32) {
+const generateSessionSecret = (length = 32) => {
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
   let result = '';
   for (let i = 0; i < length; i++) {
@@ -35,7 +40,7 @@ function generateSessionSecret(length = 32) {
 }
 
 // Configure for Replit environment
-async function setupReplitEnvironment() {
+const setupReplitEnvironment = async () => {
   console.log('📡 Detected Replit environment. Setting up...');
   
   // Create .env file if it doesn't exist
@@ -80,7 +85,7 @@ REPL_SLUG=${process.env.REPL_SLUG}
 }
 
 // Configure for local environment
-async function setupLocalEnvironment() {
+const setupLocalEnvironment = async () => {
   console.log('🖥️ Setting up local development environment...');
   
   // Check if Docker is installed
@@ -158,7 +163,7 @@ PORT=${process.env.PORT || 5000}
 }
 
 // Main function
-async function main() {
+const main = async () => {
   console.log('=================================================');
   console.log('🛠️  iGoodar Stock Environment Setup');
   console.log('=================================================');

@@ -82,7 +82,7 @@ For traditional local development:
 
 1. **Prerequisites:**
    - Node.js (v18 or higher)
-   - Docker and Docker Compose (recommended for database)
+   - PostgreSQL (local installation or Docker)
 
 2. **Installation Steps:**
 
@@ -94,34 +94,67 @@ For traditional local development:
    # Install dependencies
    npm install
    
-   # Set up the environment
-   ./setup.sh
+   # Create a .env file with your local configuration
+   cat > .env << EOL
+   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/igoodar
+   SESSION_SECRET=your_custom_secret_here
+   NODE_ENV=development
+   PORT=5001
+   EOL
    
-   # Start the development server
-   npm run dev
+   # Run the setup script to initialize the environment
+   node scripts/setup-environment.js
+   
+   # Start the application directly (without Docker)
+   node run-local.js
    ```
 
 3. **Access the application**
    
-   Open your browser and navigate to: `http://localhost:5000`
+   Open your browser and navigate to: `http://localhost:5001`
+   
+4. **Connect to the database with DBeaver**
+
+   To view and manage your database with DBeaver:
+   - Install DBeaver from https://dbeaver.io/
+   - Create a new PostgreSQL connection with these settings:
+     - Host: `localhost`
+     - Port: `5432`
+     - Database: `igoodar`
+     - Username: `postgres`
+     - Password: `postgres`
+   - Connect and explore the database structure under the "public" schema
 
 ### Advanced Configuration
 
-For custom configurations, you can create a `.env` file based on the provided `.env.example`:
+The application supports both local PostgreSQL and cloud-based Neon Database connections, automatically detecting the environment based on the DATABASE_URL and environment variables.
+
+#### Environment Variables
+
+Create a `.env` file with the following configuration options:
 
 ```
-# Database connection
+# Database connection (local PostgreSQL or Neon Database URL)
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/igoodar
 
-# Session security
+# Session security (use a strong random string in production)
 SESSION_SECRET=your_custom_secret_here
 
 # Environment (development, production)
 NODE_ENV=development
 
-# Application port
-PORT=5000
+# Application port (default is 5001)
+PORT=5001
 ```
+
+#### Database Connection
+
+The application automatically detects the environment and uses the appropriate database connection:
+
+- **Local Development**: Uses standard PostgreSQL connection with the `pg` package
+- **Replit/Cloud**: Uses Neon Database with WebSocket support for serverless environments
+
+This dual-environment support allows you to develop locally and deploy to Replit without changing any code.
 
 ### Default Login Credentials
 
@@ -141,7 +174,8 @@ The application comes with pre-configured users:
 
 ### Available Commands
 
-- `npm run dev` - Start the development server
+- `node run-local.js` - Start the application locally without Docker
+- `npm run dev` - Start the development server (with Docker)
 - `npm run build` - Build the application for production
 - `npm run start` - Run the application in production mode
 - `npm run db:push` - Push schema changes to the database
