@@ -57,13 +57,26 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/igoodar
 SESSION_SECRET=your_secret_key_here
 ```
 
-4. **Start the PostgreSQL database using Docker**
+4. **Setup the database (Automated Option)**
+
+Run the setup script which will:
+- Start the PostgreSQL Docker container
+- Create the .env file if it doesn't exist
+- Initialize the database schema
+
+```bash
+node scripts/setup-db.js
+```
+
+**Or perform these steps manually:**
+
+4a. **Start the PostgreSQL database using Docker**
 
 ```bash
 docker-compose up -d
 ```
 
-5. **Initialize the database schema**
+4b. **Initialize the database schema**
 
 ```bash
 npm run db:push
@@ -130,9 +143,44 @@ It's recommended to upload this project to a GitHub repository for:
 - CI/CD integration
 - Documentation hosting
 
+### Steps to Upload to GitHub
+
+1. **Create a new repository on GitHub**
+   - Go to [GitHub](https://github.com) and log in
+   - Click on "New repository"
+   - Name your repository (e.g., "igoodar-stock")
+   - Choose public or private visibility based on your needs
+   - Do not initialize with README, .gitignore, or license (we already have these)
+
+2. **Initialize git in your local project (if not already done)**
+   ```bash
+   git init
+   ```
+
+3. **Add your files to git**
+   ```bash
+   git add .
+   ```
+
+4. **Create your first commit**
+   ```bash
+   git commit -m "Initial commit of iGoodar Stock application"
+   ```
+
+5. **Add the GitHub repository as a remote**
+   ```bash
+   git remote add origin https://github.com/yourusername/igoodar-stock.git
+   ```
+
+6. **Push your code to GitHub**
+   ```bash
+   git push -u origin main
+   ```
+   (Use `git push -u origin master` if your default branch is named "master")
+
 Make sure to:
-- Add a `.gitignore` file to exclude node_modules, .env, and other sensitive/large files
-- Document the project thoroughly in the README
+- Use the provided `.gitignore` file to exclude node_modules, .env, and other sensitive/large files
+- Document any project changes thoroughly in the README
 - Add license information if applicable
 
 ## Security Considerations
