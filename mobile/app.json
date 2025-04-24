@@ -4,29 +4,17 @@
     "slug": "igoodar-merchant",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./app/assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./app/assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#3366FF"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.igoodar.merchant"
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./app/assets/adaptive-icon.png",
         "backgroundColor": "#3366FF"
-      },
-      "package": "com.igoodar.merchant"
-    },
-    "web": {
-      "favicon": "./app/assets/favicon.png"
+      }
     }
   }
 }

@@ -1,0 +1,97 @@
+mobile git:(main) ✗ npm start
+
+> igoodar-merchant-app@1.0.0 start
+> expo start
+
+Starting project at /Users/abdessamadabba/StockSage/mobile
+Starting Metro Bundler
+warning: Watchman `watch-project` returned a warning: Recrawled this watch 3 times, most recently because:
+MustScanSubDirs UserDroppedTo resolve, please review the information on
+https://facebook.github.io/watchman/docs/troubleshooting.html#recrawl
+To clear this warning, run:
+`watchman watch-del '/Users/abdessamadabba/StockSage' ; watchman watch-project '/Users/abdessamadabba/StockSage'`
+
+
+TypeScript: A tsconfig.json has been auto-generated
+
+The following packages should be updated for best compatibility with the installed expo version:
+  react-native@0.73.2 - expected version: 0.73.6
+Your project may not work correctly until you install the correct versions of the packages.
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+█ ▄▄▄▄▄ █▄▄▄ ▀█▀█▄█ ▄▄▄▄▄ █
+█ █   █ ██▄▀ █ ▀ ▄█ █   █ █
+█ █▄▄▄█ ██▀▄ ▄▄██▀█ █▄▄▄█ █
+█▄▄▄▄▄▄▄█ ▀▄█ ▀ ▀ █▄▄▄▄▄▄▄█
+█▄ ▀▄ █▄▀█▄▀█▄██▀ █▄█▀█▀▀▄█
+█▀█▀▄██▄  ▄██▄█▄▄▀▀███▄▀▀ █
+█▀▄▄█▄ ▄▀   █▀█▄ █ ▄▀▀█▀ ██
+█ ▄▀▀▄▀▄▄██▀█▀▄▀▄▀█▄▀ ▄▀  █
+█▄█▄▄▄█▄▄▀▀  ▄▄   ▄▄▄  ▄▀▄█
+█ ▄▄▄▄▄ ██  ▀▄ ▄█ █▄█ ███▄█
+█ █   █ █  ▄▄▀ ▀▄▄▄  ▄ █  █
+█ █▄▄▄█ █▀▄  ▀ ██▄▀▀▀▄█   █
+█▄▄▄▄▄▄▄█▄██▄▄▄█▄▄▄▄▄▄███▄█
+
+› Metro waiting on exp://172.20.10.8:8081
+› Scan the QR code above with Expo Go (Android) or the Camera app
+(iOS)
+
+› Using Expo Go
+› Press s │ switch to development build
+
+› Press a │ open Android
+› Press i │ open iOS simulator
+› Press w │ open web
+
+› Press j │ open debugger
+› Press r │ reload app
+› Press m │ toggle menu
+› Press o │ open project code in your editor
+
+› Press ? │ show all commands
+
+Logs for your project will appear below. Press Ctrl+C to exit.
+warning: Watchman `query` returned a warning: Recrawled this watch 3 times, most recently because:
+MustScanSubDirs UserDroppedTo resolve, please review the information on
+https://facebook.github.io/watchman/docs/troubleshooting.html#recrawl
+To clear this warning, run:
+`watchman watch-del '/Users/abdessamadabba/StockSage' ; watchman watch-project '/Users/abdessamadabba/StockSage'`
+
+Recrawled this watch 3 times, most recently because:
+MustScanSubDirs UserDroppedTo resolve, please review the information on
+https://facebook.github.io/watchman/docs/troubleshooting.html#recrawl
+To clear this warning, run:
+`watchman watch-del '/Users/abdessamadabba/StockSage' ; watchman watch-project '/Users/abdessamadabba/StockSage'`
+
+› Opening on iOS...
+› Opening exp://172.20.10.8:8081 on iPad Pro 13-inch (M4)
+✔ Expo Go on iPad Pro 13-inch (M4) is outdated, would you like to upgrade? … yes
+Downloading the Expo Go app [============================] 100% 0.0s
+
+
+› Press ? │ show all commands
+Error: Asset not found: /Users/abdessamadabba/StockSage/mobile/app/assets/icon.png for platform: (unspecified)
+    at getAbsoluteAssetRecord (/Users/abdessamadabba/StockSage/mobile/node_modules/metro/src/Assets.js:111:11)
+    at getAsset (/Users/abdessamadabba/StockSage/mobile/node_modules/metro/src/Assets.js:207:18)
+    at Server._processSingleAssetRequest (/Users/abdessamadabba/StockSage/mobile/node_modules/metro/src/Server.js:335:20)
+    at Server._processRequest (/Users/abdessamadabba/StockSage/mobile/node_modules/metro/src/Server.js:417:7)
+Unable to resolve asset "./app/assets/icon.png" from "icon" in your app.json or app.config.js
+iOS Bundling failed 360ms (node_modules/expo/AppEntry.js)
+error: node_modules/expo/AppEntry.js: Cannot find module 'babel-plugin-module-resolver'
+Require stack:
+- /Users/abdessamadabba/StockSage/mobile/node_modules/@babel/core/lib/config/files/plugins.js
+- /Users/abdessamadabba/StockSage/mobile/node_modules/@babel/core/lib/config/files/index.js
+- /Users/abdessamadabba/StockSage/mobile/node_modules/@babel/core/lib/index.js
+- /Users/abdessamadabba/StockSage/mobile/node_modules/@expo/metro-config/build/transform-worker/metro-transform-worker.js
+- /Users/abdessamadabba/StockSage/mobile/node_modules/@expo/metro-config/build/transform-worker/transform-worker.js
+- /Users/abdessamadabba/StockSage/mobile/node_modules/metro/src/DeltaBundler/Worker.flow.js
+- /Users/abdessamadabba/StockSage/mobile/node_modules/metro/src/DeltaBundler/Worker.js
+- /Users/abdessamadabba/StockSage/mobile/node_modules/jest-worker/build/workers/processChild.js
+
+Make sure that all the Babel plugins and presets you are using
+are defined as dependencies or devDependencies in your package.json
+file. It's possible that the missing plugin is loaded by a preset
+you are using that forgot to add the plugin to its dependencies: you
+can workaround this problem by explicitly adding the missing package
+to your top-level package.json.
+
