@@ -895,10 +895,8 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Use DatabaseStorage for production and MemStorage for development
+// Use DatabaseStorage for all environments to ensure data persistence
 import { DatabaseStorage } from './database-storage';
 
-// Choose the storage implementation based on the environment
-export const storage = process.env.NODE_ENV === 'production' 
-  ? new DatabaseStorage() 
-  : new MemStorage();
+// Always use database storage regardless of environment
+export const storage = new DatabaseStorage();
