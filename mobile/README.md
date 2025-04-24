@@ -1,92 +1,65 @@
-# iGoodar Merchant Mobile App
+# iGoodar Merchant App
 
-A mobile application for merchants to place orders directly from their smartphones. This app complements the main iGoodar Stock system, allowing merchants to manage orders on the go.
+A simple mobile application that allows merchants to login and create orders for customers.
 
 ## Features
 
-- **Authentication**: Secure login for authorized merchants
-- **Browse Products**: View all products with search and filter capabilities 
-- **Supplier Management**: Access supplier information for easy ordering
-- **Order Creation**: Create new orders for suppliers with a detailed product selection interface
-- **Order History**: Track and monitor order status
+- Authentication with username and password
+- Server IP configuration for flexible deployment
+- Customer selection
+- Product search and filtering
+- Order management with quantity adjustments
+- Order submission
 
-## Installation and Setup
+## Technical Stack
+
+- React Native with Expo 50
+- React Navigation for screen navigation
+- Axios for API requests
+- Expo Secure Store for secure local storage
+
+## Getting Started
 
 ### Prerequisites
 
 - Node.js (v14 or newer)
 - npm or yarn
-- Expo CLI
-- Android Studio (for Android development) or Xcode (for iOS development)
+- Expo CLI (`npm install -g expo-cli`)
+- Expo Go app installed on your mobile device
 
-### Setting Up the Development Environment
+### Installation
 
-1. Install Expo CLI globally:
-   ```bash
-   npm install -g expo-cli
-   ```
+1. Clone the repository
+2. Navigate to the project directory: `cd mobile`
+3. Install dependencies: `npm install`
+4. Start the Expo development server: `npm start`
+5. Scan the QR code with the Expo Go app on your device
 
-2. Install dependencies:
-   ```bash
-   cd mobile
-   npm install
-   ```
+### Configuration
 
-3. Configure API URL:
-   - Open `app/api/api.ts`
-   - Update the `baseURL` to point to your iGoodar Stock backend server
+When launching the app for the first time, you'll need to:
 
-### Running the App
+1. Tap "Configure Server" on the login screen
+2. Enter your iGoodar Stock server IP address (e.g., 192.168.1.100)
+3. Provide your login credentials
+4. The app will connect to your backend system
 
-#### Development Mode
+## Usage
 
-```bash
-# Start Expo development server
-npm start
+### Login Screen
 
-# Run on iOS simulator
-npm run ios
+- Enter username and password
+- Optionally configure the server IP address
 
-# Run on Android emulator
-npm run android
-```
+### Order Screen
 
-#### Building for Production
+- Select a customer from the horizontal list
+- Search for products by name or barcode
+- Tap a product to add it to your order
+- Adjust quantities using the + and - buttons
+- Review your order summary
+- Submit the order when ready
 
-```bash
-# Build for iOS
-expo build:ios
+## Note
 
-# Build for Android
-expo build:android
-```
-
-## Integration with iGoodar Stock
-
-This mobile app communicates with the main iGoodar Stock backend system using REST APIs. It shares the same authentication system and data models.
-
-### Key Integration Points:
-
-1. **Authentication**: Uses the same session-based auth as the main system
-2. **Order Management**: Syncs with the main system's order database
-3. **Product Catalog**: Accesses the same product inventory data
-4. **User Permissions**: Respects the merchant role permissions defined in the main system
-
-## Customization
-
-You can customize the app by:
-
-1. Modifying the theme colors in `App.tsx`
-2. Adding new screens to the navigation stack
-3. Enhancing API capabilities in the `api` directory
-4. Updating the logo and branding assets in the `assets` directory
-
-## Troubleshooting
-
-- **Connection Issues**: Ensure the backend URL is correctly configured and accessible
-- **Login Problems**: Verify that the user has merchant permissions in the main system
-- **Build Errors**: Make sure all dependencies are correctly installed
-
-## License
-
-This software is part of the iGoodar Stock system and is subject to the same licensing terms.
+This app is designed to work with the iGoodar Stock backend system and requires a running instance of that system to function properly.

@@ -1,105 +1,105 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Image, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ScrollView } from 'react-native';
-import { TextInput, Button, Text, HelperText } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TextInput, 
+  TouchableOpacity, 
+  ActivityIndicator, 
+  KeyboardAvoidingView, 
+  Platform,
+  Image,
+  Alert
+} from 'react-native';
+import { useAuth } from '../context/AuthContext';
+import { updateServerUrl } from '../api/client';
 
 const LoginScreen = () => {
+  const { login, isLoading, error } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [isFormValid, setIsFormValid] = useState(false);
-  
-  const { login, user, loading, error } = useAuth();
-  const navigation = useNavigation();
+  const [serverIP, setServerIP] = useState('');
+  const [showServerInput, setShowServerInput] = useState(false);
 
-  // Check form validity
-  useEffect(() => {
-    setIsFormValid(username.trim() !== '' && password.trim() !== '');
-  }, [username, password]);
-
-  // If already logged in, navigate to home
-  useEffect(() => {
-    if (user) {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Home' as never }]
-      });
-    }
-  }, [user, navigation]);
-
-  // Handle login
   const handleLogin = async () => {
-    if (isFormValid) {
+    if (!username || !password) {
+      Alert.alert('Error', 'Username and password are required');
+      return;
+    }
+    
+    // Update server URL if provided
+    if (serverIP) {
+      updateServerUrl(serverIP);
+    }
+    
+    try {
       await login(username, password);
+    } catch (error) {
+      console.error('Login failed:', error);
     }
   };
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.logoContainer}>
-            <Image
-              source={require('../assets/logo.png')}
-              style={styles.logo}
-              defaultSource={require('../assets/logo.png')}
-            />
-            <Text style={styles.appName}>iGoodar Merchant</Text>
-            <Text style={styles.tagline}>Manage your orders on the go</Text>
-          </View>
-          
-          <View style={styles.formContainer}>
-            <TextInput
-              label="Username"
-              value={username}
-              onChangeText={setUsername}
-              mode="outlined"
-              style={styles.input}
-              autoCapitalize="none"
-              disabled={loading}
-            />
-            
-            <TextInput
-              label="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              mode="outlined"
-              style={styles.input}
-              right={
-                <TextInput.Icon
-                  icon={showPassword ? 'eye-off' : 'eye'}
-                  onPress={() => setShowPassword(!showPassword)}
-                />
-              }
-              disabled={loading}
-            />
-            
-            {error && (
-              <HelperText type="error" visible={!!error}>
-                {error}
-              </HelperText>
-            )}
-            
-            <Button
-              mode="contained"
-              onPress={handleLogin}
-              style={styles.loginButton}
-              labelStyle={styles.buttonLabel}
-              disabled={!isFormValid || loading}
-              loading={loading}
-            >
-              Login
-            </Button>
-            
-            <Text style={styles.versionText}>Version 1.0.0</Text>
-          </View>
-        </ScrollView>
-      </TouchableWithoutFeedback>
+      <View style={styles.logoContainer}>
+        <Text style={styles.logoText}>iGoodar</Text>
+        <Text style={styles.subtitle}>Merchant App</Text>
+      </View>
+
+      <View style={styles.formContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Username"
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+        />
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+
+        {showServerInput && (
+          <TextInput
+            style={styles.input}
+            placeholder="Server IP (e.g. 192.168.1.100)"
+            value={serverIP}
+            onChangeText={setServerIP}
+            autoCapitalize="none"
+            keyboardType="url"
+          />
+        )}
+
+        {error && <Text style={styles.errorText}>{error}</Text>}
+
+        <TouchableOpacity 
+          style={styles.loginButton} 
+          onPress={handleLogin}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.loginButtonText}>Login</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.serverButton}
+          onPress={() => setShowServerInput(!showServerInput)}
+        >
+          <Text style={styles.serverButtonText}>
+            {showServerInput ? 'Hide Server Settings' : 'Configure Server'}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </KeyboardAvoidingView>
   );
 };
@@ -107,53 +107,59 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
+    backgroundColor: '#f5f5f5',
   },
   logoContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 80,
     marginBottom: 40,
   },
-  logo: {
-    width: 100,
-    height: 100,
-    resizeMode: 'contain',
-  },
-  appName: {
-    fontSize: 24,
+  logoText: {
+    fontSize: 40,
     fontWeight: 'bold',
-    marginTop: 10,
     color: '#3366FF',
   },
-  tagline: {
-    fontSize: 16,
-    color: '#6C757D',
-    marginTop: 5,
+  subtitle: {
+    fontSize: 18,
+    color: '#666',
+    marginTop: 8,
   },
   formContainer: {
-    width: '100%',
+    paddingHorizontal: 30,
   },
   input: {
-    marginBottom: 16,
+    backgroundColor: '#fff',
+    borderRadius: 5,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   loginButton: {
-    marginTop: 10,
-    paddingVertical: 6,
     backgroundColor: '#3366FF',
+    borderRadius: 5,
+    padding: 15,
+    alignItems: 'center',
+    marginTop: 10,
   },
-  buttonLabel: {
+  loginButtonText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  versionText: {
+  serverButton: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  serverButtonText: {
+    color: '#666',
+    fontSize: 14,
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
     textAlign: 'center',
-    marginTop: 40,
-    color: '#6C757D',
-    fontSize: 12,
   },
 });
 
