@@ -54,6 +54,19 @@ const authorize = (roles: string[]) => {
   };
 };
 
+// Tenant separation middleware - ensures all data access is restricted to user's tenant
+const ensureTenantSeparation = (req: Request, res: Response, next: Function) => {
+  if (!req.isAuthenticated() || !req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  
+  // Set tenant ID in res.locals for use in routes
+  res.locals.tenantId = req.user.tenantId;
+  console.log(`Request authorized for tenant: ${req.user.tenantId}`);
+  
+  return next();
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Middleware to parse JSON
   app.use(express.json());
@@ -325,12 +338,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Product routes
-  app.get('/api/products', async (req, res) => {
+  app.get('/api/products', ensureTenantSeparation, async (req, res) => {
     try {
-      if (!req.isAuthenticated() || !req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
       const options = {
         search: req.query.search as string,
         category: req.query.category as string,
@@ -338,18 +347,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       const products = await storage.getProducts(req.user.tenantId, options);
+      
+      // Log the tenant-based filtering
+      console.log(`Found ${products.length} products for tenant ${req.user.tenantId}`);
+      
       return res.json(products);
     } catch (error) {
+      console.error("Error getting products:", error);
       return res.status(500).json({ message: "Server error" });
     }
   });
   
-  app.get('/api/products/:id', async (req, res) => {
+  app.get('/api/products/:id', ensureTenantSeparation, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
       const id = parseInt(req.params.id);
       const product = await storage.getProduct(id, req.user.tenantId);
       
@@ -359,6 +369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       return res.json(product);
     } catch (error) {
+      console.error("Error getting product details:", error);
       return res.status(500).json({ message: "Server error" });
     }
   });
