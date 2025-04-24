@@ -1,41 +1,76 @@
 version: '3.8'
 
+# Common settings for all environments
+x-app-common: &app-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  ports:
+    - "${PORT:-5000}:${PORT:-5000}"
+  depends_on:
+    postgres:
+      condition: service_healthy
+  restart: unless-stopped
+
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:15
     container_name: igoodar-postgres
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: igoodar
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-igoodar}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # Node.js Backend and Frontend Application
+  # Node.js Backend and Frontend Application - Production
   app:
+    <<: *app-common
+    container_name: igoodar-app
+    environment:
+      - NODE_ENV=production
+      - PORT=${PORT:-5000}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-igoodar}
+      - SESSION_SECRET=${SESSION_SECRET:-change_this_to_a_secure_random_string_in_production}
+    profiles: ["prod"]
+
+  # Node.js Backend and Frontend Application - Development
+  app-dev:
+    <<: *app-common
+    container_name: igoodar-app-dev
+    environment:
+      - NODE_ENV=development
+      - PORT=${PORT:-5000}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-igoodar}
+      - SESSION_SECRET=${SESSION_SECRET:-dev_session_secret}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run dev
+    profiles: ["dev"]
+
+  # Database setup service - runs and exits
+  db-setup:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: igoodar-app
-    ports:
-      - "5000:5000"
+    container_name: igoodar-db-setup
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/igoodar
-      - SESSION_SECRET=change_this_to_a_secure_random_string_in_production
-    restart: unless-stopped
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-igoodar}
+    command: npm run db:push
+    profiles: ["setup"]
 
 volumes:
   postgres_data:
