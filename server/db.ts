@@ -45,7 +45,9 @@ if (isReplitEnvironment || !isLocalEnvironment) {
   // For local development with standard PostgreSQL
   console.log('Using standard PostgreSQL connection for local development');
   import('pg').then(async (pgModule) => {
-    const { Pool } = pgModule;
+    console.log('pgModule:', pgModule);
+    const { Pool } = pgModule.default || pgModule;
+    console.log('Pool constructor:', typeof Pool);
     pool = new Pool({ connectionString: process.env.DATABASE_URL });
     
     // Import drizzle for node-postgres
