@@ -28,106 +28,100 @@ A comprehensive inventory and point-of-sale (POS) system designed for Moroccan s
 
 ## Getting Started
 
-There are two ways to run iGoodar Stock:
+iGoodar Stock is designed to run seamlessly in multiple environments:
 
-### Option 1: Docker Deployment (Recommended)
+### Quick Setup (Recommended)
 
-The easiest way to run the entire application with a single command using Docker.
-
-#### Prerequisites
-- Docker and Docker Compose
-
-#### Deployment Steps
-
-1. **Clone the repository**
+The unified setup script automatically detects your environment and configures everything accordingly:
 
 ```bash
+# Clone the repository
 git clone https://github.com/yourusername/igoodar-stock.git
 cd igoodar-stock
+
+# Run the universal setup script
+./setup.sh
 ```
 
-2. **Run the Docker startup script**
+### Environment-Specific Deployment Options
+
+#### Running in Replit
+
+In Replit, the application is automatically configured to work within the Replit environment:
+
+1. **Database Configuration:**
+   - A PostgreSQL database is automatically configured using the DATABASE_URL secret
+   - If no DATABASE_URL is found, you'll be prompted to set one up
+
+2. **Starting the Application:**
+   - Use the "Start application" workflow in Replit
+   - The application will be available at the Replit URL
+
+#### Local Docker Deployment
+
+For a containerized development or production environment:
 
 ```bash
-./scripts/start-docker.sh
+# Development mode with live reloading
+./setup.sh docker dev
+
+# Production mode
+./setup.sh docker
 ```
 
-This script will:
+This will:
 - Build the Docker images
-- Start the PostgreSQL database and application
+- Start the PostgreSQL database in a container
 - Initialize the database with schema and demo data
+- Start the application container
 - Make the application available at http://localhost:5000
 
+#### Manual Local Installation
+
+For traditional local development:
+
+1. **Prerequisites:**
+   - Node.js (v18 or higher)
+   - Docker and Docker Compose (recommended for database)
+
+2. **Installation Steps:**
+
+   ```bash
+   # Clone and enter the repository
+   git clone https://github.com/yourusername/igoodar-stock.git
+   cd igoodar-stock
+   
+   # Install dependencies
+   npm install
+   
+   # Set up the environment
+   ./setup.sh
+   
+   # Start the development server
+   npm run dev
+   ```
+
 3. **Access the application**
+   
+   Open your browser and navigate to: `http://localhost:5000`
 
-Open your browser and navigate to: `http://localhost:5000`
+### Advanced Configuration
 
-### Option 2: Manual Installation
-
-For development or customization purposes.
-
-#### Prerequisites
-- Node.js (v18 or higher)
-- Docker and Docker Compose (for database only)
-
-#### Installation Steps
-
-1. **Clone the repository**
-
-```bash
-git clone https://github.com/yourusername/igoodar-stock.git
-cd igoodar-stock
-```
-
-2. **Install dependencies**
-
-```bash
-npm install
-```
-
-3. **Set up environment variables**
-
-Create a `.env` file in the root directory:
+For custom configurations, you can create a `.env` file based on the provided `.env.example`:
 
 ```
+# Database connection
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/igoodar
-SESSION_SECRET=your_secret_key_here
+
+# Session security
+SESSION_SECRET=your_custom_secret_here
+
+# Environment (development, production)
+NODE_ENV=development
+
+# Application port
+PORT=5000
 ```
-
-4. **Setup the database (Automated Option)**
-
-Run the setup script which will:
-- Start the PostgreSQL Docker container
-- Create the .env file if it doesn't exist
-- Initialize the database schema
-
-```bash
-node scripts/setup-db.js
-```
-
-**Or perform these steps manually:**
-
-4a. **Start the PostgreSQL database using Docker**
-
-```bash
-docker-compose up -d postgres
-```
-
-4b. **Initialize the database schema**
-
-```bash
-npm run db:push
-```
-
-5. **Start the development server**
-
-```bash
-npm run dev
-```
-
-6. **Access the application**
-
-Open your browser and navigate to: `http://localhost:5000`
 
 ### Default Login Credentials
 
@@ -182,6 +176,8 @@ It's recommended to upload this project to a GitHub repository for:
 
 ### Steps to Upload to GitHub
 
+#### Option 1: From Replit
+
 1. **Create a new repository on GitHub**
    - Go to [GitHub](https://github.com) and log in
    - Click on "New repository"
@@ -189,7 +185,18 @@ It's recommended to upload this project to a GitHub repository for:
    - Choose public or private visibility based on your needs
    - Do not initialize with README, .gitignore, or license (we already have these)
 
-2. **Initialize git in your local project (if not already done)**
+2. **Use Replit's Git integration**
+   - Click on the "Version Control" tab in the Replit sidebar (Git icon)
+   - Connect your GitHub account if you haven't already
+   - Select "Connect to existing GitHub repo"
+   - Choose the repository you created
+   - Commit all changes and push to GitHub
+
+#### Option 2: From Local Environment
+
+1. **Create a new repository on GitHub** (as described above)
+
+2. **Initialize git in your local project**
    ```bash
    git init
    ```
@@ -215,10 +222,12 @@ It's recommended to upload this project to a GitHub repository for:
    ```
    (Use `git push -u origin master` if your default branch is named "master")
 
-Make sure to:
+#### Important Considerations
+
 - Use the provided `.gitignore` file to exclude node_modules, .env, and other sensitive/large files
 - Document any project changes thoroughly in the README
 - Add license information if applicable
+- For continuous integration, consider setting up GitHub Actions to automate testing and deployment
 
 ## Security Considerations
 
