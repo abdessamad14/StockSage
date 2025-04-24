@@ -1,0 +1,23 @@
+StockSage git:(main) ✗ docker ps -a
+CONTAINER ID   IMAGE                               COMMAND                  CREATED         STATUS                          PORTS                    NAMES
+ad52ba80d8fd   postgres:15                         "docker-entrypoint.s…"   3 minutes ago   Up 3 minutes (healthy)          0.0.0.0:5432->5432/tcp   igoodar-postgres
+4f4c45522f4a   stocksage-app-dev                   "docker-entrypoint.s…"   9 minutes ago   Exited (1) 3 minutes ago                                 igoodar-app-dev
+a94df5261cad   pipeline-e2e-tests:1.0.0            "bash"                   2 weeks ago     Exited (0) 2 weeks ago                                   elated_williamson
+886cc32e643c   pipeline-e2e-tests:1.0.1            "bash"                   2 weeks ago     Exited (0) 2 weeks ago                                   optimistic_lehmann
+ed7ac8b95615   pipeline-e2e-tests:1.0.1            "bash"                   2 weeks ago     Exited (0) 2 weeks ago                                   practical_varahamihira
+5195f105cc22   pipeline-e2e-tests:1.0.1            "bash"                   2 weeks ago     Exited (0) 2 weeks ago                                   happy_easley
+993b954bde0d   frappe/erpnext:v15.54.5             "nginx-entrypoint.sh"    4 weeks ago     Up 5 days                                                frappe_docker-frontend-1
+753f10d171c7   frappe/erpnext:v15.54.5             "bench worker --queu…"   4 weeks ago     Restarting (1) 55 seconds ago                            frappe_docker-queue-long-1
+c7db2abcc84b   frappe/erpnext:v15.54.5             "node /home/frappe/f…"   4 weeks ago     Restarting (1) 45 seconds ago                            frappe_docker-websocket-1
+3ae4fdf73a90   frappe/erpnext:v15.54.5             "bench schedule"         4 weeks ago     Up 5 days                                                frappe_docker-scheduler-1
+83ce5ba775f0   frappe/erpnext:v15.54.5             "sleep infinity"         4 weeks ago     Up 5 days                                                frappe_docker-backend-1
+8beef3f53f28   frappe/erpnext:v15.54.5             "bench worker --queu…"   4 weeks ago     Restarting (1) 55 seconds ago                            frappe_docker-queue-short-1
+b84f22021db0   mariadb:10.6                        "docker-entrypoint.s…"   4 weeks ago     Up 5 days                       3306/tcp                 frappe_docker-mariadb-1
+5c80d8d213fa   frappe/erpnext:v15.54.5             "bash -c 'ls -1 apps…"   4 weeks ago     Exited (0) 4 weeks ago                                   frappe_docker-configurator-1
+348022d7857b   redis                               "docker-entrypoint.s…"   3 months ago    Created                                                  pensive_euler
+a0b4acc29046   redis:latest                        "docker-entrypoint.s…"   4 months ago    Exited (0) 3 months ago                                  redis-local
+63278cf42fe0   postgres:14                         "docker-entrypoint.s…"   5 months ago    Exited (0) 5 months ago                                  go_db
+ce3650853ce0   redis                               "docker-entrypoint.s…"   6 months ago    Exited (255) 3 months ago       0.0.0.0:6379->6379/tcp   redis
+c3f0337beb5d   redis:latest                        "docker-entrypoint.s…"   14 months ago   Exited (0) 14 months ago                                 eloquent_jones
+2b14a0f63732   zrrrzzt/docker-unoconv-webservice   "/bin/sh -c '/usr/bi…"   14 months ago   Exited (137) 14 months ago                               unoconv
+➜  StockSage git:(main) ✗ 

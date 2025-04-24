@@ -1,0 +1,87 @@
+ StockSage git:(main) ✗ docker ps
+CONTAINER ID   IMAGE                     COMMAND                  CREATED              STATUS                         PORTS                              NAMES
+24659e5e2ad9   stocksage-app-dev         "docker-entrypoint.s…"   7 seconds ago        Up 6 seconds                   5000/tcp, 0.0.0.0:5001->5001/tcp   igoodar-app-dev
+80e7aa0f9d34   postgres:15               "docker-entrypoint.s…"   About a minute ago   Up About a minute (healthy)    0.0.0.0:5432->5432/tcp             igoodar-postgres
+993b954bde0d   frappe/erpnext:v15.54.5   "nginx-entrypoint.sh"    4 weeks ago          Up 5 days                                                         frappe_docker-frontend-1
+753f10d171c7   frappe/erpnext:v15.54.5   "bench worker --queu…"   4 weeks ago          Up 4 seconds                                                      frappe_docker-queue-long-1
+c7db2abcc84b   frappe/erpnext:v15.54.5   "node /home/frappe/f…"   4 weeks ago          Restarting (1) 3 seconds ago                                      frappe_docker-websocket-1
+3ae4fdf73a90   frappe/erpnext:v15.54.5   "bench schedule"         4 weeks ago          Up 5 days                                                         frappe_docker-scheduler-1
+83ce5ba775f0   frappe/erpnext:v15.54.5   "sleep infinity"         4 weeks ago          Up 5 days                                                         frappe_docker-backend-1
+8beef3f53f28   frappe/erpnext:v15.54.5   "bench worker --queu…"   4 weeks ago          Up 4 seconds                                                      frappe_docker-queue-short-1
+b84f22021db0   mariadb:10.6              "docker-entrypoint.s…"   4 weeks ago          Up 5 days                      3306/tcp                           frappe_docker-mariadb-1
+➜  StockSage git:(main) ✗ docker logs -f igoodar-app-dev
+Waiting for PostgreSQL...
+PostgreSQL is ready!
+Applying database migrations...
+
+> rest-express@1.0.0 db:push
+> drizzle-kit push
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] Pulling schema from database...
+[⣯] Pulling schema from database...
+[✓] Pulling schema from database...
+ Warning  Found data-loss statements:
+· You're about to delete session table with 1 items
+
+THIS ACTION WILL CAUSE DATA LOSS AND CANNOT BE REVERTED
+
+Do you still want to push changes?
+❯ No, abort
+  Yes, I want to remove 1 table, Starting the application...
+
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.js
+
+Database connection: Local PostgreSQL
+Environment: Local
+Using standard PostgreSQL connection for local development
+8:31:34 PM [express] serving on port 5001
+file:///app/dist/index.js:255
+    pool = new Pool({ connectionString: process.env.DATABASE_URL });
+           ^
+
+TypeError: Pool is not a constructor
+    at file:///app/dist/index.js:255:12
+
+Node.js v20.19.1
+Waiting for PostgreSQL...
+PostgreSQL is ready!
+Applying database migrations...
+
+> rest-express@1.0.0 db:push
+> drizzle-kit push
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] Pulling schema from database...
+[⣯] Pulling schema from database...
+[✓] Pulling schema from database...
+ Warning  Found data-loss statements:
+· You're about to delete session table with 1 items
+
+THIS ACTION WILL CAUSE DATA LOSS AND CANNOT BE REVERTED
+
+Do you still want to push changes?
+❯ No, abort
+  Yes, I want to remove 1 table, Starting the application...
+
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.js
+
+Database connection: Local PostgreSQL
+Environment: Local
+Using standard PostgreSQL connection for local development
+8:31:45 PM [express] serving on port 5001
+file:///app/dist/index.js:255
+    pool = new Pool({ connectionString: process.env.DATABASE_URL });
+           ^
+
+TypeError: Pool is not a constructor
+    at file:///app/dist/index.js:255:12
+
+Node.js v20.19.1
+➜  StockSage git:(main) ✗ 

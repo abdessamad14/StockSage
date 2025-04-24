@@ -1,0 +1,84 @@
+StockSage git:(main) ✗ ./setup.sh docker dev
+Detected environment: local
+Setting up for local environment...
+Setting up with Docker...
+Using development mode...
+Loading environment variables from .env file
+.env: line 3: 8M#AHuqEu0k75w7Wy: command not found
+Detected environment: local
+Stopping any existing containers...
+[+] Running 2/2
+ ✔ Container igoodar-postgres  Removed        0.1s 
+ ✔ Network stocksage_default   Removed        0.1s 
+Configuring for local environment...
+Starting in DEVELOPMENT mode...
+[+] Building 12.0s (14/14) FINISHED docker:desktop-linuxapp-dev internal] load build definition  0.0s
+ => [app-dev internal] load build definition  0.0s
+ => => transferring dockerfile: 727B          0.0s
+ => [app-dev internal] load metadata for doc  0.9s
+ => [app-dev internal] load .dockerignore     0.0s
+ => => transferring context: 2B               0.0s
+ => [app-dev 1/9] FROM docker.io/library/nod  0.0s
+ => [app-dev internal] load build context     2.1s
+ => => transferring context: 5.97MB           2.1s
+ => CACHED [app-dev 2/9] WORKDIR /app         0.0s
+ => CACHED [app-dev 3/9] RUN apt-get update   0.0s
+ => CACHED [app-dev 4/9] COPY package*.json   0.0s
+ => CACHED [app-dev 5/9] RUN npm install      0.0s
+ => [app-dev 6/9] COPY . .                    3.4s
+ => [app-dev 7/9] COPY docker-entrypoint.sh   0.0s
+ => [app-dev 8/9] RUN chmod +x /usr/local/bi  0.2s
+ => [app-dev 9/9] RUN npm run build           3.6s 
+ => [app-dev] exporting to image              1.7s 
+ => => exporting layers                       1.7s 
+ => => writing image sha256:8777449dd5ce7d61  0.0s 
+ => => naming to docker.io/library/stocksage  0.0s
+[+] Running 2/3
+ ⠹ Network stocksage_default   Created        6.2s 
+ ✔ Container igoodar-postgres  Healthy        5.8s 
+ ✔ Container igoodar-app-dev   Started        6.1s 
+🚀 iGoodar Stock is now running!
+Access the application at http://localhost:5001
+
+Default login credentials:
+- Administrator: superadmin / admin123 (tenant_1)
+- Demo User: demo / demo123 (demo-tenant)
+
+Useful commands:
+- View logs: docker-compose logs -f
+- Stop the application: docker-compose down
+- Development mode: ./scripts/start-docker.sh dev
+➜  StockSage git:(main) ✗ docker-compose logs -f
+igoodar-postgres  | 
+igoodar-postgres  | PostgreSQL Database directory appears to contain a database; Skipping initialization
+igoodar-postgres  | 
+igoodar-postgres  | 2025-04-24 20:19:27.219 UTC [1] LOG:  starting PostgreSQL 15.12 (Debian 15.12-1.pgdg120+1) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+igoodar-postgres  | 2025-04-24 20:19:27.219 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+igoodar-postgres  | 2025-04-24 20:19:27.219 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+igoodar-postgres  | 2025-04-24 20:19:27.221 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+igoodar-postgres  | 2025-04-24 20:19:27.224 UTC [28] LOG:  database system was shut down at 2025-04-24 20:19:14 UTC
+igoodar-postgres  | 2025-04-24 20:19:27.228 UTC [1] LOG:  database system is ready to accept connections
+^Z
+[1]  + 84294 suspended  docker-compose logs -f
+➜  StockSage git:(main) ✗ docker logs --tail 20 igoodar-app-dev
+Applying database migrations...
+
+> rest-express@1.0.0 db:push
+> drizzle-kit push
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] Pulling schema from database...
+[⣯] Pulling schema from database...
+[⣟] Pulling schema from database...
+[⡿] Pulling schema from database...
+[✓] Pulling schema from database...
+ Warning  Found data-loss statements:
+· You're about to delete session table with 1 items
+
+THIS ACTION WILL CAUSE DATA LOSS AND CANNOT BE REVERTED
+
+Do you still want to push changes?
+❯ No, abort
+➜  StockSage git:(main) ✗ 

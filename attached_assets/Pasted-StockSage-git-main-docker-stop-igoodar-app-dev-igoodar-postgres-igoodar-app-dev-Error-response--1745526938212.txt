@@ -1,0 +1,75 @@
+StockSage git:(main) ✗ docker stop igoodar-app-dev igoodar-postgres
+
+igoodar-app-dev
+Error response from daemon: No such container: igoodar-postgres
+➜  StockSage git:(main) ✗ docker rm igoodar-app-dev igoodar-postgres
+
+igoodar-app-dev
+Error response from daemon: No such container: igoodar-postgres
+➜  StockSage git:(main) ✗ docker ps
+CONTAINER ID   IMAGE                     COMMAND                  CREATED       STATUS                          PORTS      NAMES
+993b954bde0d   frappe/erpnext:v15.54.5   "nginx-entrypoint.sh"    4 weeks ago   Up 5 days                                  frappe_docker-frontend-1
+753f10d171c7   frappe/erpnext:v15.54.5   "bench worker --queu…"   4 weeks ago   Restarting (1) 51 seconds ago              frappe_docker-queue-long-1
+c7db2abcc84b   frappe/erpnext:v15.54.5   "node /home/frappe/f…"   4 weeks ago   Restarting (1) 3 seconds ago               frappe_docker-websocket-1
+3ae4fdf73a90   frappe/erpnext:v15.54.5   "bench schedule"         4 weeks ago   Up 5 days                                  frappe_docker-scheduler-1
+83ce5ba775f0   frappe/erpnext:v15.54.5   "sleep infinity"         4 weeks ago   Up 5 days                                  frappe_docker-backend-1
+8beef3f53f28   frappe/erpnext:v15.54.5   "bench worker --queu…"   4 weeks ago   Restarting (1) 51 seconds ago              frappe_docker-queue-short-1
+b84f22021db0   mariadb:10.6              "docker-entrypoint.s…"   4 weeks ago   Up 5 days                       3306/tcp   frappe_docker-mariadb-1
+➜  StockSage git:(main) ✗ cat > dev-entrypoint.sh << 'EOF'
+#!/bin/sh
+set -e
+# Wait for PostgreSQL to be ready
+echo "Waiting for PostgreSQL..."
+until nc -z postgres 5432; do
+  sleep 1
+done
+echo "PostgreSQL is ready!"
+# Skip the migration and use the schema creation script directly
+echo "Setting up database..."
+node push-schema.ts
+# Install pg package if it's missing
+echo "Checking for pg package..."
+if ! npm list pg | grep -q pg@; then
+  echo "Installing pg package..."
+  npm install pg
+fi
+# Start the application in development mode
+echo "Starting application in development mode..."
+npm run dev
+EOF
+➜  StockSage git:(main) ✗ chmod +x dev-entrypoint.sh
+
+➜  StockSage git:(main) ✗ docker-compose up -d postgres
+[+] Running 1/1
+ ✔ Container igoodar-postgres  Started        0.7s 
+➜  StockSage git:(main) ✗ docker run -d --name igoodar-app-dev \
+  --network stocksage_default \
+  -p 5001:5001 \
+  -e NODE_ENV=development \
+  -e PORT=5001 \
+  -e DATABASE_URL=postgresql://postgres:postgres@postgres:5432/igoodar \
+  -e SESSION_SECRET=dev_session_secret \
+  -v $(pwd):/app \
+  -v $(pwd)/dev-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh \
+  --entrypoint /usr/local/bin/docker-entrypoint.sh \
+  stocksage-app-dev
+f9de401aa565570e88db3235d28750a818b1074bfbf67a886376bd0cef4d2e2f
+➜  StockSage git:(main) ✗ docker logs -f igoodar-app-dev
+Waiting for PostgreSQL...
+PostgreSQL is ready!
+Setting up database...
+node:internal/modules/esm/get_format:189
+  throw new ERR_UNKNOWN_FILE_EXTENSION(ext, filepath);
+        ^
+
+TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension ".ts" for /app/push-schema.ts
+    at Object.getFileProtocolModuleFormat [as file:] (node:internal/modules/esm/get_format:189:9)
+    at defaultGetFormat (node:internal/modules/esm/get_format:232:36)
+    at defaultLoad (node:internal/modules/esm/load:145:22)
+    at async ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:477:45)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:110:19) {
+  code: 'ERR_UNKNOWN_FILE_EXTENSION'
+}
+
+Node.js v20.19.1
+➜  StockSage git:(main) ✗ 
