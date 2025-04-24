@@ -186,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // User routes
-  app.get('/api/users', authorize(['admin']), async (req, res) => {
+  app.get('/api/users', authorize(['admin']), ensureTenantSeparation, async (req, res) => {
     try {
       console.log(`Getting users for tenant: ${req.user.tenantId}`);
       
@@ -427,15 +427,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Product Categories routes
-  app.get('/api/product-categories', async (req, res) => {
+  app.get('/api/product-categories', ensureTenantSeparation, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
       const categories = await storage.getProductCategories(req.user.tenantId);
+      console.log(`Found ${categories.length} product categories for tenant ${req.user.tenantId}`);
       return res.json(categories);
     } catch (error) {
+      console.error("Error getting product categories:", error);
       return res.status(500).json({ message: "Server error" });
     }
   });
@@ -512,16 +510,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Customer routes
-  app.get('/api/customers', async (req, res) => {
+  app.get('/api/customers', ensureTenantSeparation, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
       const search = req.query.search as string;
       const customers = await storage.getCustomers(req.user.tenantId, search);
+      console.log(`Found ${customers.length} customers for tenant ${req.user.tenantId}`);
       return res.json(customers);
     } catch (error) {
+      console.error("Error getting customers:", error);
       return res.status(500).json({ message: "Server error" });
     }
   });
@@ -583,16 +579,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Supplier routes
-  app.get('/api/suppliers', async (req, res) => {
+  app.get('/api/suppliers', ensureTenantSeparation, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
       const search = req.query.search as string;
       const suppliers = await storage.getSuppliers(req.user.tenantId, search);
+      console.log(`Found ${suppliers.length} suppliers for tenant ${req.user.tenantId}`);
       return res.json(suppliers);
     } catch (error) {
+      console.error("Error getting suppliers:", error);
       return res.status(500).json({ message: "Server error" });
     }
   });
@@ -684,12 +678,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Sales routes
-  app.get('/api/sales', async (req, res) => {
+  app.get('/api/sales', ensureTenantSeparation, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
       const options = {
         startDate: req.query.startDate ? new Date(req.query.startDate as string) : undefined,
         endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined,
@@ -697,8 +687,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       const sales = await storage.getSales(req.user.tenantId, options);
+      console.log(`Found ${sales.length} sales for tenant ${req.user.tenantId}`);
       return res.json(sales);
     } catch (error) {
+      console.error("Error getting sales:", error);
       return res.status(500).json({ message: "Server error" });
     }
   });
@@ -747,11 +739,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Settings routes
-  app.get('/api/settings', authorize(['admin']), async (req, res) => {
+  app.get('/api/settings', authorize(['admin']), ensureTenantSeparation, async (req, res) => {
     try {
       const settings = await storage.getSettings(req.user.tenantId);
+      console.log(`Fetched settings for tenant ${req.user.tenantId}`);
       return res.json(settings || {});
     } catch (error) {
+      console.error("Error getting settings:", error);
       return res.status(500).json({ message: "Server error" });
     }
   });
@@ -766,21 +760,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Dashboard route
-  app.get('/api/dashboard', async (req, res) => {
+  app.get('/api/dashboard', ensureTenantSeparation, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
       const data = await storage.getDashboardData(req.user.tenantId);
+      console.log(`Fetched dashboard data for tenant ${req.user.tenantId}`);
       return res.json(data);
     } catch (error) {
+      console.error("Error getting dashboard data:", error);
       return res.status(500).json({ message: "Server error" });
     }
   });
   
   // Reports route (admin only)
-  app.get('/api/reports', authorize(['admin']), async (req, res) => {
+  app.get('/api/reports', authorize(['admin']), ensureTenantSeparation, async (req, res) => {
     try {
       if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "reports_admin_only" });
@@ -788,12 +780,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Here you would typically generate and return reports
       // For now, we'll return a placeholder
+      console.log(`Fetched reports for tenant ${req.user.tenantId}`);
       return res.json({
         salesByDay: [],
         topProducts: [],
         stockLevels: []
       });
     } catch (error) {
+      console.error("Error getting reports:", error);
       return res.status(500).json({ message: "Server error" });
     }
   });
