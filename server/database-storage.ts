@@ -385,78 +385,106 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSale(sale: InsertSale, items: InsertSaleItem[]): Promise<SaleWithItems> {
-    // Start transaction
-    return await db.transaction(async (tx) => {
-      // Insert sale
-      const [newSale] = await tx.insert(sales).values(sale).returning();
-
-      // Insert sale items and update product quantities
-      const saleItemsWithProducts: SaleItemWithProduct[] = [];
-      
-      for (const item of items) {
-        // Insert sale item
-        const [newItem] = await tx
-          .insert(saleItems)
-          .values({ ...item, saleId: newSale.id })
-          .returning();
-
-        // Get product
-        const [product] = await tx
-          .select()
-          .from(products)
-          .where(and(eq(products.id, item.productId), eq(products.tenantId, sale.tenantId)));
-
-        if (product) {
-          // Update product quantity
-          await tx
-            .update(products)
-            .set({ quantity: product.quantity - item.quantity })
-            .where(eq(products.id, item.productId));
-
-          // Add product to sale item
-          saleItemsWithProducts.push({
-            ...newItem,
-            product
-          });
-        } else {
-          saleItemsWithProducts.push(newItem);
-        }
-      }
-
-      // Update customer credit if necessary
-      let customer: Customer | undefined;
-      if (sale.customerId && sale.paidAmount < sale.totalAmount) {
-        const [customerRecord] = await tx
-          .select()
-          .from(customers)
-          .where(and(eq(customers.id, sale.customerId), eq(customers.tenantId, sale.tenantId)));
-        
-        if (customerRecord) {
-          const creditUsed = sale.totalAmount - sale.paidAmount;
-          const updatedCreditBalance = (customerRecord.creditBalance || 0) + creditUsed;
+    // Generate invoice number if not provided
+    if (!sale.invoiceNumber) {
+      const timestamp = new Date().getTime();
+      sale.invoiceNumber = `INV-${timestamp}`;
+    }
+    
+    // Ensure all items have tenantId
+    const itemsWithTenant = items.map(item => ({
+      ...item,
+      tenantId: sale.tenantId
+    }));
+    
+    try {
+      // Start transaction
+      return await db.transaction(async (tx) => {
+        try {
+          // Insert sale
+          const [newSale] = await tx.insert(sales).values(sale).returning();
+  
+          // Insert sale items and update product quantities
+          const saleItemsWithProducts: SaleItemWithProduct[] = [];
           
-          const [updatedCustomer] = await tx
-            .update(customers)
-            .set({ creditBalance: updatedCreditBalance })
-            .where(eq(customers.id, sale.customerId))
-            .returning();
-          
-          customer = updatedCustomer;
+          for (const item of itemsWithTenant) {
+            try {
+              // Insert sale item
+              const [newItem] = await tx
+                .insert(saleItems)
+                .values({ ...item, saleId: newSale.id })
+                .returning();
+  
+              // Get product
+              const [product] = await tx
+                .select()
+                .from(products)
+                .where(and(eq(products.id, item.productId), eq(products.tenantId, sale.tenantId)));
+  
+              if (product) {
+                // Update product quantity (ensure it doesn't go below 0)
+                const newQuantity = Math.max(0, product.quantity - item.quantity);
+                await tx
+                  .update(products)
+                  .set({ quantity: newQuantity })
+                  .where(eq(products.id, item.productId));
+  
+                // Add product to sale item
+                saleItemsWithProducts.push({
+                  ...newItem,
+                  product
+                });
+              } else {
+                saleItemsWithProducts.push(newItem as any);
+              }
+            } catch (itemError: any) {
+              console.error("Error processing sale item:", itemError);
+              throw new Error(`Error processing sale item: ${itemError.message}`);
+            }
+          }
+  
+          // Update customer credit if necessary
+          let customer: Customer | undefined;
+          if (sale.customerId && sale.paidAmount < sale.totalAmount) {
+            const [customerRecord] = await tx
+              .select()
+              .from(customers)
+              .where(and(eq(customers.id, sale.customerId), eq(customers.tenantId, sale.tenantId)));
+            
+            if (customerRecord) {
+              const creditUsed = sale.totalAmount - sale.paidAmount;
+              const updatedCreditBalance = (customerRecord.creditBalance || 0) + creditUsed;
+              
+              const [updatedCustomer] = await tx
+                .update(customers)
+                .set({ creditBalance: updatedCreditBalance })
+                .where(eq(customers.id, sale.customerId))
+                .returning();
+              
+              customer = updatedCustomer;
+            }
+          } else if (sale.customerId) {
+            const [customerRecord] = await tx
+              .select()
+              .from(customers)
+              .where(and(eq(customers.id, sale.customerId), eq(customers.tenantId, sale.tenantId)));
+            customer = customerRecord;
+          }
+  
+          return {
+            ...newSale,
+            items: saleItemsWithProducts,
+            customer
+          };
+        } catch (txError: any) {
+          console.error("Transaction error in createSale:", txError);
+          throw new Error(`Transaction failed: ${txError.message}`);
         }
-      } else if (sale.customerId) {
-        const [customerRecord] = await tx
-          .select()
-          .from(customers)
-          .where(and(eq(customers.id, sale.customerId), eq(customers.tenantId, sale.tenantId)));
-        customer = customerRecord;
-      }
-
-      return {
-        ...newSale,
-        items: saleItemsWithProducts,
-        customer
-      };
-    });
+      });
+    } catch (error: any) {
+      console.error("Failed to create sale:", error);
+      throw new Error(`Failed to create sale: ${error.message}`);
+    }
   }
   
   // Order management

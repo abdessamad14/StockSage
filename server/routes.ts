@@ -720,6 +720,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
+      console.log("Creating sale with request body:", JSON.stringify(req.body, null, 2));
+      
       const saleData = insertSaleSchema.parse({
         ...req.body.sale,
         tenantId: req.user.tenantId,
@@ -727,14 +729,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: req.user.id
       });
       
+      console.log("Parsed sale data:", JSON.stringify(saleData, null, 2));
+      
       const items = req.body.items;
-      const sale = await storage.createSale(saleData, items);
-      return res.status(201).json(sale);
+      console.log("Sale items:", JSON.stringify(items, null, 2));
+      
+      try {
+        const sale = await storage.createSale(saleData, items);
+        return res.status(201).json(sale);
+      } catch (saleError) {
+        console.error("Error creating sale:", saleError);
+        return res.status(500).json({ message: "Error creating sale: " + saleError.message });
+      }
     } catch (error) {
+      console.error("Error in sales endpoint:", error);
       if (error instanceof ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
       }
-      return res.status(500).json({ message: "Server error" });
+      return res.status(500).json({ message: "Server error: " + (error instanceof Error ? error.message : String(error)) });
     }
   });
   
