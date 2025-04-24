@@ -28,12 +28,49 @@ A comprehensive inventory and point-of-sale (POS) system designed for Moroccan s
 
 ## Getting Started
 
-### Prerequisites
+There are two ways to run iGoodar Stock:
 
+### Option 1: Docker Deployment (Recommended)
+
+The easiest way to run the entire application with a single command using Docker.
+
+#### Prerequisites
+- Docker and Docker Compose
+
+#### Deployment Steps
+
+1. **Clone the repository**
+
+```bash
+git clone https://github.com/yourusername/igoodar-stock.git
+cd igoodar-stock
+```
+
+2. **Run the Docker startup script**
+
+```bash
+./scripts/start-docker.sh
+```
+
+This script will:
+- Build the Docker images
+- Start the PostgreSQL database and application
+- Initialize the database with schema and demo data
+- Make the application available at http://localhost:5000
+
+3. **Access the application**
+
+Open your browser and navigate to: `http://localhost:5000`
+
+### Option 2: Manual Installation
+
+For development or customization purposes.
+
+#### Prerequisites
 - Node.js (v18 or higher)
-- Docker and Docker Compose (for easy database setup)
+- Docker and Docker Compose (for database only)
 
-### Installation
+#### Installation Steps
 
 1. **Clone the repository**
 
@@ -73,7 +110,7 @@ node scripts/setup-db.js
 4a. **Start the PostgreSQL database using Docker**
 
 ```bash
-docker-compose up -d
+docker-compose up -d postgres
 ```
 
 4b. **Initialize the database schema**
@@ -82,13 +119,13 @@ docker-compose up -d
 npm run db:push
 ```
 
-6. **Start the development server**
+5. **Start the development server**
 
 ```bash
 npm run dev
 ```
 
-7. **Access the application**
+6. **Access the application**
 
 Open your browser and navigate to: `http://localhost:5000`
 
