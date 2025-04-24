@@ -1,5 +1,5 @@
 // This script directly starts the server with environment variables set
-const { spawn } = require('child_process');
+import { spawn } from 'child_process';
 
 // Set environment variables
 process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/igoodar';
