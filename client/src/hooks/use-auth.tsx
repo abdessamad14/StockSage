@@ -46,6 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      // Invalidate all queries when user/tenant changes
+      queryClient.clear();
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Login successful",
@@ -95,6 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
+      // Clear cache when logging out
+      queryClient.clear();
       queryClient.setQueryData(["/api/user"], null);
       toast({
         title: "Logged out",
@@ -125,6 +129,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      // Clear cache when switching users
+      queryClient.clear();
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Test login successful",
