@@ -628,7 +628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Orders routes
-  app.get('/api/orders', authorize(['admin']), async (req, res) => {
+  app.get('/api/orders', authorize(['admin', 'merchant']), async (req, res) => {
     try {
       const options = {
         status: req.query.status as string,
@@ -642,7 +642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get('/api/orders/:id', authorize(['admin']), async (req, res) => {
+  app.get('/api/orders/:id', authorize(['admin', 'merchant']), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const order = await storage.getOrder(id, req.user.tenantId);
@@ -657,7 +657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post('/api/orders', authorize(['admin']), async (req, res) => {
+  app.post('/api/orders', authorize(['admin', 'merchant']), async (req, res) => {
     try {
       const orderData = insertOrderSchema.parse({
         ...req.body.order,
