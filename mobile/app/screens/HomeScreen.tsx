@@ -3,6 +3,7 @@ import { StyleSheet, View, ScrollView, TouchableOpacity } from 'react-native';
 import { Text, Card, Title, Paragraph, Button, Appbar, Avatar } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../hooks/useAuth';
+import { config } from '../config/config';
 
 const HomeScreen = () => {
   const navigation = useNavigation();
@@ -19,6 +20,7 @@ const HomeScreen = () => {
           title={`Welcome, ${user?.username || 'Merchant'}`} 
           subtitle={user?.businessName || 'iGoodar Merchant App'}
         />
+        <Appbar.Action icon="cog" onPress={() => navigation.navigate('Settings' as never)} />
         <Appbar.Action icon="logout" onPress={handleLogout} />
       </Appbar.Header>
 
@@ -92,6 +94,15 @@ const HomeScreen = () => {
             </Button>
           </Card.Actions>
         </Card>
+        
+        <View style={styles.connectionInfo}>
+          <Text style={styles.connectionText}>
+            Server: {config.API_URL}
+          </Text>
+          <Text style={styles.connectionHint}>
+            Tap the settings icon to change the server address
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -166,6 +177,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 8,
     elevation: 2,
+  },
+  connectionInfo: {
+    marginBottom: 24,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  connectionText: {
+    fontSize: 12,
+    color: '#6C757D',
+    marginBottom: 4,
+  },
+  connectionHint: {
+    fontSize: 10,
+    color: '#ADB5BD',
+    fontStyle: 'italic',
   },
 });
 

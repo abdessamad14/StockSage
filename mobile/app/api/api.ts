@@ -1,14 +1,33 @@
 import axios from 'axios';
+import { config } from '../config/config';
 
 // Create a base axios instance
 export const api = axios.create({
-  // Server URL would depend on deployment
-  // During development, you might use ngrok or a similar tool to expose your server
-  baseURL: 'http://your-api-url.com', // To be replaced with actual API URL when deployed
+  // Use the API URL from the configuration
+  baseURL: config.API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Add interceptor to debug API calls in development
+if (config.ENV === 'development') {
+  api.interceptors.request.use(request => {
+    console.log('API Request:', request.method?.toUpperCase(), request.url);
+    return request;
+  });
+  
+  api.interceptors.response.use(
+    response => {
+      console.log('API Response:', response.status, response.config.url);
+      return response;
+    },
+    error => {
+      console.error('API Error:', error.response?.status, error.response?.data, error.config?.url);
+      return Promise.reject(error);
+    }
+  );
+}
 
 // Types for API responses
 export interface OrderItem {

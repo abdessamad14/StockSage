@@ -13,6 +13,7 @@ import OrdersScreen from './app/screens/OrdersScreen';
 import CreateOrderScreen from './app/screens/CreateOrderScreen';
 import ProductsScreen from './app/screens/ProductsScreen';
 import SuppliersScreen from './app/screens/SuppliersScreen';
+import SettingsScreen from './app/screens/SettingsScreen';
 
 // Define theme colors
 const theme = {
@@ -98,6 +99,17 @@ export default function App() {
               {(props) => (
                 <ProtectedScreen>
                   <SuppliersScreen {...props} />
+                </ProtectedScreen>
+              )}
+            </Stack.Screen>
+            
+            <Stack.Screen 
+              name="Settings" 
+              options={{ title: 'Settings' }}
+            >
+              {(props) => (
+                <ProtectedScreen>
+                  <SettingsScreen {...props} />
                 </ProtectedScreen>
               )}
             </Stack.Screen>
