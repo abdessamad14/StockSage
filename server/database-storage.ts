@@ -132,7 +132,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (options?.category) {
-      query = query.where(eq(products.categoryId, parseInt(options.category)));
+      query = query.where(eq(products.category, options.category));
     }
 
     if (options?.lowStock) {
