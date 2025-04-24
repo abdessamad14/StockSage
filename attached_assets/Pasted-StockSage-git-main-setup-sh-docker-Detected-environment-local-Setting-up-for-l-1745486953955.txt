@@ -1,0 +1,69 @@
+StockSage git:(main) ✗ ./setup.sh docker               
+Detected environment: local
+Setting up for local environment...
+Setting up with Docker...
+Using production mode...
+Loading environment variables from .env file
+.env: line 3: 8M#AHuqEu0k75w7Wy: command not found
+Detected environment: local
+Stopping any existing containers...
+[+] Running 2/2
+ ✔ Container igoodar-postgres  Removed                                 0.1s 
+ ✔ Network stocksage_default   Removed                                 0.1s 
+Configuring for local environment...
+Starting in PRODUCTION mode...
+[+] Building 8.1s (13/13) FINISHED                     docker:desktop-linux
+ => [app internal] load build definition from Dockerfile               0.0s
+ => => transferring dockerfile: 727B                                   0.0s
+ => [app internal] load metadata for docker.io/library/node:20-slim    0.7s
+ => [app internal] load .dockerignore                                  0.0s
+ => => transferring context: 2B                                        0.0s
+ => [app 1/9] FROM docker.io/library/node:20-slim@sha256:9513b8d4c59c  0.0s
+ => [app internal] load build context                                  1.1s
+ => => transferring context: 2.63MB                                    1.1s
+ => CACHED [app 2/9] WORKDIR /app                                      0.0s
+ => CACHED [app 3/9] RUN apt-get update && apt-get install -y netcat-  0.0s
+ => CACHED [app 4/9] COPY package*.json ./                             0.0s
+ => CACHED [app 5/9] RUN npm install                                   0.0s
+ => [app 6/9] COPY . .                                                 2.6s
+ => [app 7/9] COPY docker-entrypoint.sh /usr/local/bin/                0.0s
+ => [app 8/9] RUN chmod +x /usr/local/bin/docker-entrypoint.sh         0.2s
+ => ERROR [app 9/9] RUN npm run build                                  3.3s
+------
+ > [app 9/9] RUN npm run build:
+0.304 
+0.304 > rest-express@1.0.0 build
+0.304 > vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+0.304 
+0.441 vite v5.4.14 building for production...
+0.474 transforming...
+0.640 Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+0.640   npx update-browserslist-db@latest
+0.640   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+3.009 ✓ 2162 modules transformed.
+3.252 rendering chunks...
+3.262 computing gzip size...
+3.278 ../dist/public/index.html                   0.63 kB │ gzip:   0.38 kB
+3.278 ../dist/public/assets/index-Br2bNHqq.css   67.81 kB │ gzip:  12.08 kB
+3.278 ../dist/public/assets/index-BaDZv0dy.js   659.27 kB │ gzip: 187.72 kB
+3.278 
+3.278 (!) Some chunks are larger than 500 kB after minification. Consider:
+3.278 - Using dynamic import() to code-split the application
+3.278 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+3.278 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+3.279 ✓ built in 2.82s
+3.299 sh: 1: esbuild: Exec format error
+------
+failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 126
+🚀 iGoodar Stock is now running!
+Access the application at http://localhost:5000
+
+Default login credentials:
+- Administrator: superadmin / admin123 (tenant_1)
+- Demo User: demo / demo123 (demo-tenant)
+
+Useful commands:
+- View logs: docker-compose logs -f
+- Stop the application: docker-compose down
+- Development mode: ./scripts/start-docker.sh dev
+➜  StockSage git:(main) ✗ 
