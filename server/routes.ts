@@ -175,9 +175,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User routes
   app.get('/api/users', authorize(['admin']), async (req, res) => {
     try {
-      // Get all users for the current tenant
-      const users = await storage.getUsersByTenant(req.user.tenantId);
-      return res.json(users);
+      console.log(`Getting users for tenant: ${req.user.tenantId}`);
+      
+      // Try direct SQL query first
+      try {
+        console.log('Trying direct SQL query for users');
+        const result = await pool.query('SELECT * FROM users WHERE tenant_id = $1', [req.user.tenantId]);
+        console.log(`Direct SQL found ${result.rows.length} users`);
+        
+        if (result.rows.length > 0) {
+          return res.json(result.rows);
+        }
+      } catch (sqlError) {
+        console.error('Error with direct SQL query for users:', sqlError);
+      }
+      
+      // Then try ORM method
+      try {
+        console.log('Trying ORM method for users');
+        const usersViaOrm = await storage.getUsersByTenant(req.user.tenantId);
+        console.log(`ORM found ${usersViaOrm.length} users`);
+        
+        return res.json(usersViaOrm);
+      } catch (ormError) {
+        console.error('Error with ORM method for users:', ormError);
+        throw ormError; // Re-throw to be caught by outer catch
+      }
     } catch (error) {
       console.error("Error getting users:", error);
       return res.status(500).json({ message: "Server error" });
