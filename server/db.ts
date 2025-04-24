@@ -1,6 +1,11 @@
 // Import the schema
 import * as schema from "@shared/schema";
 
+console.log("Current environment variables:");
+console.log("DATABASE_URL:", process.env.DATABASE_URL);
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("PORT:", process.env.PORT);
+
 // Check if DATABASE_URL is set
 if (!process.env.DATABASE_URL) {
   throw new Error(
