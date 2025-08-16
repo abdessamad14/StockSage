@@ -1,6 +1,6 @@
-import { useAuth } from '@/hooks/use-auth';
 import { useI18n } from '@/lib/i18n';
 import { Link, useLocation } from 'wouter';
+import { useOfflineSettings } from '@/hooks/use-offline-settings';
 import { 
   LayoutDashboard, 
   Store, 
@@ -11,8 +11,6 @@ import {
   ClipboardList, 
   BarChart2, 
   Settings, 
-  LogOut,
-  UserCog,
   Receipt
 } from 'lucide-react';
 
@@ -21,24 +19,19 @@ interface NavigationDrawerProps {
 }
 
 export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
-  const { user, logoutMutation } = useAuth();
   const { t, language, setLanguage } = useI18n();
+  const { settings } = useOfflineSettings();
   const [location] = useLocation();
 
-  const handleLogout = () => {
-    logoutMutation.mutate();
-  };
-  
-  // Role-based permissions
-  const isAdmin = user?.role === 'admin';
-  const canManageProducts = isAdmin || user?.role === 'cashier';
-  const canManageInventory = isAdmin || user?.role === 'cashier';
-  const canManageCustomers = isAdmin || user?.role === 'cashier';
-  const canManageSuppliers = isAdmin;
-  const canViewReports = isAdmin;
-  const canViewSalesHistory = isAdmin || user?.role === 'cashier';
-  const canManageSettings = isAdmin;
-  const canUsePOS = isAdmin || user?.role === 'cashier';
+  // In offline mode, all features are available
+  const canManageProducts = true;
+  const canManageInventory = true;
+  const canManageCustomers = true;
+  const canManageSuppliers = true;
+  const canViewReports = true;
+  const canViewSalesHistory = true;
+  const canManageSettings = true;
+  const canUsePOS = true;
 
   const isActive = (path: string) => {
     return location === path;
@@ -54,8 +47,8 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           </svg>
         </div>
         <div>
-          <p className="text-white font-bold text-lg">{user?.businessName}</p>
-          <p className="text-white text-sm opacity-80">{user?.name}</p>
+          <p className="text-white font-bold text-lg">{settings?.businessName || 'StockSage'}</p>
+          <p className="text-white text-sm opacity-80">Offline Mode</p>
         </div>
       </div>
       
@@ -108,12 +101,10 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           )}
           
           {/* Orders */}
-          {isAdmin && (
-            <Link href="/orders" className={`flex items-center px-4 py-3 ${isActive('/orders') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
-              <ClipboardList className="w-6 h-6 mr-3" />
-              <span>{t('orders')}</span>
-            </Link>
-          )}
+          <Link href="/orders" className={`flex items-center px-4 py-3 ${isActive('/orders') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+            <ClipboardList className="w-6 h-6 mr-3" />
+            <span>{t('orders')}</span>
+          </Link>
           
           {/* Reports */}
           {canViewReports && (
@@ -128,14 +119,6 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
             <Link href="/sales-history" className={`flex items-center px-4 py-3 ${isActive('/sales-history') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
               <Receipt className="w-6 h-6 mr-3" />
               <span>{t('sales_history')}</span>
-            </Link>
-          )}
-          
-          {/* Users */}
-          {isAdmin && (
-            <Link href="/users" className={`flex items-center px-4 py-3 ${isActive('/users') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
-              <UserCog className="w-6 h-6 mr-3" />
-              <span>{t('users')}</span>
             </Link>
           )}
           
@@ -164,13 +147,6 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
             {t('language_ar')}
           </button>
         </div>
-        <button 
-          onClick={handleLogout}
-          className="w-full bg-red-100 text-red-600 py-2 rounded-lg flex items-center justify-center"
-        >
-          <LogOut className="w-5 h-5 mr-2" />
-          {t('logout')}
-        </button>
       </div>
     </div>
   );
