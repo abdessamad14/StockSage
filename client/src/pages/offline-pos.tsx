@@ -4,7 +4,7 @@ import { useOfflineCustomers } from "@/hooks/use-offline-customers";
 import { useOfflineSales } from "@/hooks/use-offline-sales";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { OfflineProduct, OfflineCustomer, creditHelpers } from "@/lib/offline-storage";
+import { OfflineProduct, OfflineCustomer, OfflineCategory, offlineCategoryStorage, creditHelpers } from "@/lib/offline-storage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -52,14 +52,34 @@ export default function OfflinePOS() {
   const [lastSale, setLastSale] = useState<any>(null);
   const [isCreditPayment, setIsCreditPayment] = useState(false);
   const [quantityInputs, setQuantityInputs] = useState<{[key: string]: string}>({});
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
+  const [categories, setCategories] = useState<OfflineCategory[]>([]);
 
-  const filteredProducts = products.filter(product => 
-    product.active && (
+  // Load categories
+  useEffect(() => {
+    setCategories(offlineCategoryStorage.getAll());
+  }, []);
+
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.active && (
       !searchQuery || 
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.barcode?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
+    );
+    
+    const matchesCategory = selectedCategoryFilter === "all" || 
+      product.categoryId === selectedCategoryFilter ||
+      (selectedCategoryFilter === "uncategorized" && !product.categoryId);
+    
+    return matchesSearch && matchesCategory;
+  });
+
+  // Get category name by ID
+  const getCategoryName = (categoryId: string | null) => {
+    if (!categoryId) return "Uncategorized";
+    const category = categories.find(c => c.id === categoryId);
+    return category?.name || "Unknown";
+  };
 
   const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
   const discountAmount = (subtotal * discount) / 100;
@@ -266,15 +286,31 @@ export default function OfflinePOS() {
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Products Section */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search products or scan barcode..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          {/* Search and Category Filter */}
+          <div className="flex gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Search products or scan barcode..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={selectedCategoryFilter} onValueChange={setSelectedCategoryFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="uncategorized">Uncategorized</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Products Grid */}
@@ -296,11 +332,9 @@ export default function OfflinePOS() {
                         {product.quantity}
                       </Badge>
                     </div>
-                    {product.category && (
-                      <Badge variant="outline" className="text-xs">
-                        {product.category}
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className="text-xs">
+                      {getCategoryName(product.categoryId)}
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>
