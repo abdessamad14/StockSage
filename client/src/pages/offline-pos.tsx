@@ -74,6 +74,7 @@ export default function OfflinePOS() {
   const [quantityInputs, setQuantityInputs] = useState<{[key: string]: string}>({});
   const [priceInputs, setPriceInputs] = useState<{[key: string]: string}>({});
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
+  const [pricingTier, setPricingTier] = useState<'retail' | 'semi-wholesale' | 'wholesale'>('retail');
   const [categories, setCategories] = useState<OfflineCategory[]>([]);
   const [discount, setDiscount] = useState(0);
   const [paidAmount, setPaidAmount] = useState(0);
@@ -102,6 +103,32 @@ export default function OfflinePOS() {
       loadSalesPeriodData();
     }
   }, [cart.length === 0 && lastSale]); // Trigger when cart is cleared after sale
+
+  // Get price based on selected pricing tier
+  const getPriceForTier = (product: OfflineProduct, tier: 'retail' | 'semi-wholesale' | 'wholesale'): number => {
+    switch (tier) {
+      case 'semi-wholesale':
+        return product.semiWholesalePrice || product.sellingPrice;
+      case 'wholesale':
+        return product.wholesalePrice || product.semiWholesalePrice || product.sellingPrice;
+      default:
+        return product.sellingPrice;
+    }
+  };
+
+  // Update cart prices when pricing tier changes
+  useEffect(() => {
+    setCart(prevCart => 
+      prevCart.map(item => {
+        const newPrice = getPriceForTier(item.product, pricingTier);
+        return {
+          ...item,
+          unitPrice: newPrice,
+          totalPrice: newPrice * item.quantity
+        };
+      })
+    );
+  }, [pricingTier]);
 
   // Sales period handlers
   const handleOpenSalesPeriod = () => {
@@ -180,6 +207,7 @@ export default function OfflinePOS() {
 
   const addToCart = (product: OfflineProduct) => {
     const existingItem = cart.find(item => item.product.id === product.id);
+    const tierPrice = getPriceForTier(product, pricingTier);
     
     if (existingItem) {
       updateQuantity(product.id, existingItem.quantity + 1);
@@ -187,8 +215,8 @@ export default function OfflinePOS() {
       const newItem: CartItem = {
         product,
         quantity: 1,
-        unitPrice: product.sellingPrice,
-        totalPrice: product.sellingPrice
+        unitPrice: tierPrice,
+        totalPrice: tierPrice
       };
       setCart([...cart, newItem]);
     }
@@ -400,6 +428,20 @@ export default function OfflinePOS() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Point of Sale</h1>
         <div className="flex items-center gap-4">
+          {/* Pricing Tier Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Pricing:</span>
+            <Select value={pricingTier} onValueChange={(value: 'retail' | 'semi-wholesale' | 'wholesale') => setPricingTier(value)}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="retail">Retail</SelectItem>
+                <SelectItem value="semi-wholesale">Semi-Wholesale</SelectItem>
+                <SelectItem value="wholesale">Wholesale</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Badge variant="outline" className="text-sm">
             Items: {cart.reduce((sum, item) => sum + item.quantity, 0)}
           </Badge>
@@ -522,16 +564,30 @@ export default function OfflinePOS() {
                   <div className="space-y-2">
                     <h3 className="font-medium text-sm truncate">{product.name}</h3>
                     <div className="flex items-center justify-between">
-                      <span className="text-lg font-bold text-green-600">
-                        ${product.sellingPrice.toFixed(2)}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-lg font-bold text-green-600">
+                          ${getPriceForTier(product, pricingTier).toFixed(2)}
+                        </span>
+                        {pricingTier !== 'retail' && (
+                          <span className="text-xs text-gray-500 line-through">
+                            ${product.sellingPrice.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
                       <Badge variant={product.quantity > 0 ? "default" : "destructive"} className="text-xs">
                         {product.quantity}
                       </Badge>
                     </div>
-                    <Badge variant="outline" className="text-xs">
-                      {getCategoryName(product.categoryId)}
-                    </Badge>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-xs">
+                        {getCategoryName(product.categoryId)}
+                      </Badge>
+                      {pricingTier !== 'retail' && (
+                        <Badge variant="secondary" className="text-xs">
+                          {pricingTier === 'semi-wholesale' ? 'Semi-W' : 'Wholesale'}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

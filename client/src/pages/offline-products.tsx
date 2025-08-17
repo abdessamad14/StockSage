@@ -24,6 +24,8 @@ const productSchema = z.object({
   categoryId: z.string().optional(),
   costPrice: z.number().min(0, "Cost price must be positive"),
   sellingPrice: z.number().min(0, "Selling price must be positive"),
+  semiWholesalePrice: z.number().min(0, "Semi-wholesale price must be positive").optional(),
+  wholesalePrice: z.number().min(0, "Wholesale price must be positive").optional(),
   quantity: z.number().min(0, "Quantity must be positive"),
   minStockLevel: z.number().min(0, "Min stock level must be positive").optional(),
   unit: z.string().optional(),
@@ -117,6 +119,8 @@ export default function OfflineProducts() {
         description: data.description || null,
         minStockLevel: data.minStockLevel || null,
         unit: data.unit || null,
+        semiWholesalePrice: data.semiWholesalePrice || null,
+        wholesalePrice: data.wholesalePrice || null,
         image: null
       });
       toast({
@@ -140,7 +144,13 @@ export default function OfflineProducts() {
     try {
       updateProduct(editingProduct.id, {
         ...data,
-        categoryId: data.categoryId === "none" ? null : data.categoryId || null
+        categoryId: data.categoryId === "none" ? null : data.categoryId || null,
+        barcode: data.barcode || null,
+        description: data.description || null,
+        minStockLevel: data.minStockLevel || null,
+        unit: data.unit || null,
+        semiWholesalePrice: data.semiWholesalePrice || null,
+        wholesalePrice: data.wholesalePrice || null
       });
       toast({
         title: "Success",
@@ -532,13 +542,53 @@ export default function OfflineProducts() {
                   name="sellingPrice"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Selling Price</FormLabel>
+                      <FormLabel>Retail Price</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
                           step="0.01"
                           {...field}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Pricing Tiers */}
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={productForm.control}
+                  name="semiWholesalePrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Semi-Wholesale Price (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={productForm.control}
+                  name="wholesalePrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Wholesale Price (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
                         />
                       </FormControl>
                       <FormMessage />
