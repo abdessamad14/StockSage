@@ -15,26 +15,27 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { 
   ShoppingCart, 
+  Search, 
   Plus, 
   Minus, 
-  Search, 
-  User, 
+  Trash2, 
+  Calculator, 
   CreditCard, 
-  Banknote, 
   Receipt, 
+  DollarSign, 
+  Clock, 
+  AlertCircle, 
+  Info,
   X,
   Filter,
   Grid3X3,
   List,
   Package,
   Calendar,
-  DollarSign,
   TrendingUp,
-  Clock,
   PlayCircle,
   StopCircle,
-  Trash2,
-  Calculator
+  User
 } from "lucide-react";
 
 interface CartItem {
@@ -76,6 +77,8 @@ export default function OfflinePOS() {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [pricingTier, setPricingTier] = useState<'retail' | 'semi-wholesale' | 'wholesale'>('retail');
   const [categories, setCategories] = useState<OfflineCategory[]>([]);
+  const [showPriceInfo, setShowPriceInfo] = useState(false);
+  const [selectedProductInfo, setSelectedProductInfo] = useState<OfflineProduct | null>(null);
   const [discount, setDiscount] = useState(0);
   const [paidAmount, setPaidAmount] = useState(0);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -129,6 +132,13 @@ export default function OfflinePOS() {
       })
     );
   }, [pricingTier]);
+
+
+  // Price info handlers
+  const showProductPriceInfo = (product: OfflineProduct) => {
+    setSelectedProductInfo(product);
+    setShowPriceInfo(true);
+  };
 
   // Sales period handlers
   const handleOpenSalesPeriod = () => {
@@ -197,6 +207,26 @@ export default function OfflinePOS() {
     const category = categories.find(c => c.id === categoryId);
     return category?.name || "Unknown";
   };
+
+  // Keyboard shortcut handler for price info
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === 'i' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        // Only trigger if not typing in an input field
+        const target = event.target as HTMLElement;
+        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+          event.preventDefault();
+          if (filteredProducts.length > 0) {
+            setSelectedProductInfo(filteredProducts[0]);
+            setShowPriceInfo(true);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [filteredProducts]);
 
   const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
   const discountAmount = (subtotal * discount) / 100;
@@ -574,9 +604,22 @@ export default function OfflinePOS() {
                           </span>
                         )}
                       </div>
-                      <Badge variant={product.quantity > 0 ? "default" : "destructive"} className="text-xs">
-                        {product.quantity}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 hover:bg-blue-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            showProductPriceInfo(product);
+                          }}
+                        >
+                          <Info className="w-3 h-3 text-blue-600" />
+                        </Button>
+                        <Badge variant={product.quantity > 0 ? "default" : "destructive"} className="text-xs">
+                          {product.quantity}
+                        </Badge>
+                      </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <Badge variant="outline" className="text-xs">
@@ -1084,6 +1127,88 @@ export default function OfflinePOS() {
             <Button onClick={handleCloseSalesPeriod} className="bg-red-600 hover:bg-red-700">
               Close Period
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Product Price Information Modal */}
+      <Dialog open={showPriceInfo} onOpenChange={setShowPriceInfo}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Info className="w-5 h-5" />
+              Product Price Information
+            </DialogTitle>
+          </DialogHeader>
+          {selectedProductInfo && (
+            <div className="space-y-4">
+              <div className="text-center">
+                <h3 className="font-semibold text-lg">{selectedProductInfo.name}</h3>
+                <Badge variant="outline" className="mt-1">
+                  {getCategoryName(selectedProductInfo.categoryId)}
+                </Badge>
+              </div>
+              
+              <Separator />
+              
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-red-600">Cost Price:</span>
+                  <span className="font-bold">${selectedProductInfo.costPrice.toFixed(2)}</span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-green-600">Retail Price:</span>
+                  <span className="font-bold">${selectedProductInfo.sellingPrice.toFixed(2)}</span>
+                </div>
+                
+                {selectedProductInfo.semiWholesalePrice && (
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-blue-600">Semi-Wholesale:</span>
+                    <span className="font-bold">${selectedProductInfo.semiWholesalePrice.toFixed(2)}</span>
+                  </div>
+                )}
+                
+                {selectedProductInfo.wholesalePrice && (
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-purple-600">Wholesale:</span>
+                    <span className="font-bold">${selectedProductInfo.wholesalePrice.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+              
+              <Separator />
+              
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Stock Quantity:</span>
+                  <Badge variant={selectedProductInfo.quantity > 0 ? "default" : "destructive"}>
+                    {selectedProductInfo.quantity}
+                  </Badge>
+                </div>
+                
+                {selectedProductInfo.barcode && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Barcode:</span>
+                    <span className="text-sm font-mono">{selectedProductInfo.barcode}</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Profit Margin:</span>
+                  <span className="text-sm font-semibold text-green-600">
+                    {(((selectedProductInfo.sellingPrice - selectedProductInfo.costPrice) / selectedProductInfo.costPrice) * 100).toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+              
+              <div className="text-xs text-gray-500 text-center mt-4">
+                Press 'i' key to quickly view price info for the first product
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setShowPriceInfo(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
