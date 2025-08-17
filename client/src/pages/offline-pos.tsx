@@ -4,7 +4,7 @@ import { useOfflineCustomers } from "@/hooks/use-offline-customers";
 import { useOfflineSales } from "@/hooks/use-offline-sales";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { OfflineProduct, OfflineCustomer, OfflineCategory, offlineCategoryStorage, creditHelpers } from "@/lib/offline-storage";
+import { OfflineProduct, OfflineCustomer, OfflineCategory, OfflineSalesPeriod, offlineCategoryStorage, creditHelpers, salesPeriodHelpers, offlineSalesPeriodStorage } from "@/lib/offline-storage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,16 +15,26 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { 
   ShoppingCart, 
-  Search, 
   Plus, 
   Minus, 
-  Trash2, 
-  Calculator, 
+  Search, 
+  User, 
   CreditCard, 
+  Banknote, 
+  Receipt, 
+  X,
+  Filter,
+  Grid3X3,
+  List,
+  Package,
+  Calendar,
   DollarSign,
-  Receipt,
-  User,
-  Package
+  TrendingUp,
+  Clock,
+  PlayCircle,
+  StopCircle,
+  Trash2,
+  Calculator
 } from "lucide-react";
 
 interface CartItem {
@@ -44,21 +54,100 @@ export default function OfflinePOS() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<OfflineCustomer | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [paidAmount, setPaidAmount] = useState(0);
-  const [discount, setDiscount] = useState(0);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'credit'>('cash');
+  const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
+  const [amountPaid, setAmountPaid] = useState('');
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [lastSale, setLastSale] = useState<any>(null);
+  const [currentSalesPeriod, setCurrentSalesPeriod] = useState<OfflineSalesPeriod | null>(null);
+  const [todaysSalesData, setTodaysSalesData] = useState({
+    totalSales: 0,
+    totalTransactions: 0,
+    averageTransaction: 0
+  });
+  const [showOpenPeriodDialog, setShowOpenPeriodDialog] = useState(false);
+  const [showClosePeriodDialog, setShowClosePeriodDialog] = useState(false);
+  const [openingBalance, setOpeningBalance] = useState('');
+  const [closingBalance, setClosingBalance] = useState('');
+  const [periodNotes, setPeriodNotes] = useState('');
   const [isCreditPayment, setIsCreditPayment] = useState(false);
   const [quantityInputs, setQuantityInputs] = useState<{[key: string]: string}>({});
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [categories, setCategories] = useState<OfflineCategory[]>([]);
+  const [discount, setDiscount] = useState(0);
+  const [paidAmount, setPaidAmount] = useState(0);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
 
-  // Load categories
+  // Load categories and sales period data
   useEffect(() => {
     setCategories(offlineCategoryStorage.getAll());
+    loadSalesPeriodData();
   }, []);
+
+  // Load sales period data
+  const loadSalesPeriodData = () => {
+    const currentPeriod = offlineSalesPeriodStorage.getCurrentPeriod();
+    setCurrentSalesPeriod(currentPeriod);
+    
+    const todaysData = salesPeriodHelpers.getTodaysSalesData();
+    setTodaysSalesData(todaysData);
+  };
+
+  // Update sales period stats when a sale is made
+  useEffect(() => {
+    if (currentSalesPeriod) {
+      salesPeriodHelpers.updatePeriodStats(currentSalesPeriod.id);
+      loadSalesPeriodData();
+    }
+  }, [cart.length === 0 && lastSale]); // Trigger when cart is cleared after sale
+
+  // Sales period handlers
+  const handleOpenSalesPeriod = () => {
+    try {
+      const balance = parseFloat(openingBalance) || 0;
+      const newPeriod = salesPeriodHelpers.openSalesPeriod(balance, periodNotes || null);
+      setCurrentSalesPeriod(newPeriod);
+      setShowOpenPeriodDialog(false);
+      setOpeningBalance('');
+      setPeriodNotes('');
+      loadSalesPeriodData();
+      toast({
+        title: "Sales Period Opened",
+        description: `Daily sales tracking started with opening balance of $${balance.toFixed(2)}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to open sales period",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCloseSalesPeriod = () => {
+    if (!currentSalesPeriod) return;
+    
+    try {
+      const balance = parseFloat(closingBalance) || undefined;
+      salesPeriodHelpers.closeSalesPeriod(currentSalesPeriod.id, balance, periodNotes || undefined);
+      setCurrentSalesPeriod(null);
+      setShowClosePeriodDialog(false);
+      setClosingBalance('');
+      setPeriodNotes('');
+      loadSalesPeriodData();
+      toast({
+        title: "Sales Period Closed",
+        description: "Daily sales period has been closed successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to close sales period",
+        variant: "destructive",
+      });
+    }
+  };
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.active && (
@@ -282,6 +371,77 @@ export default function OfflinePOS() {
           </Badge>
         </div>
       </div>
+
+      {/* Daily Sales Summary */}
+      <Card className="mb-6 border-2 border-blue-100">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-blue-600" />
+                <div>
+                  <h3 className="font-semibold text-lg">Today's Sales</h3>
+                  <p className="text-sm text-gray-600">{new Date().toLocaleDateString()}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-6">
+                <div className="text-center">
+                  <div className="flex items-center gap-1">
+                    <DollarSign className="w-4 h-4 text-green-600" />
+                    <span className="text-2xl font-bold text-green-600">
+                      ${todaysSalesData.totalSales.toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">Total Sales</p>
+                </div>
+                
+                <div className="text-center">
+                  <div className="flex items-center gap-1">
+                    <TrendingUp className="w-4 h-4 text-blue-600" />
+                    <span className="text-2xl font-bold text-blue-600">
+                      {todaysSalesData.totalTransactions}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">Transactions</p>
+                </div>
+                
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              {currentSalesPeriod ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium text-green-700">Sales Period Open</span>
+                    <div className="text-xs text-gray-500">
+                      Since {new Date(currentSalesPeriod.openedAt).toLocaleTimeString()}
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowClosePeriodDialog(true)}
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    <StopCircle className="w-4 h-4 mr-1" />
+                    Close Period
+                  </Button>
+                </div>
+              ) : (
+                <Button 
+                  onClick={() => setShowOpenPeriodDialog(true)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <PlayCircle className="w-4 h-4 mr-2" />
+                  Open Sales Period
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Products Section */}
@@ -593,7 +753,7 @@ export default function OfflinePOS() {
                 <>
                   <div>
                     <label className="text-sm font-medium">Payment Method</label>
-                    <Select value={paymentMethod} onValueChange={(value) => {
+                    <Select value={paymentMethod} onValueChange={(value: 'cash' | 'card' | 'credit') => {
                       setPaymentMethod(value);
                       if (value === "credit") {
                         setIsCreditPayment(true);
@@ -702,6 +862,101 @@ export default function OfflinePOS() {
               setIsReceiptOpen(false);
             }}>
               Print Receipt
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Open Sales Period Dialog */}
+      <Dialog open={showOpenPeriodDialog} onOpenChange={setShowOpenPeriodDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Open Sales Period</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Opening Balance</label>
+              <Input
+                type="number"
+                step="0.01"
+                value={openingBalance}
+                onChange={(e) => setOpeningBalance(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Notes (Optional)</label>
+              <Input
+                value={periodNotes}
+                onChange={(e) => setPeriodNotes(e.target.value)}
+                placeholder="Opening notes..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOpenPeriodDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleOpenSalesPeriod} className="bg-green-600 hover:bg-green-700">
+              Open Period
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Close Sales Period Dialog */}
+      <Dialog open={showClosePeriodDialog} onOpenChange={setShowClosePeriodDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Close Sales Period</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium mb-2">Period Summary</h4>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span>Opening Balance:</span>
+                  <span>${currentSalesPeriod?.openingBalance.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Sales:</span>
+                  <span>${currentSalesPeriod?.totalSales.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Transactions:</span>
+                  <span>{currentSalesPeriod?.totalTransactions}</span>
+                </div>
+                <div className="flex justify-between font-semibold">
+                  <span>Expected Balance:</span>
+                  <span>${((currentSalesPeriod?.openingBalance || 0) + (currentSalesPeriod?.totalSales || 0)).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Actual Closing Balance</label>
+              <Input
+                type="number"
+                step="0.01"
+                value={closingBalance}
+                onChange={(e) => setClosingBalance(e.target.value)}
+                placeholder={((currentSalesPeriod?.openingBalance || 0) + (currentSalesPeriod?.totalSales || 0)).toFixed(2)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Closing Notes (Optional)</label>
+              <Input
+                value={periodNotes}
+                onChange={(e) => setPeriodNotes(e.target.value)}
+                placeholder="Closing notes..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowClosePeriodDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCloseSalesPeriod} className="bg-red-600 hover:bg-red-700">
+              Close Period
             </Button>
           </DialogFooter>
         </DialogContent>
