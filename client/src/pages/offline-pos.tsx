@@ -72,6 +72,7 @@ export default function OfflinePOS() {
   const [periodNotes, setPeriodNotes] = useState('');
   const [isCreditPayment, setIsCreditPayment] = useState(false);
   const [quantityInputs, setQuantityInputs] = useState<{[key: string]: string}>({});
+  const [priceInputs, setPriceInputs] = useState<{[key: string]: string}>({});
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [categories, setCategories] = useState<OfflineCategory[]>([]);
   const [discount, setDiscount] = useState(0);
@@ -235,18 +236,54 @@ export default function OfflinePOS() {
   };
 
   const handleQuantityInputSubmit = (productId: string, value: string) => {
-    const evaluatedQuantity = evaluateQuantityExpression(value);
+    const quantity = parseInt(value) || 1;
+    updateQuantity(productId, quantity);
+    setQuantityInputs(prev => ({ ...prev, [productId]: '' }));
+  };
+
+  const handlePriceInputChange = (productId: string, value: string) => {
+    setPriceInputs(prev => ({ ...prev, [productId]: value }));
+  };
+
+  const handlePriceInputSubmit = (productId: string, value: string) => {
+    const newPrice = parseFloat(value);
+    const product = products.find(p => p.id === productId);
     
-    if (!isNaN(evaluatedQuantity)) {
-      updateQuantity(productId, evaluatedQuantity);
-      setQuantityInputs(prev => ({ ...prev, [productId]: evaluatedQuantity.toString() }));
-    } else {
-      // Reset to current quantity if invalid
-      const currentItem = cart.find(item => item.product.id === productId);
-      if (currentItem) {
-        setQuantityInputs(prev => ({ ...prev, [productId]: currentItem.quantity.toString() }));
-      }
+    if (!product || isNaN(newPrice)) {
+      setPriceInputs(prev => ({ ...prev, [productId]: '' }));
+      return;
     }
+
+    // Validate: price cannot be less than cost price
+    if (newPrice < product.costPrice) {
+      toast({
+        title: "Invalid Price",
+        description: `Price cannot be less than cost price ($${product.costPrice.toFixed(2)})`,
+        variant: "destructive",
+      });
+      setPriceInputs(prev => ({ ...prev, [productId]: '' }));
+      return;
+    }
+
+    // Update the cart item price
+    setCart(prevCart => 
+      prevCart.map(item => 
+        item.product.id === productId 
+          ? { 
+              ...item, 
+              unitPrice: newPrice, 
+              totalPrice: newPrice * item.quantity 
+            }
+          : item
+      )
+    );
+    
+    setPriceInputs(prev => ({ ...prev, [productId]: '' }));
+    
+    toast({
+      title: "Price Updated",
+      description: `${product.name} price updated to $${newPrice.toFixed(2)}`,
+    });
   };
 
   const removeFromCart = (productId: string) => {
@@ -563,47 +600,80 @@ export default function OfflinePOS() {
               {/* Cart Items */}
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {cart.map((item) => (
-                  <div key={item.product.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{item.product.name}</p>
-                      <p className="text-xs text-gray-600">${item.unitPrice.toFixed(2)} each</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                      >
-                        <Minus className="w-3 h-3" />
-                      </Button>
-                      <Input
-                        type="text"
-                        value={quantityInputs[item.product.id] || item.quantity.toString()}
-                        onChange={(e) => handleQuantityInputChange(item.product.id, e.target.value)}
-                        onBlur={(e) => handleQuantityInputSubmit(item.product.id, e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleQuantityInputSubmit(item.product.id, e.currentTarget.value);
-                            e.currentTarget.blur();
-                          }
-                        }}
-                        className="w-16 text-center text-sm"
-                        placeholder="qty"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                      >
-                        <Plus className="w-3 h-3" />
-                      </Button>
+                  <div key={item.product.id} className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{item.product.name}</p>
+                        <p className="text-xs text-gray-500">Cost: ${item.product.costPrice.toFixed(2)}</p>
+                      </div>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => removeFromCart(item.product.id)}
+                        className="text-red-500 hover:text-red-700"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <X className="w-4 h-4" />
                       </Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between gap-2">
+                      {/* Quantity Controls */}
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                        >
+                          <Minus className="w-3 h-3" />
+                        </Button>
+                        <Input
+                          type="text"
+                          value={quantityInputs[item.product.id] || item.quantity.toString()}
+                          onChange={(e) => handleQuantityInputChange(item.product.id, e.target.value)}
+                          onBlur={(e) => handleQuantityInputSubmit(item.product.id, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleQuantityInputSubmit(item.product.id, e.currentTarget.value);
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          className="w-16 text-center text-sm"
+                          placeholder="qty"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </Button>
+                      </div>
+
+                      {/* Price Controls */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-gray-500">@</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min={item.product.costPrice}
+                          value={priceInputs[item.product.id] || item.unitPrice.toFixed(2)}
+                          onChange={(e) => handlePriceInputChange(item.product.id, e.target.value)}
+                          onBlur={(e) => handlePriceInputSubmit(item.product.id, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handlePriceInputSubmit(item.product.id, e.currentTarget.value);
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          className="w-20 text-center text-sm"
+                          placeholder="price"
+                        />
+                      </div>
+
+                      {/* Total */}
+                      <div className="text-right">
+                        <p className="font-medium text-sm">${item.totalPrice.toFixed(2)}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
