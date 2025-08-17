@@ -15,7 +15,9 @@ export interface OfflineProduct {
   description: string | null;
   categoryId: string | null;
   costPrice: number;
-  sellingPrice: number;
+  sellingPrice: number; // Normal retail price
+  semiWholesalePrice: number | null; // Semi-wholesale price
+  wholesalePrice: number | null; // Wholesale price
   quantity: number;
   minStockLevel: number | null;
   unit: string | null;
@@ -538,30 +540,36 @@ export function initializeSampleData() {
       active: true
     });
 
+    const categories = [electronicsCategory, booksCategory];
+
     offlineProductStorage.create({
-      name: 'Sample Product 1',
-      barcode: '123456789',
-      description: 'A sample product for testing',
-      categoryId: electronicsCategory.id,
-      costPrice: 50,
-      sellingPrice: 75,
-      quantity: 100,
+      name: "Sample Product 1",
+      barcode: "123456789",
+      description: "A sample product for testing",
+      categoryId: categories[0].id,
+      costPrice: 50.00,
+      sellingPrice: 75.00,
+      semiWholesalePrice: 70.00,
+      wholesalePrice: 65.00,
+      quantity: 50,
       minStockLevel: 10,
-      unit: 'pcs',
+      unit: "pieces",
       image: null,
       active: true
     });
 
     offlineProductStorage.create({
-      name: 'Sample Product 2',
-      barcode: '987654321',
-      description: 'Another sample product',
-      categoryId: booksCategory.id,
-      costPrice: 20,
-      sellingPrice: 30,
-      quantity: 50,
+      name: "Sample Product 2",
+      barcode: "987654321",
+      description: "Another sample product",
+      categoryId: categories[1].id,
+      costPrice: 20.00,
+      sellingPrice: 30.00,
+      semiWholesalePrice: 28.00,
+      wholesalePrice: 25.00,
+      quantity: 0,
       minStockLevel: 5,
-      unit: 'pcs',
+      unit: "pieces",
       image: null,
       active: true
     });
