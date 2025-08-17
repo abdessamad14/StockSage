@@ -106,6 +106,19 @@ export interface OfflineProductCategory {
   active: boolean;
 }
 
+export interface OfflineSalesPeriod {
+  id: string;
+  date: string; // YYYY-MM-DD format
+  openedAt: Date;
+  closedAt: Date | null;
+  openingBalance: number;
+  closingBalance: number | null;
+  totalSales: number;
+  totalTransactions: number;
+  status: 'open' | 'closed';
+  notes: string | null;
+}
+
 export interface OfflineSettings {
   id: string;
   businessName: string;
@@ -138,6 +151,7 @@ const STORAGE_KEYS = {
   CATEGORIES: 'stocksage_categories',
   SETTINGS: 'stocksage_settings',
   CREDIT_TRANSACTIONS: 'stocksage_credit_transactions',
+  SALES_PERIODS: 'stocksage_sales_periods',
   LAST_SYNC: 'stocksage_last_sync',
 } as const;
 
@@ -615,6 +629,136 @@ export const lowStockHelpers = {
   isLowStockAlertsEnabled: () => {
     const settings = offlineSettingsStorage.get();
     return settings?.enableLowStockAlerts ?? true;
+  }
+};
+
+// Sales Period storage operations
+export const offlineSalesPeriodStorage = {
+  getAll: (): OfflineSalesPeriod[] => {
+    return getFromStorage<OfflineSalesPeriod>(STORAGE_KEYS.SALES_PERIODS);
+  },
+  
+  getCurrentPeriod: (): OfflineSalesPeriod | null => {
+    const periods = getFromStorage<OfflineSalesPeriod>(STORAGE_KEYS.SALES_PERIODS);
+    return periods.find(p => p.status === 'open') || null;
+  },
+  
+  getTodaysPeriod: (): OfflineSalesPeriod | null => {
+    const today = new Date().toISOString().split('T')[0];
+    const periods = getFromStorage<OfflineSalesPeriod>(STORAGE_KEYS.SALES_PERIODS);
+    return periods.find(p => p.date === today) || null;
+  },
+  
+  create: (period: Omit<OfflineSalesPeriod, 'id'>): OfflineSalesPeriod => {
+    const periods = getFromStorage<OfflineSalesPeriod>(STORAGE_KEYS.SALES_PERIODS);
+    const newPeriod: OfflineSalesPeriod = { ...period, id: generateId() };
+    periods.push(newPeriod);
+    saveToStorage(STORAGE_KEYS.SALES_PERIODS, periods);
+    return newPeriod;
+  },
+  
+  update: (id: string, updates: Partial<OfflineSalesPeriod>): OfflineSalesPeriod | null => {
+    const periods = getFromStorage<OfflineSalesPeriod>(STORAGE_KEYS.SALES_PERIODS);
+    const index = periods.findIndex(p => p.id === id);
+    if (index === -1) return null;
+    
+    periods[index] = { ...periods[index], ...updates };
+    saveToStorage(STORAGE_KEYS.SALES_PERIODS, periods);
+    return periods[index];
+  }
+};
+
+// Sales Period helpers
+export const salesPeriodHelpers = {
+  openSalesPeriod: (openingBalance: number = 0, notes: string | null = null): OfflineSalesPeriod => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Close any existing open period
+    const currentPeriod = offlineSalesPeriodStorage.getCurrentPeriod();
+    if (currentPeriod) {
+      salesPeriodHelpers.closeSalesPeriod(currentPeriod.id);
+    }
+    
+    return offlineSalesPeriodStorage.create({
+      date: today,
+      openedAt: new Date(),
+      closedAt: null,
+      openingBalance,
+      closingBalance: null,
+      totalSales: 0,
+      totalTransactions: 0,
+      status: 'open',
+      notes
+    });
+  },
+  
+  closeSalesPeriod: (periodId: string, closingBalance?: number, notes?: string): OfflineSalesPeriod | null => {
+    const period = offlineSalesPeriodStorage.getAll().find(p => p.id === periodId);
+    if (!period || period.status === 'closed') return null;
+    
+    // Calculate total sales for the period
+    const sales = offlineSaleStorage.getAll();
+    const periodStart = new Date(period.openedAt);
+    const periodEnd = new Date();
+    
+    const periodSales = sales.filter(sale => {
+      const saleDate = new Date(sale.date);
+      return saleDate >= periodStart && saleDate <= periodEnd;
+    });
+    
+    const totalSales = periodSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const totalTransactions = periodSales.length;
+    
+    return offlineSalesPeriodStorage.update(periodId, {
+      closedAt: new Date(),
+      closingBalance: closingBalance || (period.openingBalance + totalSales),
+      totalSales,
+      totalTransactions,
+      status: 'closed',
+      notes: notes || period.notes
+    });
+  },
+  
+  getTodaysSalesData: () => {
+    const today = new Date().toISOString().split('T')[0];
+    const sales = offlineSaleStorage.getAll();
+    const todaysSales = sales.filter(sale => {
+      const saleDate = new Date(sale.date).toISOString().split('T')[0];
+      return saleDate === today;
+    });
+    
+    const totalSales = todaysSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const totalTransactions = todaysSales.length;
+    const averageTransaction = totalTransactions > 0 ? totalSales / totalTransactions : 0;
+    
+    return {
+      totalSales,
+      totalTransactions,
+      averageTransaction,
+      sales: todaysSales
+    };
+  },
+  
+  updatePeriodStats: (periodId: string) => {
+    const period = offlineSalesPeriodStorage.getAll().find(p => p.id === periodId);
+    if (!period || period.status === 'closed') return;
+    
+    const sales = offlineSaleStorage.getAll();
+    const periodStart = new Date(period.openedAt);
+    const now = new Date();
+    
+    const periodSales = sales.filter(sale => {
+      const saleDate = new Date(sale.date);
+      return saleDate >= periodStart && saleDate <= now;
+    });
+    
+    const totalSales = periodSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const totalTransactions = periodSales.length;
+    
+    offlineSalesPeriodStorage.update(periodId, {
+      totalSales,
+      totalTransactions
+    });
   }
 };
 
