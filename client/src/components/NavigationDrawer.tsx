@@ -11,7 +11,8 @@ import {
   ClipboardList, 
   BarChart2, 
   Settings, 
-  Receipt
+  Receipt,
+  Warehouse
 } from 'lucide-react';
 
 interface NavigationDrawerProps {
@@ -83,6 +84,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
               <span>{t('inventory')}</span>
             </Link>
           )}
+          
           
           {/* Customers */}
           {canManageCustomers && (
