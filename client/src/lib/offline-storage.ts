@@ -1,10 +1,19 @@
 // Types for offline storage - simplified and self-contained
+export interface OfflineCategory {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  active: boolean;
+  createdAt: Date;
+}
+
 export interface OfflineProduct {
   id: string;
   name: string;
   barcode: string | null;
   description: string | null;
-  category: string | null;
+  categoryId: string | null;
   costPrice: number;
   sellingPrice: number;
   quantity: number;
@@ -154,6 +163,47 @@ function saveToStorage<T>(key: string, data: T[]): void {
     console.error(`Error saving to localStorage key ${key}:`, error);
   }
 }
+
+// Categories
+export const offlineCategoryStorage = {
+  getAll: (): OfflineCategory[] => getFromStorage<OfflineCategory>(STORAGE_KEYS.CATEGORIES),
+  
+  getById: (id: string): OfflineCategory | undefined => {
+    const categories = getFromStorage<OfflineCategory>(STORAGE_KEYS.CATEGORIES);
+    return categories.find(c => c.id === id);
+  },
+  
+  create: (category: Omit<OfflineCategory, 'id' | 'createdAt'>): OfflineCategory => {
+    const categories = getFromStorage<OfflineCategory>(STORAGE_KEYS.CATEGORIES);
+    const newCategory: OfflineCategory = { 
+      ...category, 
+      id: generateId(),
+      createdAt: new Date()
+    };
+    categories.push(newCategory);
+    saveToStorage(STORAGE_KEYS.CATEGORIES, categories);
+    return newCategory;
+  },
+  
+  update: (id: string, updates: Partial<OfflineCategory>): OfflineCategory | null => {
+    const categories = getFromStorage<OfflineCategory>(STORAGE_KEYS.CATEGORIES);
+    const index = categories.findIndex(c => c.id === id);
+    if (index === -1) return null;
+    
+    categories[index] = { ...categories[index], ...updates };
+    saveToStorage(STORAGE_KEYS.CATEGORIES, categories);
+    return categories[index];
+  },
+  
+  delete: (id: string): boolean => {
+    const categories = getFromStorage<OfflineCategory>(STORAGE_KEYS.CATEGORIES);
+    const filteredCategories = categories.filter(c => c.id !== id);
+    if (filteredCategories.length === categories.length) return false;
+    
+    saveToStorage(STORAGE_KEYS.CATEGORIES, filteredCategories);
+    return true;
+  }
+};
 
 // Products
 export const offlineProductStorage = {
@@ -459,31 +509,45 @@ export const creditHelpers = {
 // Initialize with sample data if empty
 export function initializeSampleData() {
   if (offlineProductStorage.getAll().length === 0) {
-    // Add sample products
+    // Create sample categories first
+    const electronicsCategory = offlineCategoryStorage.create({
+      name: 'Electronics',
+      description: 'Electronic devices and accessories',
+      color: '#3B82F6',
+      active: true
+    });
+
+    const booksCategory = offlineCategoryStorage.create({
+      name: 'Books',
+      description: 'Books and educational materials',
+      color: '#10B981',
+      active: true
+    });
+
     offlineProductStorage.create({
       name: 'Sample Product 1',
       barcode: '123456789',
       description: 'A sample product for testing',
-      category: 'Electronics',
+      categoryId: electronicsCategory.id,
       costPrice: 50,
       sellingPrice: 75,
       quantity: 100,
       minStockLevel: 10,
-      unit: 'piece',
+      unit: 'pcs',
       image: null,
       active: true
     });
-    
+
     offlineProductStorage.create({
       name: 'Sample Product 2',
       barcode: '987654321',
       description: 'Another sample product',
-      category: 'Books',
+      categoryId: booksCategory.id,
       costPrice: 20,
       sellingPrice: 30,
       quantity: 50,
       minStockLevel: 5,
-      unit: 'piece',
+      unit: 'pcs',
       image: null,
       active: true
     });

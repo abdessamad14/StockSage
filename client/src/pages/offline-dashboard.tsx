@@ -168,7 +168,7 @@ export default function OfflineDashboard() {
                     <div key={product.id} className="flex justify-between items-center p-3 bg-red-50 rounded">
                       <div>
                         <p className="font-medium">{product.name}</p>
-                        <p className="text-sm text-gray-600">{product.category}</p>
+                        <p className="text-sm text-gray-600">{product.categoryId ? 'Categorized' : 'Uncategorized'}</p>
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-red-600">{product.quantity}</p>
