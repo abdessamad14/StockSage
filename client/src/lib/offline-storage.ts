@@ -8,21 +8,44 @@ export interface OfflineCategory {
   createdAt: Date;
 }
 
+export interface OfflineStockLocation {
+  id: string;
+  name: string;
+  description?: string;
+  address?: string;
+  isPrimary: boolean;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfflineProductStock {
+  productId: string;
+  locationId: string;
+  quantity: number;
+  minStockLevel: number;
+  updatedAt: string;
+}
+
 export interface OfflineProduct {
   id: string;
   name: string;
-  barcode: string | null;
-  description: string | null;
-  categoryId: string | null;
+  barcode?: string;
+  description?: string;
+  categoryId?: string;
   costPrice: number;
-  sellingPrice: number; // Normal retail price
-  semiWholesalePrice: number | null; // Semi-wholesale price
-  wholesalePrice: number | null; // Wholesale price
-  quantity: number;
-  minStockLevel: number | null;
-  unit: string | null;
-  image: string | null;
+  sellingPrice: number;
+  semiWholesalePrice?: number;
+  wholesalePrice?: number;
+  quantity: number; // This will be the primary stock quantity for backward compatibility
+  minStockLevel: number;
+  unit: string;
+  image?: string;
   active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  // Stock quantities per location
+  stockLocations?: { [locationId: string]: number };
 }
 
 export interface OfflineCustomer {
@@ -154,6 +177,8 @@ const STORAGE_KEYS = {
   SETTINGS: 'stocksage_settings',
   CREDIT_TRANSACTIONS: 'stocksage_credit_transactions',
   SALES_PERIODS: 'stocksage_sales_periods',
+  STOCK_LOCATIONS: 'stocksage_stock_locations',
+  PRODUCT_STOCKS: 'stocksage_product_stocks',
   LAST_SYNC: 'stocksage_last_sync',
 } as const;
 
@@ -230,9 +255,14 @@ export const offlineProductStorage = {
     return products.find(p => p.id === id);
   },
   
-  create: (product: Omit<OfflineProduct, 'id'>): OfflineProduct => {
+  create: (product: Omit<OfflineProduct, 'id' | 'createdAt' | 'updatedAt'>): OfflineProduct => {
     const products = getFromStorage<OfflineProduct>(STORAGE_KEYS.PRODUCTS);
-    const newProduct: OfflineProduct = { ...product, id: generateId() };
+    const newProduct: OfflineProduct = { 
+      ...product, 
+      id: generateId(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
     products.push(newProduct);
     saveToStorage(STORAGE_KEYS.PRODUCTS, products);
     return newProduct;
@@ -522,8 +552,64 @@ export const creditHelpers = {
   }
 };
 
-// Initialize with sample data if empty
+// Migration function to move existing product stock to primary location
+function migrateProductStockToPrimary() {
+  const stockLocations = offlineStockLocationStorage.getAll();
+  const primaryLocation = stockLocations.find(location => location.isPrimary);
+  
+  if (!primaryLocation) {
+    console.warn('No primary stock location found for migration');
+    return;
+  }
+
+  const products = offlineProductStorage.getAll();
+  const existingProductStocks = offlineProductStockStorage.getAll();
+
+  products.forEach(product => {
+    // Check if this product already has stock in the primary location
+    const existingStock = existingProductStocks.find(
+      stock => stock.productId === product.id && stock.locationId === primaryLocation.id
+    );
+
+    // If product has quantity but no stock record in primary location, create it
+    if (product.quantity > 0 && !existingStock) {
+      offlineProductStockStorage.upsert({
+        productId: product.id,
+        locationId: primaryLocation.id,
+        quantity: product.quantity,
+        minStockLevel: product.minStockLevel
+      });
+      
+      console.log(`Migrated ${product.quantity} units of "${product.name}" to primary location`);
+    }
+  });
+}
+
 export function initializeSampleData() {
+  // Initialize stock locations first
+  if (offlineStockLocationStorage.getAll().length === 0) {
+    // Create primary stock location
+    offlineStockLocationStorage.create({
+      name: 'Main Store',
+      description: 'Primary store location',
+      address: 'Main Street, City Center',
+      isPrimary: true,
+      active: true
+    });
+
+    // Create additional sample locations
+    offlineStockLocationStorage.create({
+      name: 'Warehouse',
+      description: 'Storage warehouse',
+      address: 'Industrial Zone',
+      isPrimary: false,
+      active: true
+    });
+  }
+
+  // Migrate existing product stock to primary location
+  migrateProductStockToPrimary();
+
   if (offlineProductStorage.getAll().length === 0) {
     // Create sample categories first
     const electronicsCategory = offlineCategoryStorage.create({
@@ -554,7 +640,7 @@ export function initializeSampleData() {
       quantity: 50,
       minStockLevel: 10,
       unit: "pieces",
-      image: null,
+      image: undefined,
       active: true
     });
 
@@ -570,7 +656,7 @@ export function initializeSampleData() {
       quantity: 0,
       minStockLevel: 5,
       unit: "pieces",
-      image: null,
+      image: undefined,
       active: true
     });
   }
@@ -624,10 +710,18 @@ export const lowStockHelpers = {
     const threshold = settings?.lowStockThreshold || 10;
     const products = offlineProductStorage.getAll();
     
-    return products.filter(product => 
-      product.active && 
-      product.quantity <= threshold
-    );
+    return products.filter(product => {
+      if (!product.active) return false;
+      
+      // Check stock across all locations
+      const productStocks = offlineProductStockStorage.getByProduct(product.id);
+      const totalStock = productStocks.reduce((sum, stock) => sum + stock.quantity, 0);
+      
+      // If no location-specific stock exists, use product's base quantity
+      const effectiveStock = totalStock > 0 ? totalStock : product.quantity;
+      
+      return effectiveStock <= (product.minStockLevel || threshold);
+    });
   },
   
   getLowStockCount: () => {
@@ -638,6 +732,167 @@ export const lowStockHelpers = {
     const settings = offlineSettingsStorage.get();
     return settings?.enableLowStockAlerts ?? true;
   }
+};
+
+// Stock Location storage operations
+export const offlineStockLocationStorage = {
+  getAll: (): OfflineStockLocation[] => {
+    return getFromStorage<OfflineStockLocation>(STORAGE_KEYS.STOCK_LOCATIONS);
+  },
+
+  getById: (id: string): OfflineStockLocation | undefined => {
+    const locations = getFromStorage<OfflineStockLocation>(STORAGE_KEYS.STOCK_LOCATIONS);
+    return locations.find(location => location.id === id);
+  },
+
+  getPrimary: (): OfflineStockLocation | undefined => {
+    const locations = getFromStorage<OfflineStockLocation>(STORAGE_KEYS.STOCK_LOCATIONS);
+    return locations.find(location => location.isPrimary && location.active);
+  },
+
+  create: (locationData: Omit<OfflineStockLocation, 'id' | 'createdAt' | 'updatedAt'>): OfflineStockLocation => {
+    const locations = getFromStorage<OfflineStockLocation>(STORAGE_KEYS.STOCK_LOCATIONS);
+    
+    // If this is set as primary, make sure no other location is primary
+    if (locationData.isPrimary) {
+      locations.forEach(location => {
+        if (location.isPrimary) {
+          location.isPrimary = false;
+          location.updatedAt = new Date().toISOString();
+        }
+      });
+    }
+
+    const newLocation: OfflineStockLocation = {
+      ...locationData,
+      id: generateId(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    locations.push(newLocation);
+    saveToStorage(STORAGE_KEYS.STOCK_LOCATIONS, locations);
+    return newLocation;
+  },
+
+  update: (id: string, updates: Partial<Omit<OfflineStockLocation, 'id' | 'createdAt'>>): OfflineStockLocation | null => {
+    const locations = getFromStorage<OfflineStockLocation>(STORAGE_KEYS.STOCK_LOCATIONS);
+    const index = locations.findIndex(location => location.id === id);
+    
+    if (index === -1) return null;
+
+    // If this is being set as primary, make sure no other location is primary
+    if (updates.isPrimary) {
+      locations.forEach(location => {
+        if (location.id !== id && location.isPrimary) {
+          location.isPrimary = false;
+          location.updatedAt = new Date().toISOString();
+        }
+      });
+    }
+
+    locations[index] = {
+      ...locations[index],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    saveToStorage(STORAGE_KEYS.STOCK_LOCATIONS, locations);
+    return locations[index];
+  },
+
+  delete: (id: string): boolean => {
+    const locations = getFromStorage<OfflineStockLocation>(STORAGE_KEYS.STOCK_LOCATIONS);
+    const location = locations.find(l => l.id === id);
+    
+    // Don't allow deleting the primary location
+    if (location?.isPrimary) {
+      return false;
+    }
+
+    const filteredLocations = locations.filter(location => location.id !== id);
+    saveToStorage(STORAGE_KEYS.STOCK_LOCATIONS, filteredLocations);
+    
+    // Also remove all product stocks for this location
+    const productStocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    const filteredStocks = productStocks.filter(stock => stock.locationId !== id);
+    saveToStorage(STORAGE_KEYS.PRODUCT_STOCKS, filteredStocks);
+    
+    return filteredLocations.length !== locations.length;
+  },
+};
+
+// Product Stock storage operations
+export const offlineProductStockStorage = {
+  getAll: (): OfflineProductStock[] => {
+    return getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+  },
+
+  getByProduct: (productId: string): OfflineProductStock[] => {
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    return stocks.filter(stock => stock.productId === productId);
+  },
+
+  getByLocation: (locationId: string): OfflineProductStock[] => {
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    return stocks.filter(stock => stock.locationId === locationId);
+  },
+
+  getByProductAndLocation: (productId: string, locationId: string): OfflineProductStock | undefined => {
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    return stocks.find(stock => stock.productId === productId && stock.locationId === locationId);
+  },
+
+  upsert: (stockData: Omit<OfflineProductStock, 'updatedAt'>): OfflineProductStock => {
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    const existingIndex = stocks.findIndex(
+      stock => stock.productId === stockData.productId && stock.locationId === stockData.locationId
+    );
+
+    const newStock: OfflineProductStock = {
+      ...stockData,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (existingIndex >= 0) {
+      stocks[existingIndex] = newStock;
+    } else {
+      stocks.push(newStock);
+    }
+
+    saveToStorage(STORAGE_KEYS.PRODUCT_STOCKS, stocks);
+    return newStock;
+  },
+
+  updateQuantity: (productId: string, locationId: string, quantity: number): OfflineProductStock | null => {
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    const index = stocks.findIndex(
+      stock => stock.productId === productId && stock.locationId === locationId
+    );
+
+    if (index === -1) return null;
+
+    stocks[index] = {
+      ...stocks[index],
+      quantity,
+      updatedAt: new Date().toISOString(),
+    };
+
+    saveToStorage(STORAGE_KEYS.PRODUCT_STOCKS, stocks);
+    return stocks[index];
+  },
+
+  deleteByProduct: (productId: string): void => {
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    const filteredStocks = stocks.filter(stock => stock.productId !== productId);
+    saveToStorage(STORAGE_KEYS.PRODUCT_STOCKS, filteredStocks);
+  },
+
+  deleteByLocation: (locationId: string): void => {
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    const filteredStocks = stocks.filter(stock => stock.locationId !== locationId);
+    saveToStorage(STORAGE_KEYS.PRODUCT_STOCKS, filteredStocks);
+  },
 };
 
 // Sales Period storage operations

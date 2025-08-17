@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useOfflineProducts } from "@/hooks/use-offline-products";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { OfflineProduct } from "@/lib/offline-storage";
+import { 
+  OfflineProduct, 
+  OfflineStockLocation, 
+  offlineStockLocationStorage,
+  offlineProductStockStorage 
+} from "@/lib/offline-storage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,8 +29,14 @@ import {
   TrendingDown, 
   Edit,
   Plus,
-  Minus
+  Minus,
+  Warehouse,
+  Building2,
+  Settings,
+  Trash2,
+  Star
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function OfflineInventory() {
   const { products, loading, updateProduct } = useOfflineProducts();
@@ -37,21 +48,197 @@ export default function OfflineInventory() {
   const [isAdjustmentOpen, setIsAdjustmentOpen] = useState(false);
   const [adjustmentQuantity, setAdjustmentQuantity] = useState(0);
   const [adjustmentReason, setAdjustmentReason] = useState("");
+  const [stockLocations, setStockLocations] = useState<OfflineStockLocation[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<string>("all");
+  
+  // Stock location management states
+  const [showLocationDialog, setShowLocationDialog] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<OfflineStockLocation | null>(null);
+  const [locationForm, setLocationForm] = useState({
+    name: '',
+    description: '',
+    address: '',
+    isPrimary: false
+  });
+
+  // Load stock locations
+  useEffect(() => {
+    setStockLocations(offlineStockLocationStorage.getAll());
+  }, []);
+
+  const getProductStockInLocation = (productId: string, locationId: string): number => {
+    const productStock = offlineProductStockStorage.getByProductAndLocation(productId, locationId);
+    return productStock?.quantity || 0;
+  };
+
+  const getTotalProductStock = (productId: string): number => {
+    const productStocks = offlineProductStockStorage.getByProduct(productId);
+    const totalFromLocations = productStocks.reduce((sum, stock) => sum + stock.quantity, 0);
+    
+    // If no location-specific stock exists, fall back to product's base quantity
+    if (totalFromLocations === 0) {
+      const product = products.find(p => p.id === productId);
+      return product?.quantity || 0;
+    }
+    
+    return totalFromLocations;
+  };
+
+  const loadStockLocations = () => {
+    setStockLocations(offlineStockLocationStorage.getAll());
+  };
+
+  const resetLocationForm = () => {
+    setLocationForm({
+      name: '',
+      description: '',
+      address: '',
+      isPrimary: false
+    });
+    setEditingLocation(null);
+  };
+
+  const handleCreateLocation = () => {
+    if (!locationForm.name.trim()) {
+      toast({
+        title: "Error",
+        description: "Location name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      if (editingLocation) {
+        offlineStockLocationStorage.update(editingLocation.id, locationForm);
+        toast({
+          title: "Success",
+          description: "Stock location updated successfully",
+        });
+      } else {
+        offlineStockLocationStorage.create({
+          ...locationForm,
+          active: true
+        });
+        toast({
+          title: "Success",
+          description: "Stock location created successfully",
+        });
+      }
+      
+      loadStockLocations();
+      setShowLocationDialog(false);
+      resetLocationForm();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save stock location",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditLocation = (location: OfflineStockLocation) => {
+    setEditingLocation(location);
+    setLocationForm({
+      name: location.name,
+      description: location.description || '',
+      address: location.address || '',
+      isPrimary: location.isPrimary
+    });
+    setShowLocationDialog(true);
+  };
+
+  const handleDeleteLocation = (location: OfflineStockLocation) => {
+    if (location.isPrimary) {
+      toast({
+        title: "Error",
+        description: "Cannot delete the primary stock location",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const success = offlineStockLocationStorage.delete(location.id);
+    if (success) {
+      toast({
+        title: "Success",
+        description: "Stock location deleted successfully",
+      });
+      loadStockLocations();
+      if (selectedLocation === location.id) {
+        setSelectedLocation("all");
+      }
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to delete stock location",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStockAdjustmentForLocation = (product: OfflineProduct, locationId: string) => {
+    setSelectedProduct(product);
+    const currentStock = locationId === "all" ? product.quantity : getProductStockInLocation(product.id, locationId);
+    setAdjustmentQuantity(0);
+    setAdjustmentReason("");
+    setIsAdjustmentOpen(true);
+  };
 
   const filteredProducts = products.filter(product => 
     !searchQuery || 
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.barcode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.category?.toLowerCase().includes(searchQuery.toLowerCase())
+    product.barcode?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const lowStockProducts = products.filter(product => 
-    product.quantity <= (product.minStockLevel || 10)
-  );
+  // Calculate metrics based on selected location
+  const getLocationAwareMetrics = () => {
+    if (selectedLocation === "all") {
+      // Show combined metrics across all locations
+      const lowStockProducts = products.filter(product => {
+        const totalStock = getTotalProductStock(product.id);
+        return totalStock <= (product.minStockLevel || 10);
+      });
+      
+      const totalValue = products.reduce((sum, product) => {
+        const totalStock = getTotalProductStock(product.id);
+        return sum + (totalStock * product.costPrice);
+      }, 0);
 
-  const totalProducts = products.length;
-  const totalValue = products.reduce((sum, product) => sum + (product.quantity * product.costPrice), 0);
-  const lowStockCount = lowStockProducts.length;
+      return {
+        lowStockProducts,
+        totalProducts: products.length,
+        totalValue,
+        lowStockCount: lowStockProducts.length
+      };
+    } else {
+      // Show metrics for specific location
+      const productsInLocation = products.filter(product => {
+        const stockInLocation = getProductStockInLocation(product.id, selectedLocation);
+        return stockInLocation > 0;
+      });
+
+      const lowStockProducts = products.filter(product => {
+        const stockInLocation = getProductStockInLocation(product.id, selectedLocation);
+        return stockInLocation <= (product.minStockLevel || 10);
+      });
+      
+      const totalValue = products.reduce((sum, product) => {
+        const stockInLocation = getProductStockInLocation(product.id, selectedLocation);
+        return sum + (stockInLocation * product.costPrice);
+      }, 0);
+
+      return {
+        lowStockProducts,
+        totalProducts: productsInLocation.length,
+        totalValue,
+        lowStockCount: lowStockProducts.length
+      };
+    }
+  };
+
+  const { lowStockProducts, totalProducts, totalValue, lowStockCount } = getLocationAwareMetrics();
 
   const handleStockAdjustment = (product: OfflineProduct) => {
     setSelectedProduct(product);
@@ -63,17 +250,41 @@ export default function OfflineInventory() {
   const applyStockAdjustment = () => {
     if (!selectedProduct) return;
 
-    const newQuantity = selectedProduct.quantity + adjustmentQuantity;
-    if (newQuantity < 0) {
-      toast({
-        title: "Error",
-        description: "Stock quantity cannot be negative",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (selectedLocation === "all") {
+      // Adjust primary stock
+      const newQuantity = selectedProduct.quantity + adjustmentQuantity;
+      if (newQuantity < 0) {
+        toast({
+          title: "Error",
+          description: "Stock quantity cannot be negative",
+          variant: "destructive"
+        });
+        return;
+      }
 
-    updateProduct(selectedProduct.id, { quantity: newQuantity });
+      updateProduct(selectedProduct.id, { quantity: newQuantity });
+    } else {
+      // Adjust stock for specific location
+      const currentStock = getProductStockInLocation(selectedProduct.id, selectedLocation);
+      const newQuantity = currentStock + adjustmentQuantity;
+      
+      if (newQuantity < 0) {
+        toast({
+          title: "Error",
+          description: "Stock quantity cannot be negative",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Update or create product stock for this location
+      offlineProductStockStorage.upsert({
+        productId: selectedProduct.id,
+        locationId: selectedLocation,
+        quantity: newQuantity,
+        minStockLevel: selectedProduct.minStockLevel
+      });
+    }
     
     toast({
       title: "Success",
@@ -102,6 +313,48 @@ export default function OfflineInventory() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Inventory Management</h1>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Warehouse className="w-5 h-5" />
+            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select location" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                {stockLocations.map((location) => (
+                  <SelectItem key={location.id} value={location.id}>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4" />
+                      {location.name}
+                      {location.isPrimary && " (Primary)"}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setShowLocationDialog(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Location
+          </Button>
+          {selectedLocation !== "all" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const location = stockLocations.find(l => l.id === selectedLocation);
+                if (location) handleEditLocation(location);
+              }}
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -161,7 +414,10 @@ export default function OfflineInventory() {
                 <div key={product.id} className="flex items-center justify-between text-sm">
                   <span className="font-medium">{product.name}</span>
                   <Badge variant="destructive">
-                    {product.quantity} left
+                    {selectedLocation === "all" 
+                      ? `${getTotalProductStock(product.id)} left` 
+                      : `${getProductStockInLocation(product.id, selectedLocation)} left`
+                    }
                   </Badge>
                 </div>
               ))}
@@ -214,17 +470,23 @@ export default function OfflineInventory() {
                       {product.name}
                     </TableCell>
                     <TableCell>
-                      {product.category && (
-                        <Badge variant="outline">{product.category}</Badge>
+                      {product.categoryId && (
+                        <Badge variant="outline">Category</Badge>
                       )}
                     </TableCell>
                     <TableCell className="font-mono text-sm">
                       {product.barcode || "-"}
                     </TableCell>
                     <TableCell className="text-center">
-                      <span className={isLowStock ? "text-red-600 font-bold" : ""}>
-                        {product.quantity}
-                      </span>
+                      {selectedLocation === "all" ? (
+                        <span className={isLowStock ? "text-red-600 font-bold" : ""}>
+                          {product.quantity}
+                        </span>
+                      ) : (
+                        <span className={isLowStock ? "text-red-600 font-bold" : ""}>
+                          {getProductStockInLocation(product.id, selectedLocation)}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       {product.minStockLevel || 10}
@@ -283,7 +545,10 @@ export default function OfflineInventory() {
               <div>
                 <h3 className="font-semibold">{selectedProduct.name}</h3>
                 <p className="text-sm text-gray-600">
-                  Current stock: {selectedProduct.quantity} units
+                  Current stock: {selectedLocation === "all" 
+                    ? `${selectedProduct.quantity} units (Primary)` 
+                    : `${getProductStockInLocation(selectedProduct.id, selectedLocation)} units (${stockLocations.find(l => l.id === selectedLocation)?.name})`
+                  }
                 </p>
               </div>
               
@@ -312,7 +577,10 @@ export default function OfflineInventory() {
                   </Button>
                 </div>
                 <p className="text-xs text-gray-500">
-                  New stock level: {selectedProduct.quantity + adjustmentQuantity} units
+                  New stock level: {selectedLocation === "all" 
+                    ? selectedProduct.quantity + adjustmentQuantity 
+                    : getProductStockInLocation(selectedProduct.id, selectedLocation) + adjustmentQuantity
+                  } units
                 </p>
               </div>
               
@@ -336,6 +604,114 @@ export default function OfflineInventory() {
               disabled={adjustmentQuantity === 0}
             >
               Apply Adjustment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stock Location Management Dialog */}
+      <Dialog open={showLocationDialog} onOpenChange={setShowLocationDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editingLocation ? 'Edit Stock Location' : 'Add New Stock Location'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Location Name *</label>
+              <Input
+                value={locationForm.name}
+                onChange={(e) => setLocationForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., Main Store, Warehouse A"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Description</label>
+              <Input
+                value={locationForm.description}
+                onChange={(e) => setLocationForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Brief description of this location"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Address</label>
+              <Input
+                value={locationForm.address}
+                onChange={(e) => setLocationForm(prev => ({ ...prev, address: e.target.value }))}
+                placeholder="Physical address"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isPrimary"
+                checked={locationForm.isPrimary}
+                onChange={(e) => setLocationForm(prev => ({ ...prev, isPrimary: e.target.checked }))}
+              />
+              <label htmlFor="isPrimary" className="text-sm font-medium">
+                Set as Primary Location
+              </label>
+            </div>
+            {locationForm.isPrimary && (
+              <p className="text-xs text-blue-600">
+                The primary location will be used as the default for POS and other operations.
+              </p>
+            )}
+            
+            {/* Location Management Actions */}
+            {editingLocation && (
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Location Actions</h4>
+                    <p className="text-sm text-gray-600">Manage this stock location</p>
+                  </div>
+                  {!editingLocation.isPrimary && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        handleDeleteLocation(editingLocation);
+                        setShowLocationDialog(false);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Products in this location:</span>
+                    <span className="font-medium">
+                      {offlineProductStockStorage.getByLocation(editingLocation.id).length}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm mt-1">
+                    <span>Total stock value:</span>
+                    <span className="font-medium text-green-600">
+                      ${offlineProductStockStorage.getByLocation(editingLocation.id)
+                        .reduce((total, stock) => {
+                          const product = products.find(p => p.id === stock.productId);
+                          return total + (product ? product.costPrice * stock.quantity : 0);
+                        }, 0).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowLocationDialog(false);
+              resetLocationForm();
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateLocation}>
+              {editingLocation ? 'Update' : 'Create'} Location
             </Button>
           </DialogFooter>
         </DialogContent>
