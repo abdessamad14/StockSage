@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useOfflineProducts } from "@/hooks/use-offline-products";
 import { useOfflineCustomers } from "@/hooks/use-offline-customers";
 import { useOfflineSales } from "@/hooks/use-offline-sales";
+import { useOfflineStockLocations } from "@/hooks/use-offline-stock-locations";
+import { offlineProductStockStorage } from "@/lib/offline-storage";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { OfflineProduct, OfflineCustomer, OfflineCategory, OfflineSalesPeriod, offlineCategoryStorage, creditHelpers, salesPeriodHelpers, offlineSalesPeriodStorage } from "@/lib/offline-storage";
@@ -49,6 +51,7 @@ export default function OfflinePOS() {
   const { products } = useOfflineProducts();
   const { customers } = useOfflineCustomers();
   const { createSale } = useOfflineSales();
+  const { stockLocations } = useOfflineStockLocations();
   const { t } = useI18n();
   const { toast } = useToast();
 
@@ -83,6 +86,16 @@ export default function OfflinePOS() {
   const [paidAmount, setPaidAmount] = useState(0);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+
+  // Get primary warehouse
+  const primaryWarehouse = stockLocations.find(loc => loc.isPrimary) || stockLocations[0];
+
+  // Function to get warehouse-specific stock quantity
+  const getWarehouseStock = (productId: string): number => {
+    if (!primaryWarehouse) return 0;
+    const stock = offlineProductStockStorage.getByProductAndLocation(productId, primaryWarehouse.id);
+    return stock?.quantity || 0;
+  };
 
   // Load categories and sales period data
   useEffect(() => {
@@ -238,8 +251,28 @@ export default function OfflinePOS() {
   const addToCart = (product: OfflineProduct) => {
     const existingItem = cart.find(item => item.product.id === product.id);
     const tierPrice = getPriceForTier(product, pricingTier);
+    const warehouseStock = getWarehouseStock(product.id);
+    
+    // Check stock availability in primary warehouse
+    if (warehouseStock <= 0) {
+      toast({
+        title: "Out of Stock",
+        description: `${product.name} is not available in primary warehouse`,
+        variant: "destructive"
+      });
+      return;
+    }
     
     if (existingItem) {
+      // Check if adding one more would exceed warehouse stock
+      if (existingItem.quantity + 1 > warehouseStock) {
+        toast({
+          title: "Insufficient Stock",
+          description: `Only ${warehouseStock} units available in primary warehouse`,
+          variant: "destructive"
+        });
+        return;
+      }
       updateQuantity(product.id, existingItem.quantity + 1);
     } else {
       const newItem: CartItem = {
@@ -275,6 +308,18 @@ export default function OfflinePOS() {
   const updateQuantity = (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       removeFromCart(productId);
+      return;
+    }
+
+    const warehouseStock = getWarehouseStock(productId);
+    
+    // Check stock availability in primary warehouse
+    if (newQuantity > warehouseStock) {
+      toast({
+        title: "Insufficient Stock",
+        description: `Only ${warehouseStock} units available in primary warehouse`,
+        variant: "destructive"
+      });
       return;
     }
 
@@ -616,8 +661,8 @@ export default function OfflinePOS() {
                         >
                           <Info className="w-3 h-3 text-blue-600" />
                         </Button>
-                        <Badge variant={product.quantity > 0 ? "default" : "destructive"} className="text-xs">
-                          {product.quantity}
+                        <Badge variant={getWarehouseStock(product.id) > 0 ? "default" : "destructive"} className="text-xs">
+                          {getWarehouseStock(product.id)}
                         </Badge>
                       </div>
                     </div>
