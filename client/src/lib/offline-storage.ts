@@ -27,6 +27,52 @@ export interface OfflineProductStock {
   updatedAt: string;
 }
 
+export interface OfflineInventoryCount {
+  id: string;
+  name: string;
+  description?: string;
+  type: 'full' | 'partial';
+  locationId?: string; // null for full count across all locations
+  status: 'draft' | 'in_progress' | 'completed' | 'cancelled';
+  createdBy: string;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  totalProducts: number;
+  countedProducts: number;
+  totalVariances: number;
+  notes?: string;
+}
+
+export interface OfflineInventoryCountItem {
+  id: string;
+  countId: string;
+  productId: string;
+  locationId: string;
+  systemQuantity: number;
+  countedQuantity?: number;
+  variance?: number;
+  status: 'pending' | 'counted' | 'verified';
+  countedBy?: string;
+  countedAt?: string;
+  notes?: string;
+}
+
+export interface OfflineStockAdjustment {
+  id: string;
+  productId: string;
+  locationId: string;
+  type: 'inventory_count' | 'manual_adjustment' | 'transfer' | 'sale' | 'purchase';
+  previousQuantity: number;
+  newQuantity: number;
+  adjustmentQuantity: number;
+  reason: string;
+  referenceId?: string; // countId for inventory count adjustments
+  createdBy: string;
+  createdAt: string;
+  notes?: string;
+}
+
 export interface OfflineProduct {
   id: string;
   name: string;
@@ -173,13 +219,16 @@ const STORAGE_KEYS = {
   SUPPLIERS: 'stocksage_suppliers',
   SALES: 'stocksage_sales',
   ORDERS: 'stocksage_orders',
-  CATEGORIES: 'stocksage_categories',
   SETTINGS: 'stocksage_settings',
-  CREDIT_TRANSACTIONS: 'stocksage_credit_transactions',
+  CATEGORIES: 'stocksage_categories',
   SALES_PERIODS: 'stocksage_sales_periods',
   STOCK_LOCATIONS: 'stocksage_stock_locations',
-  PRODUCT_STOCKS: 'stocksage_product_stocks',
-  LAST_SYNC: 'stocksage_last_sync',
+  PRODUCT_STOCK: 'stocksage_product_stock',
+  INVENTORY_COUNTS: 'stocksage_inventory_counts',
+  INVENTORY_COUNT_ITEMS: 'stocksage_inventory_count_items',
+  STOCK_ADJUSTMENTS: 'stocksage_stock_adjustments',
+  CREDIT_TRANSACTIONS: 'stocksage_credit_transactions',
+  LAST_SYNC: 'stocksage_last_sync'
 } as const;
 
 // Utility functions
@@ -814,9 +863,9 @@ export const offlineStockLocationStorage = {
     saveToStorage(STORAGE_KEYS.STOCK_LOCATIONS, filteredLocations);
     
     // Also remove all product stocks for this location
-    const productStocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    const productStocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCK);
     const filteredStocks = productStocks.filter(stock => stock.locationId !== id);
-    saveToStorage(STORAGE_KEYS.PRODUCT_STOCKS, filteredStocks);
+    saveToStorage(STORAGE_KEYS.PRODUCT_STOCK, filteredStocks);
     
     return filteredLocations.length !== locations.length;
   },
@@ -825,26 +874,26 @@ export const offlineStockLocationStorage = {
 // Product Stock storage operations
 export const offlineProductStockStorage = {
   getAll: (): OfflineProductStock[] => {
-    return getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    return getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCK);
   },
 
   getByProduct: (productId: string): OfflineProductStock[] => {
-    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCK);
     return stocks.filter(stock => stock.productId === productId);
   },
 
   getByLocation: (locationId: string): OfflineProductStock[] => {
-    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCK);
     return stocks.filter(stock => stock.locationId === locationId);
   },
 
   getByProductAndLocation: (productId: string, locationId: string): OfflineProductStock | undefined => {
-    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCK);
     return stocks.find(stock => stock.productId === productId && stock.locationId === locationId);
   },
 
   upsert: (stockData: Omit<OfflineProductStock, 'updatedAt'>): OfflineProductStock => {
-    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCK);
     const existingIndex = stocks.findIndex(
       stock => stock.productId === stockData.productId && stock.locationId === stockData.locationId
     );
@@ -860,39 +909,287 @@ export const offlineProductStockStorage = {
       stocks.push(newStock);
     }
 
-    saveToStorage(STORAGE_KEYS.PRODUCT_STOCKS, stocks);
+    saveToStorage(STORAGE_KEYS.PRODUCT_STOCK, stocks);
     return newStock;
   },
 
-  updateQuantity: (productId: string, locationId: string, quantity: number): OfflineProductStock | null => {
-    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+  updateQuantity: (productId: string, locationId: string, quantity: number, reason?: string, referenceId?: string): OfflineProductStock | null => {
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCK);
     const index = stocks.findIndex(
       stock => stock.productId === productId && stock.locationId === locationId
     );
 
     if (index === -1) return null;
 
+    const previousQuantity = stocks[index].quantity;
+    
     stocks[index] = {
       ...stocks[index],
       quantity,
       updatedAt: new Date().toISOString(),
     };
 
-    saveToStorage(STORAGE_KEYS.PRODUCT_STOCKS, stocks);
+    // Create stock adjustment record for audit trail
+    if (reason && previousQuantity !== quantity) {
+      offlineStockAdjustmentStorage.create({
+        productId,
+        locationId,
+        type: reason.includes('inventory_count') ? 'inventory_count' : 'manual_adjustment',
+        previousQuantity,
+        newQuantity: quantity,
+        adjustmentQuantity: quantity - previousQuantity,
+        reason: reason || 'Stock quantity update',
+        referenceId,
+        createdBy: 'current_user',
+        notes: `Stock updated from ${previousQuantity} to ${quantity}`
+      });
+    }
+
+    saveToStorage(STORAGE_KEYS.PRODUCT_STOCK, stocks);
     return stocks[index];
   },
 
   deleteByProduct: (productId: string): void => {
-    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCK);
     const filteredStocks = stocks.filter(stock => stock.productId !== productId);
-    saveToStorage(STORAGE_KEYS.PRODUCT_STOCKS, filteredStocks);
+    saveToStorage(STORAGE_KEYS.PRODUCT_STOCK, filteredStocks);
   },
 
   deleteByLocation: (locationId: string): void => {
-    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCKS);
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCK);
     const filteredStocks = stocks.filter(stock => stock.locationId !== locationId);
-    saveToStorage(STORAGE_KEYS.PRODUCT_STOCKS, filteredStocks);
+    saveToStorage(STORAGE_KEYS.PRODUCT_STOCK, filteredStocks);
   },
+
+  transferStock: (productId: string, fromLocationId: string, toLocationId: string, quantity: number): { success: boolean; message: string } => {
+    const fromStock = offlineProductStockStorage.getByProductAndLocation(productId, fromLocationId);
+    
+    if (!fromStock || fromStock.quantity < quantity) {
+      return { success: false, message: 'Insufficient stock in source location' };
+    }
+
+    // Reduce stock from source location
+    const newFromQuantity = fromStock.quantity - quantity;
+    offlineProductStockStorage.upsert({
+      productId,
+      locationId: fromLocationId,
+      quantity: newFromQuantity,
+      minStockLevel: fromStock.minStockLevel
+    });
+
+    // Add stock to destination location
+    const toStock = offlineProductStockStorage.getByProductAndLocation(productId, toLocationId);
+    const newToQuantity = (toStock?.quantity || 0) + quantity;
+    
+    offlineProductStockStorage.upsert({
+      productId,
+      locationId: toLocationId,
+      quantity: newToQuantity,
+      minStockLevel: toStock?.minStockLevel || fromStock.minStockLevel
+    });
+
+    return { success: true, message: `Successfully transferred ${quantity} units` };
+  },
+
+  addStock: (productId: string, locationId: string, quantity: number, reason?: string): { success: boolean; message: string } => {
+    if (quantity <= 0) {
+      return { success: false, message: 'Quantity must be greater than 0' };
+    }
+
+    const currentStock = offlineProductStockStorage.getByProductAndLocation(productId, locationId);
+    const newQuantity = (currentStock?.quantity || 0) + quantity;
+    
+    offlineProductStockStorage.upsert({
+      productId,
+      locationId,
+      quantity: newQuantity,
+      minStockLevel: currentStock?.minStockLevel || 10
+    });
+
+    return { success: true, message: `Successfully added ${quantity} units${reason ? ` (${reason})` : ''}` };
+  },
+
+  removeStock: (productId: string, locationId: string, quantity: number, reason?: string): { success: boolean; message: string } => {
+    if (quantity <= 0) {
+      return { success: false, message: 'Quantity must be greater than 0' };
+    }
+
+    const currentStock = offlineProductStockStorage.getByProductAndLocation(productId, locationId);
+    
+    if (!currentStock || currentStock.quantity < quantity) {
+      return { success: false, message: 'Insufficient stock available' };
+    }
+
+    const newQuantity = currentStock.quantity - quantity;
+    
+    offlineProductStockStorage.upsert({
+      productId,
+      locationId,
+      quantity: newQuantity,
+      minStockLevel: currentStock.minStockLevel
+    });
+
+    return { success: true, message: `Successfully removed ${quantity} units${reason ? ` (${reason})` : ''}` };
+  }
+};
+
+// Stock Adjustment storage operations
+export const offlineStockAdjustmentStorage = {
+  getAll: (): OfflineStockAdjustment[] => {
+    return getFromStorage<OfflineStockAdjustment>(STORAGE_KEYS.STOCK_ADJUSTMENTS);
+  },
+
+  getByProduct: (productId: string): OfflineStockAdjustment[] => {
+    const adjustments = getFromStorage<OfflineStockAdjustment>(STORAGE_KEYS.STOCK_ADJUSTMENTS);
+    return adjustments.filter(adj => adj.productId === productId);
+  },
+
+  getByLocation: (locationId: string): OfflineStockAdjustment[] => {
+    const adjustments = getFromStorage<OfflineStockAdjustment>(STORAGE_KEYS.STOCK_ADJUSTMENTS);
+    return adjustments.filter(adj => adj.locationId === locationId);
+  },
+
+  getByReference: (referenceId: string): OfflineStockAdjustment[] => {
+    const adjustments = getFromStorage<OfflineStockAdjustment>(STORAGE_KEYS.STOCK_ADJUSTMENTS);
+    return adjustments.filter(adj => adj.referenceId === referenceId);
+  },
+
+  create: (adjustmentData: Omit<OfflineStockAdjustment, 'id' | 'createdAt'>): OfflineStockAdjustment => {
+    const adjustments = getFromStorage<OfflineStockAdjustment>(STORAGE_KEYS.STOCK_ADJUSTMENTS);
+    const newAdjustment: OfflineStockAdjustment = {
+      ...adjustmentData,
+      id: generateId(),
+      createdAt: new Date().toISOString()
+    };
+    
+    adjustments.push(newAdjustment);
+    saveToStorage(STORAGE_KEYS.STOCK_ADJUSTMENTS, adjustments);
+    return newAdjustment;
+  },
+
+  deleteByReference: (referenceId: string): void => {
+    const adjustments = getFromStorage<OfflineStockAdjustment>(STORAGE_KEYS.STOCK_ADJUSTMENTS);
+    const filteredAdjustments = adjustments.filter(adj => adj.referenceId !== referenceId);
+    saveToStorage(STORAGE_KEYS.STOCK_ADJUSTMENTS, filteredAdjustments);
+  }
+};
+
+// Inventory Count storage operations
+export const offlineInventoryCountStorage = {
+  getAll: (): OfflineInventoryCount[] => {
+    return getFromStorage<OfflineInventoryCount>(STORAGE_KEYS.INVENTORY_COUNTS);
+  },
+
+  getById: (id: string): OfflineInventoryCount | null => {
+    const counts = getFromStorage<OfflineInventoryCount>(STORAGE_KEYS.INVENTORY_COUNTS);
+    return counts.find(count => count.id === id) || null;
+  },
+
+  create: (countData: Omit<OfflineInventoryCount, 'id' | 'createdAt' | 'countedProducts' | 'totalVariances'>): OfflineInventoryCount => {
+    const counts = getFromStorage<OfflineInventoryCount>(STORAGE_KEYS.INVENTORY_COUNTS);
+    
+    const newCount: OfflineInventoryCount = {
+      ...countData,
+      id: generateId(),
+      createdAt: new Date().toISOString(),
+      countedProducts: 0,
+      totalVariances: 0
+    };
+
+    counts.push(newCount);
+    saveToStorage(STORAGE_KEYS.INVENTORY_COUNTS, counts);
+    return newCount;
+  },
+
+  update: (id: string, updates: Partial<Omit<OfflineInventoryCount, 'id' | 'createdAt'>>): OfflineInventoryCount | null => {
+    const counts = getFromStorage<OfflineInventoryCount>(STORAGE_KEYS.INVENTORY_COUNTS);
+    const index = counts.findIndex(count => count.id === id);
+    
+    if (index === -1) return null;
+
+    counts[index] = { ...counts[index], ...updates };
+    saveToStorage(STORAGE_KEYS.INVENTORY_COUNTS, counts);
+    return counts[index];
+  },
+
+  delete: (id: string): boolean => {
+    const counts = getFromStorage<OfflineInventoryCount>(STORAGE_KEYS.INVENTORY_COUNTS);
+    const filteredCounts = counts.filter(count => count.id !== id);
+    
+    if (filteredCounts.length === counts.length) return false;
+    
+    saveToStorage(STORAGE_KEYS.INVENTORY_COUNTS, filteredCounts);
+    // Also delete related count items
+    offlineInventoryCountItemStorage.deleteByCountId(id);
+    return true;
+  }
+};
+
+// Inventory Count Item storage operations
+export const offlineInventoryCountItemStorage = {
+  getAll: (): OfflineInventoryCountItem[] => {
+    return getFromStorage<OfflineInventoryCountItem>(STORAGE_KEYS.INVENTORY_COUNT_ITEMS);
+  },
+
+  getByCountId: (countId: string): OfflineInventoryCountItem[] => {
+    const items = getFromStorage<OfflineInventoryCountItem>(STORAGE_KEYS.INVENTORY_COUNT_ITEMS);
+    return items.filter(item => item.countId === countId);
+  },
+
+  create: (itemData: Omit<OfflineInventoryCountItem, 'id'>): OfflineInventoryCountItem => {
+    const items = getFromStorage<OfflineInventoryCountItem>(STORAGE_KEYS.INVENTORY_COUNT_ITEMS);
+    
+    const newItem: OfflineInventoryCountItem = {
+      ...itemData,
+      id: generateId()
+    };
+
+    items.push(newItem);
+    saveToStorage(STORAGE_KEYS.INVENTORY_COUNT_ITEMS, items);
+    return newItem;
+  },
+
+  update: (id: string, updates: Partial<Omit<OfflineInventoryCountItem, 'id'>>): OfflineInventoryCountItem | null => {
+    const items = getFromStorage<OfflineInventoryCountItem>(STORAGE_KEYS.INVENTORY_COUNT_ITEMS);
+    const index = items.findIndex(item => item.id === id);
+    
+    if (index === -1) return null;
+
+    items[index] = { ...items[index], ...updates };
+    saveToStorage(STORAGE_KEYS.INVENTORY_COUNT_ITEMS, items);
+    return items[index];
+  },
+
+  delete: (id: string): boolean => {
+    const items = getFromStorage<OfflineInventoryCountItem>(STORAGE_KEYS.INVENTORY_COUNT_ITEMS);
+    const filteredItems = items.filter(item => item.id !== id);
+    
+    if (filteredItems.length === items.length) {
+      return false; // Item not found
+    }
+    
+    saveToStorage(STORAGE_KEYS.INVENTORY_COUNT_ITEMS, filteredItems);
+    return true;
+  },
+
+  deleteByCountId: (countId: string): void => {
+    const items = getFromStorage<OfflineInventoryCountItem>(STORAGE_KEYS.INVENTORY_COUNT_ITEMS);
+    const filteredItems = items.filter(item => item.countId !== countId);
+    saveToStorage(STORAGE_KEYS.INVENTORY_COUNT_ITEMS, filteredItems);
+  },
+
+  bulkUpdate: (updates: { id: string; updates: Partial<Omit<OfflineInventoryCountItem, 'id'>> }[]): void => {
+    const items = getFromStorage<OfflineInventoryCountItem>(STORAGE_KEYS.INVENTORY_COUNT_ITEMS);
+    
+    updates.forEach(({ id, updates: itemUpdates }) => {
+      const index = items.findIndex(item => item.id === id);
+      if (index !== -1) {
+        items[index] = { ...items[index], ...itemUpdates };
+      }
+    });
+    
+    saveToStorage(STORAGE_KEYS.INVENTORY_COUNT_ITEMS, items);
+  }
 };
 
 // Sales Period storage operations
