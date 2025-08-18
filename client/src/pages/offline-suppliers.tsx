@@ -1,18 +1,21 @@
 import { useState } from "react";
 import { useOfflineSuppliers } from "@/hooks/use-offline-suppliers";
+import { useOfflinePurchaseOrders } from "@/hooks/use-offline-purchase-orders";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { OfflineSupplier } from "@/lib/offline-storage";
+import { OfflineSupplier, offlineSupplierPaymentStorage } from "@/lib/offline-storage";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Truck, Search, Plus, Edit, Trash2, Phone, Mail, MapPin, User } from "lucide-react";
+import { Truck, Search, Plus, Edit, Trash2, Phone, Mail, MapPin, User, CreditCard, DollarSign, Receipt } from "lucide-react";
 
 const supplierSchema = z.object({
   name: z.string().min(1, "Supplier name is required"),
@@ -27,12 +30,28 @@ type SupplierFormData = z.infer<typeof supplierSchema>;
 
 export default function OfflineSuppliers() {
   const { suppliers, loading, createSupplier, updateSupplier, deleteSupplier } = useOfflineSuppliers();
+  const { orders } = useOfflinePurchaseOrders();
   const { t } = useI18n();
   const { toast } = useToast();
   
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<OfflineSupplier | null>(null);
+
+  // Calculate supplier credit balance
+  const getSupplierBalance = (supplierId: string) => {
+    const supplierOrders = orders.filter(order => order.supplierId === supplierId);
+    const totalOrders = supplierOrders.reduce((sum, order) => sum + order.total, 0);
+    const totalPaid = supplierOrders.reduce((sum, order) => sum + (order.paidAmount || 0), 0);
+    const totalOwed = totalOrders - totalPaid;
+    
+    return {
+      totalOwed: Math.max(0, totalOwed), // Ensure no negative values
+      totalPaid,
+      totalOrders,
+      orderCount: supplierOrders.length
+    };
+  };
 
   const form = useForm<SupplierFormData>({
     resolver: zodResolver(supplierSchema),
@@ -142,6 +161,51 @@ export default function OfflineSuppliers() {
         </Button>
       </div>
 
+      {/* Credit Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <DollarSign className="w-4 h-4" />
+              Total Outstanding
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              ${suppliers.reduce((sum, supplier) => sum + getSupplierBalance(supplier.id).totalOwed, 0).toFixed(2)}
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              Total Paid
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              ${suppliers.reduce((sum, supplier) => sum + getSupplierBalance(supplier.id).totalPaid, 0).toFixed(2)}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Receipt className="w-4 h-4" />
+              Total Orders
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {suppliers.reduce((sum, supplier) => sum + getSupplierBalance(supplier.id).orderCount, 0)}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -155,8 +219,10 @@ export default function OfflineSuppliers() {
 
       {/* Suppliers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredSuppliers.map((supplier) => (
-          <Card key={supplier.id} className="p-4 hover:shadow-md transition-shadow">
+        {filteredSuppliers.map((supplier) => {
+          const balance = getSupplierBalance(supplier.id);
+          return (
+            <Card key={supplier.id} className="p-4 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
                 <h3 className="font-semibold text-lg flex items-center gap-2">
@@ -187,6 +253,35 @@ export default function OfflineSuppliers() {
                     {supplier.address}
                   </div>
                 )}
+                
+                {/* Credit Balance Information */}
+                <div className="mt-3 pt-3 border-t">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Total Orders:</span>
+                      <span className="font-medium">{balance.orderCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Total Value:</span>
+                      <span className="font-medium">${balance.totalOrders.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Paid:</span>
+                      <span className="font-medium text-green-600">${balance.totalPaid.toFixed(2)}</span>
+                    </div>
+                    {balance.totalOwed > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Outstanding:</span>
+                        <span className="font-medium text-red-600">${balance.totalOwed.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {balance.totalOwed > 0 && (
+                      <Badge variant="destructive" className="text-xs">
+                        Credit: ${balance.totalOwed.toFixed(2)}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </div>
               <div className="flex gap-1">
                 <Button
@@ -210,7 +305,8 @@ export default function OfflineSuppliers() {
               <p className="text-sm text-gray-600 mt-2 pt-2 border-t">{supplier.notes}</p>
             )}
           </Card>
-        ))}
+          );
+        })}
       </div>
 
       {filteredSuppliers.length === 0 && (

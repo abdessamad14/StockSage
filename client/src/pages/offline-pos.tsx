@@ -1,12 +1,22 @@
 import { useState, useEffect } from "react";
 import { useOfflineProducts } from "@/hooks/use-offline-products";
-import { useOfflineCustomers } from "@/hooks/use-offline-customers";
 import { useOfflineSales } from "@/hooks/use-offline-sales";
-import { useOfflineStockLocations } from "@/hooks/use-offline-stock-locations";
-import { offlineProductStockStorage } from "@/lib/offline-storage";
+import { useOfflineCustomers } from "@/hooks/use-offline-customers";
+import { useOfflineStockTransactions } from "@/hooks/use-offline-stock-transactions";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { OfflineProduct, OfflineCustomer, OfflineCategory, OfflineSalesPeriod, offlineCategoryStorage, creditHelpers, salesPeriodHelpers, offlineSalesPeriodStorage } from "@/lib/offline-storage";
+import { 
+  OfflineProduct, 
+  OfflineCustomer, 
+  OfflineCategory, 
+  OfflineSalesPeriod, 
+  offlineProductStockStorage,
+  offlineStockLocationStorage,
+  offlineCategoryStorage, 
+  creditHelpers, 
+  salesPeriodHelpers, 
+  offlineSalesPeriodStorage 
+} from "@/lib/offline-storage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -48,12 +58,20 @@ interface CartItem {
 }
 
 export default function OfflinePOS() {
-  const { products } = useOfflineProducts();
-  const { customers } = useOfflineCustomers();
+  const { products, loading } = useOfflineProducts();
   const { createSale } = useOfflineSales();
-  const { stockLocations } = useOfflineStockLocations();
+  const { customers } = useOfflineCustomers();
+  const { createTransaction } = useOfflineStockTransactions();
   const { t } = useI18n();
   const { toast } = useToast();
+
+  // Load stock locations
+  const [stockLocations, setStockLocations] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const locations = offlineStockLocationStorage.getAll();
+    setStockLocations(locations);
+  }, []);
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -464,6 +482,36 @@ export default function OfflinePOS() {
         notes: null,
         items: []
       }, saleData.items);
+
+      // Update stock quantities and record transactions
+      const primaryLocation = stockLocations.find((loc: any) => loc.isPrimary);
+      if (primaryLocation) {
+        cart.forEach(item => {
+          const currentStock = offlineProductStockStorage.getByProductAndLocation(item.product.id, primaryLocation.id)?.quantity || 0;
+          const newStock = currentStock - item.quantity;
+          
+          // Update stock in primary warehouse
+          offlineProductStockStorage.upsert({
+            productId: item.product.id,
+            locationId: primaryLocation.id,
+            quantity: Math.max(0, newStock),
+            minStockLevel: item.product.minStockLevel
+          });
+
+          // Record stock transaction
+          createTransaction({
+            productId: item.product.id,
+            warehouseId: primaryLocation.id,
+            type: 'sale',
+            quantity: -item.quantity,
+            previousQuantity: currentStock,
+            newQuantity: Math.max(0, newStock),
+            reason: 'POS Sale',
+            reference: saleData.invoiceNumber,
+            relatedId: sale.id
+          });
+        });
+      }
 
       // If it's a credit payment, add to customer's credit balance
       if ((isCreditPayment || paymentMethod === "credit") && selectedCustomer) {
