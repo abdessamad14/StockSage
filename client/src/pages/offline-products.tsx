@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Package, Search, Plus, Edit, Trash2, Tag, Filter } from "lucide-react";
+import { Package, Search, Plus, Edit, Trash2, Tag, Filter, Upload, X, Image } from "lucide-react";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -29,6 +29,7 @@ const productSchema = z.object({
   quantity: z.number().min(0, "Quantity must be positive"),
   minStockLevel: z.number().min(0, "Min stock level must be positive").optional(),
   unit: z.string().optional(),
+  image: z.string().optional(),
   active: z.boolean().default(true)
 });
 
@@ -54,6 +55,46 @@ export default function OfflineProducts() {
   const [editingProduct, setEditingProduct] = useState<OfflineProduct | null>(null);
   const [editingCategory, setEditingCategory] = useState<OfflineCategory | null>(null);
   const [categories, setCategories] = useState<OfflineCategory[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  // Image handling functions
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: "Image size must be less than 5MB",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Error", 
+          description: "Please select a valid image file",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target?.result as string;
+        setSelectedImage(base64);
+        productForm.setValue('image', base64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    productForm.setValue('image', '');
+  };
 
   const productForm = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -67,6 +108,7 @@ export default function OfflineProducts() {
       quantity: 0,
       minStockLevel: 0,
       unit: "",
+      image: "",
       active: true
     }
   });
@@ -103,7 +145,7 @@ export default function OfflineProducts() {
   });
 
   // Get category name by ID
-  const getCategoryName = (categoryId: string | null) => {
+  const getCategoryName = (categoryId: string | null | undefined) => {
     if (!categoryId) return "Uncategorized";
     const category = categories.find(c => c.id === categoryId);
     return category?.name || "Unknown Category";
@@ -114,14 +156,14 @@ export default function OfflineProducts() {
     try {
       createProduct({
         ...data,
-        categoryId: data.categoryId === "none" ? null : data.categoryId || null,
-        barcode: data.barcode || null,
-        description: data.description || null,
-        minStockLevel: data.minStockLevel || null,
-        unit: data.unit || null,
-        semiWholesalePrice: data.semiWholesalePrice || null,
-        wholesalePrice: data.wholesalePrice || null,
-        image: null
+        categoryId: data.categoryId === "none" ? undefined : data.categoryId || undefined,
+        barcode: data.barcode || undefined,
+        description: data.description || undefined,
+        minStockLevel: data.minStockLevel || undefined,
+        unit: data.unit || undefined,
+        semiWholesalePrice: data.semiWholesalePrice || undefined,
+        wholesalePrice: data.wholesalePrice || undefined,
+        image: selectedImage || undefined
       });
       toast({
         title: "Success",
@@ -129,6 +171,7 @@ export default function OfflineProducts() {
       });
       setIsProductDialogOpen(false);
       productForm.reset();
+      setSelectedImage(null);
     } catch (error) {
       toast({
         title: "Error",
@@ -144,13 +187,14 @@ export default function OfflineProducts() {
     try {
       updateProduct(editingProduct.id, {
         ...data,
-        categoryId: data.categoryId === "none" ? null : data.categoryId || null,
-        barcode: data.barcode || null,
-        description: data.description || null,
-        minStockLevel: data.minStockLevel || null,
-        unit: data.unit || null,
-        semiWholesalePrice: data.semiWholesalePrice || null,
-        wholesalePrice: data.wholesalePrice || null
+        categoryId: data.categoryId === "none" ? undefined : data.categoryId || undefined,
+        barcode: data.barcode || undefined,
+        description: data.description || undefined,
+        minStockLevel: data.minStockLevel || undefined,
+        unit: data.unit || undefined,
+        semiWholesalePrice: data.semiWholesalePrice || undefined,
+        wholesalePrice: data.wholesalePrice || undefined,
+        image: selectedImage || undefined
       });
       toast({
         title: "Success",
@@ -159,6 +203,7 @@ export default function OfflineProducts() {
       setIsProductDialogOpen(false);
       setEditingProduct(null);
       productForm.reset();
+      setSelectedImage(null);
     } catch (error) {
       toast({
         title: "Error",
@@ -260,11 +305,14 @@ export default function OfflineProducts() {
         quantity: product.quantity,
         minStockLevel: product.minStockLevel || 0,
         unit: product.unit || "",
+        image: product.image || "",
         active: product.active
       });
+      setSelectedImage(product.image || null);
     } else {
       setEditingProduct(null);
       productForm.reset();
+      setSelectedImage(null);
     }
     setIsProductDialogOpen(true);
   };
@@ -365,6 +413,15 @@ export default function OfflineProducts() {
                   </Badge>
                 </CardHeader>
                 <CardContent className="space-y-2">
+                  {product.image && (
+                    <div className="mb-2">
+                      <img 
+                        src={product.image} 
+                        alt={product.name}
+                        className="w-full h-32 object-cover rounded-md"
+                      />
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Price:</span>
                     <span className="font-medium">${product.sellingPrice.toFixed(2)}</span>
@@ -646,6 +703,71 @@ export default function OfflineProducts() {
                   )}
                 />
               </div>
+
+              {/* Image Upload */}
+              <FormField
+                control={productForm.control}
+                name="image"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Product Image</FormLabel>
+                    <FormControl>
+                      <div className="space-y-4">
+                        {selectedImage ? (
+                          <div className="relative inline-block">
+                            <img 
+                              src={selectedImage} 
+                              alt="Product preview" 
+                              className="w-32 h-32 object-cover rounded-lg border"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                              onClick={removeImage}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                            <Image className="mx-auto h-12 w-12 text-gray-400" />
+                            <div className="mt-2">
+                              <label htmlFor="image-upload" className="cursor-pointer">
+                                <span className="mt-2 block text-sm font-medium text-gray-900">
+                                  Upload product image
+                                </span>
+                                <span className="mt-1 block text-xs text-gray-500">
+                                  PNG, JPG, GIF up to 5MB
+                                </span>
+                              </label>
+                              <input
+                                id="image-upload"
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                className="hidden"
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => document.getElementById('image-upload')?.click()}
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              Choose Image
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsProductDialogOpen(false)}>

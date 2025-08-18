@@ -281,8 +281,9 @@ export interface OfflineProduct {
   semiWholesalePrice?: number;
   wholesalePrice?: number;
   quantity: number;
-  minStockLevel: number;
-  unit: string;
+  minStockLevel?: number;
+  unit?: string;
+  image?: string; // Base64 encoded image or URL
   active: boolean;
   createdAt: string;
   updatedAt: string;
