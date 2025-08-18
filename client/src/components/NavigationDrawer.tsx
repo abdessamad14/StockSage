@@ -12,7 +12,8 @@ import {
   BarChart2, 
   Settings, 
   Receipt,
-  Warehouse
+  Warehouse,
+  ClipboardCheck
 } from 'lucide-react';
 
 interface NavigationDrawerProps {
@@ -82,6 +83,14 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
             <Link href="/inventory" className={`flex items-center px-4 py-3 ${isActive('/inventory') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
               <Database className="w-6 h-6 mr-3" />
               <span>{t('inventory')}</span>
+            </Link>
+          )}
+          
+          {/* Inventory Count */}
+          {canManageInventory && (
+            <Link href="/inventory-count" className={`flex items-center px-4 py-3 ${isActive('/inventory-count') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+              <ClipboardCheck className="w-6 h-6 mr-3" />
+              <span>Inventory Count</span>
             </Link>
           )}
           

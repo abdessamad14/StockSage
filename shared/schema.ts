@@ -211,7 +211,45 @@ export type InsertSettings = z.infer<typeof insertSettingsSchema>;
 // Define types for select operations
 export type User = typeof users.$inferSelect;
 export type ProductCategory = typeof productCategories.$inferSelect;
-export type Product = typeof products.$inferSelect;
+export interface OfflineProductStock {
+  productId: string;
+  locationId: string;
+  quantity: number;
+  minStockLevel: number;
+  updatedAt: string;
+}
+
+export interface OfflineInventoryCount {
+  id: string;
+  name: string;
+  description?: string;
+  type: 'full' | 'partial';
+  locationId?: string; // null for full count across all locations
+  status: 'draft' | 'in_progress' | 'completed' | 'cancelled';
+  createdBy: string;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  totalProducts: number;
+  countedProducts: number;
+  totalVariances: number;
+  notes?: string;
+}
+
+export interface OfflineInventoryCountItem {
+  id: string;
+  countId: string;
+  productId: string;
+  locationId: string;
+  systemQuantity: number;
+  countedQuantity?: number;
+  variance?: number;
+  status: 'pending' | 'counted' | 'verified';
+  countedBy?: string;
+  countedAt?: string;
+  notes?: string;
+}
+
 export type Customer = typeof customers.$inferSelect;
 export type Supplier = typeof suppliers.$inferSelect;
 export type Sale = typeof sales.$inferSelect;
@@ -231,9 +269,28 @@ export const loginSchema = z.object({
 
 export type LoginCredentials = z.infer<typeof loginSchema>;
 
+// Offline types for client-side storage
+export interface OfflineProduct {
+  id: string;
+  name: string;
+  barcode?: string;
+  description?: string;
+  categoryId?: string;
+  costPrice: number;
+  sellingPrice: number;
+  semiWholesalePrice?: number;
+  wholesalePrice?: number;
+  quantity: number;
+  minStockLevel: number;
+  unit: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Extended types with related data
 export type SaleItemWithProduct = SaleItem & {
-  product?: Product;
+  product?: OfflineProduct;
 };
 
 export type SaleWithItems = Sale & {
@@ -242,7 +299,7 @@ export type SaleWithItems = Sale & {
 };
 
 export type OrderItemWithProduct = OrderItem & {
-  product?: Product;
+  product?: OfflineProduct;
 };
 
 export type OrderWithItems = Order & {
@@ -250,7 +307,7 @@ export type OrderWithItems = Order & {
   supplier?: Supplier;
 };
 
-export type ProductWithStockStatus = Product & {
+export type ProductWithStockStatus = OfflineProduct & {
   stockStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
 };
 

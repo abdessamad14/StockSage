@@ -34,7 +34,10 @@ import {
   Building2,
   Settings,
   Trash2,
-  Star
+  Star,
+  ArrowRightLeft,
+  PackagePlus,
+  PackageMinus
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -48,10 +51,8 @@ export default function OfflineInventory() {
   const [isAdjustmentOpen, setIsAdjustmentOpen] = useState(false);
   const [adjustmentQuantity, setAdjustmentQuantity] = useState(0);
   const [adjustmentReason, setAdjustmentReason] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("");
   const [stockLocations, setStockLocations] = useState<OfflineStockLocation[]>([]);
-  const [selectedLocation, setSelectedLocation] = useState<string>("all");
-  
-  // Stock location management states
   const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState<OfflineStockLocation | null>(null);
   const [locationForm, setLocationForm] = useState({
@@ -60,11 +61,29 @@ export default function OfflineInventory() {
     address: '',
     isPrimary: false
   });
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
+  const [transferQuantity, setTransferQuantity] = useState(0);
+  const [fromLocation, setFromLocation] = useState("");
+  const [toLocation, setToLocation] = useState("");
+  const [isStockEntryOpen, setIsStockEntryOpen] = useState(false);
+  const [isStockExitOpen, setIsStockExitOpen] = useState(false);
+  const [entryQuantity, setEntryQuantity] = useState(0);
+  const [exitQuantity, setExitQuantity] = useState(0);
+  const [entryReason, setEntryReason] = useState("");
+  const [exitReason, setExitReason] = useState("");
+  const [selectedLocationForEntry, setSelectedLocationForEntry] = useState("");
 
-  // Load stock locations
+  // Load stock locations and set primary as default
   useEffect(() => {
-    setStockLocations(offlineStockLocationStorage.getAll());
-  }, []);
+    const locations = offlineStockLocationStorage.getAll();
+    setStockLocations(locations);
+    
+    // Set primary location as default
+    const primaryLocation = locations.find(location => location.isPrimary);
+    if (primaryLocation && !selectedLocation) {
+      setSelectedLocation(primaryLocation.id);
+    }
+  }, [selectedLocation]);
 
   const getProductStockInLocation = (productId: string, locationId: string): number => {
     const productStock = offlineProductStockStorage.getByProductAndLocation(productId, locationId);
@@ -245,6 +264,138 @@ export default function OfflineInventory() {
     setAdjustmentQuantity(0);
     setAdjustmentReason("");
     setIsAdjustmentOpen(true);
+  };
+
+  const handleStockTransfer = (product: OfflineProduct) => {
+    setSelectedProduct(product);
+    setTransferQuantity(0);
+    setFromLocation("");
+    setToLocation("");
+    setIsTransferOpen(true);
+  };
+
+  const applyStockTransfer = () => {
+    if (!selectedProduct || !fromLocation || !toLocation || transferQuantity <= 0) {
+      toast({
+        title: "Error",
+        description: "Please fill all transfer details",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (fromLocation === toLocation) {
+      toast({
+        title: "Error", 
+        description: "Source and destination locations cannot be the same",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const result = offlineProductStockStorage.transferStock(
+      selectedProduct.id,
+      fromLocation,
+      toLocation,
+      transferQuantity
+    );
+
+    if (result.success) {
+      toast({
+        title: "Success",
+        description: result.message
+      });
+      setIsTransferOpen(false);
+      setSelectedProduct(null);
+    } else {
+      toast({
+        title: "Error",
+        description: result.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleStockEntry = (product: OfflineProduct) => {
+    setSelectedProduct(product);
+    setEntryQuantity(0);
+    setEntryReason("");
+    setSelectedLocationForEntry("");
+    setIsStockEntryOpen(true);
+  };
+
+  const handleStockExit = (product: OfflineProduct) => {
+    setSelectedProduct(product);
+    setExitQuantity(0);
+    setExitReason("");
+    setSelectedLocationForEntry("");
+    setIsStockExitOpen(true);
+  };
+
+  const applyStockEntry = () => {
+    if (!selectedProduct || !selectedLocationForEntry || entryQuantity <= 0) {
+      toast({
+        title: "Error",
+        description: "Please fill all entry details",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const result = offlineProductStockStorage.addStock(
+      selectedProduct.id,
+      selectedLocationForEntry,
+      entryQuantity,
+      entryReason
+    );
+
+    if (result.success) {
+      toast({
+        title: "Success",
+        description: result.message
+      });
+      setIsStockEntryOpen(false);
+      setSelectedProduct(null);
+    } else {
+      toast({
+        title: "Error",
+        description: result.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const applyStockExit = () => {
+    if (!selectedProduct || !selectedLocationForEntry || exitQuantity <= 0) {
+      toast({
+        title: "Error",
+        description: "Please fill all exit details",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const result = offlineProductStockStorage.removeStock(
+      selectedProduct.id,
+      selectedLocationForEntry,
+      exitQuantity,
+      exitReason
+    );
+
+    if (result.success) {
+      toast({
+        title: "Success",
+        description: result.message
+      });
+      setIsStockExitOpen(false);
+      setSelectedProduct(null);
+    } else {
+      toast({
+        title: "Error",
+        description: result.message,
+        variant: "destructive"
+      });
+    }
   };
 
   const applyStockAdjustment = () => {
@@ -461,8 +612,11 @@ export default function OfflineInventory() {
             </TableHeader>
             <TableBody>
               {filteredProducts.map((product) => {
-                const isLowStock = product.quantity <= (product.minStockLevel || 10);
-                const stockValue = product.quantity * product.costPrice;
+                const currentStock = selectedLocation === "all" 
+                  ? getTotalProductStock(product.id)
+                  : getProductStockInLocation(product.id, selectedLocation);
+                const isLowStock = currentStock <= (product.minStockLevel || 10);
+                const stockValue = currentStock * product.costPrice;
                 
                 return (
                   <TableRow key={product.id}>
@@ -478,15 +632,9 @@ export default function OfflineInventory() {
                       {product.barcode || "-"}
                     </TableCell>
                     <TableCell className="text-center">
-                      {selectedLocation === "all" ? (
-                        <span className={isLowStock ? "text-red-600 font-bold" : ""}>
-                          {product.quantity}
-                        </span>
-                      ) : (
-                        <span className={isLowStock ? "text-red-600 font-bold" : ""}>
-                          {getProductStockInLocation(product.id, selectedLocation)}
-                        </span>
-                      )}
+                      <span className={isLowStock ? "text-red-600 font-bold" : ""}>
+                        {currentStock}
+                      </span>
                     </TableCell>
                     <TableCell className="text-center">
                       {product.minStockLevel || 10}
@@ -506,14 +654,45 @@ export default function OfflineInventory() {
                         {isLowStock ? "Low Stock" : "In Stock"}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleStockAdjustment(product)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                    <TableCell className="text-right">
+                      <div className="flex items-center gap-2 justify-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleStockAdjustment(product)}
+                          className="h-8 w-8 p-0"
+                          title="Adjust Stock"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleStockTransfer(product)}
+                          className="h-8 w-8 p-0"
+                          title="Transfer Stock"
+                        >
+                          <ArrowRightLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleStockEntry(product)}
+                          className="h-8 w-8 p-0"
+                          title="Add Stock (Entry)"
+                        >
+                          <PackagePlus className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleStockExit(product)}
+                          className="h-8 w-8 p-0"
+                          title="Remove Stock (Exit)"
+                        >
+                          <PackageMinus className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -604,6 +783,374 @@ export default function OfflineInventory() {
               disabled={adjustmentQuantity === 0}
             >
               Apply Adjustment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stock Transfer Dialog */}
+      <Dialog open={isTransferOpen} onOpenChange={setIsTransferOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transfer Stock</DialogTitle>
+          </DialogHeader>
+          
+          {selectedProduct && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold">{selectedProduct.name}</h3>
+                <p className="text-sm text-gray-600">
+                  Transfer inventory between stock locations
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">From Location *</label>
+                  <Select value={fromLocation} onValueChange={setFromLocation}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select source location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stockLocations.map((location) => {
+                        const stock = getProductStockInLocation(selectedProduct.id, location.id);
+                        return (
+                          <SelectItem key={location.id} value={location.id} disabled={stock === 0}>
+                            <div className="flex items-center justify-between w-full">
+                              <div className="flex items-center gap-2">
+                                <Building2 className="w-4 h-4" />
+                                {location.name}
+                                {location.isPrimary && " (Primary)"}
+                              </div>
+                              <span className="text-xs text-gray-500 ml-2">
+                                {stock} units
+                              </span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {fromLocation && (
+                    <p className="text-xs text-gray-500">
+                      Available: {getProductStockInLocation(selectedProduct.id, fromLocation)} units
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">To Location *</label>
+                  <Select value={toLocation} onValueChange={setToLocation}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select destination location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stockLocations.map((location) => (
+                        <SelectItem 
+                          key={location.id} 
+                          value={location.id}
+                          disabled={location.id === fromLocation}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4" />
+                            {location.name}
+                            {location.isPrimary && " (Primary)"}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {toLocation && (
+                    <p className="text-xs text-gray-500">
+                      Current stock: {getProductStockInLocation(selectedProduct.id, toLocation)} units
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Transfer Quantity *</label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTransferQuantity(Math.max(0, transferQuantity - 1))}
+                    disabled={transferQuantity <= 0}
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <Input
+                    type="number"
+                    value={transferQuantity}
+                    onChange={(e) => setTransferQuantity(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="text-center"
+                    min="0"
+                    max={fromLocation ? getProductStockInLocation(selectedProduct.id, fromLocation) : undefined}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const maxQuantity = fromLocation ? getProductStockInLocation(selectedProduct.id, fromLocation) : 0;
+                      setTransferQuantity(Math.min(maxQuantity, transferQuantity + 1));
+                    }}
+                    disabled={!fromLocation || transferQuantity >= getProductStockInLocation(selectedProduct.id, fromLocation)}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                {fromLocation && (
+                  <p className="text-xs text-gray-500">
+                    Max available: {getProductStockInLocation(selectedProduct.id, fromLocation)} units
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTransferOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={applyStockTransfer}
+              disabled={!fromLocation || !toLocation || transferQuantity <= 0}
+            >
+              <ArrowRightLeft className="w-4 h-4 mr-2" />
+              Transfer Stock
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stock Entry Dialog */}
+      <Dialog open={isStockEntryOpen} onOpenChange={setIsStockEntryOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Stock (Entry)</DialogTitle>
+          </DialogHeader>
+          
+          {selectedProduct && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold">{selectedProduct.name}</h3>
+                <p className="text-sm text-gray-600">
+                  Add inventory to a stock location
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Location *</label>
+                <Select value={selectedLocationForEntry} onValueChange={setSelectedLocationForEntry}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stockLocations.map((location) => (
+                      <SelectItem key={location.id} value={location.id}>
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4" />
+                            {location.name}
+                            {location.isPrimary && " (Primary)"}
+                          </div>
+                          <span className="text-xs text-gray-500 ml-2">
+                            {getProductStockInLocation(selectedProduct.id, location.id)} units
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedLocationForEntry && (
+                  <p className="text-xs text-gray-500">
+                    Current stock: {getProductStockInLocation(selectedProduct.id, selectedLocationForEntry)} units
+                  </p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Quantity to Add *</label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEntryQuantity(Math.max(0, entryQuantity - 1))}
+                    disabled={entryQuantity <= 0}
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <Input
+                    type="number"
+                    value={entryQuantity}
+                    onChange={(e) => setEntryQuantity(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="text-center"
+                    min="0"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEntryQuantity(entryQuantity + 1)}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                {selectedLocationForEntry && entryQuantity > 0 && (
+                  <p className="text-xs text-gray-500">
+                    New stock level: {getProductStockInLocation(selectedProduct.id, selectedLocationForEntry) + entryQuantity} units
+                  </p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Reason</label>
+                <Select value={entryReason} onValueChange={setEntryReason}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select reason (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="purchase">New Purchase</SelectItem>
+                    <SelectItem value="return">Customer Return</SelectItem>
+                    <SelectItem value="correction">Stock Correction</SelectItem>
+                    <SelectItem value="production">Production</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsStockEntryOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={applyStockEntry}
+              disabled={!selectedLocationForEntry || entryQuantity <= 0}
+            >
+              <PackagePlus className="w-4 h-4 mr-2" />
+              Add Stock
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stock Exit Dialog */}
+      <Dialog open={isStockExitOpen} onOpenChange={setIsStockExitOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Stock (Exit)</DialogTitle>
+          </DialogHeader>
+          
+          {selectedProduct && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold">{selectedProduct.name}</h3>
+                <p className="text-sm text-gray-600">
+                  Remove inventory from a stock location
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Location *</label>
+                <Select value={selectedLocationForEntry} onValueChange={setSelectedLocationForEntry}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stockLocations.map((location) => {
+                      const stock = getProductStockInLocation(selectedProduct.id, location.id);
+                      return (
+                        <SelectItem key={location.id} value={location.id} disabled={stock === 0}>
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="w-4 h-4" />
+                              {location.name}
+                              {location.isPrimary && " (Primary)"}
+                            </div>
+                            <span className="text-xs text-gray-500 ml-2">
+                              {stock} units
+                            </span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {selectedLocationForEntry && (
+                  <p className="text-xs text-gray-500">
+                    Available stock: {getProductStockInLocation(selectedProduct.id, selectedLocationForEntry)} units
+                  </p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Quantity to Remove *</label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setExitQuantity(Math.max(0, exitQuantity - 1))}
+                    disabled={exitQuantity <= 0}
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <Input
+                    type="number"
+                    value={exitQuantity}
+                    onChange={(e) => setExitQuantity(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="text-center"
+                    min="0"
+                    max={selectedLocationForEntry ? getProductStockInLocation(selectedProduct.id, selectedLocationForEntry) : undefined}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const maxQuantity = selectedLocationForEntry ? getProductStockInLocation(selectedProduct.id, selectedLocationForEntry) : 0;
+                      setExitQuantity(Math.min(maxQuantity, exitQuantity + 1));
+                    }}
+                    disabled={!selectedLocationForEntry || exitQuantity >= getProductStockInLocation(selectedProduct.id, selectedLocationForEntry)}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                {selectedLocationForEntry && exitQuantity > 0 && (
+                  <p className="text-xs text-gray-500">
+                    Remaining stock: {getProductStockInLocation(selectedProduct.id, selectedLocationForEntry) - exitQuantity} units
+                  </p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Reason</label>
+                <Select value={exitReason} onValueChange={setExitReason}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select reason (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="damaged">Damaged Goods</SelectItem>
+                    <SelectItem value="expired">Expired Items</SelectItem>
+                    <SelectItem value="theft">Theft/Loss</SelectItem>
+                    <SelectItem value="sample">Sample/Demo</SelectItem>
+                    <SelectItem value="correction">Stock Correction</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsStockExitOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={applyStockExit}
+              disabled={!selectedLocationForEntry || exitQuantity <= 0}
+            >
+              <PackageMinus className="w-4 h-4 mr-2" />
+              Remove Stock
             </Button>
           </DialogFooter>
         </DialogContent>

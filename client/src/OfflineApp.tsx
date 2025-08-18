@@ -9,6 +9,7 @@ import OfflineDashboard from "@/pages/offline-dashboard";
 import OfflineProducts from "@/pages/offline-products";
 import OfflinePOS from "@/pages/offline-pos";
 import OfflineInventory from "@/pages/offline-inventory";
+import InventoryCountPage from "@/pages/inventory-count";
 import OfflineCustomers from "@/pages/offline-customers";
 import OfflineSuppliers from "@/pages/offline-suppliers";
 import OfflineOrders from "@/pages/offline-orders";
@@ -27,6 +28,7 @@ function Router() {
         <Route path="/products" component={OfflineProducts} />
         <Route path="/pos" component={OfflinePOS} />
         <Route path="/inventory" component={OfflineInventory} />
+        <Route path="/inventory-count" component={InventoryCountPage} />
         <Route path="/customers" component={OfflineCustomers} />
         <Route path="/suppliers" component={OfflineSuppliers} />
         <Route path="/orders" component={OfflineOrders} />
