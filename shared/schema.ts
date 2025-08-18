@@ -302,6 +302,11 @@ export interface OfflinePurchaseOrder {
   tax: number;
   total: number;
   notes?: string;
+  paymentMethod: 'cash' | 'credit' | 'bank_check';
+  paymentStatus: 'unpaid' | 'partial' | 'paid';
+  paidAmount: number;
+  remainingAmount: number;
+  paymentDate?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -316,6 +321,35 @@ export interface OfflinePurchaseOrderItem {
   receivedQuantity: number;
   createdAt: string;
   updatedAt: string;
+}
+
+// Supplier Payment interface for tracking payments to suppliers
+export interface OfflineSupplierPayment {
+  id: string;
+  supplierId: string;
+  orderId?: string; // Optional link to specific order
+  amount: number;
+  paymentMethod: 'cash' | 'credit' | 'bank_check';
+  paymentDate: string;
+  reference?: string; // Check number, transaction ID, etc.
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfflineStockTransaction {
+  id: string;
+  productId: string;
+  warehouseId: string;
+  type: 'purchase' | 'sale' | 'adjustment' | 'transfer_in' | 'transfer_out' | 'entry' | 'exit';
+  quantity: number; // Positive for increases, negative for decreases
+  previousQuantity: number;
+  newQuantity: number;
+  reason?: string;
+  reference?: string; // Order number, sale ID, etc.
+  relatedId?: string; // Related order/sale/transfer ID
+  createdAt: string;
+  createdBy?: string;
 }
 
 // Extended types with related data

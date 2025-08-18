@@ -1,10 +1,18 @@
-import { useState } from "react";
-import { useOfflineProducts } from "@/hooks/use-offline-products";
+import { useState, useEffect } from "react";
+import { useOfflinePurchaseOrders } from "@/hooks/use-offline-purchase-orders";
 import { useOfflineSuppliers } from "@/hooks/use-offline-suppliers";
-import { offlineProductStockStorage, offlinePurchaseOrderItemStorage } from "@/lib/offline-storage";
-import { useOfflinePurchaseOrders, useOfflinePurchaseOrderItems } from "@/hooks/use-offline-purchase-orders";
-import { useOfflineStockLocations } from "../hooks/use-offline-stock-locations";
+import { useOfflineProducts } from "@/hooks/use-offline-products";
+import { useOfflineStockTransactions } from "@/hooks/use-offline-stock-transactions";
 import { useI18n } from "@/lib/i18n";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  OfflineSupplier, 
+  OfflineProduct,
+  offlineProductStockStorage,
+  offlineStockLocationStorage,
+  offlineSupplierPaymentStorage,
+  offlinePurchaseOrderItemStorage
+} from "@/lib/offline-storage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,7 +23,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
 import { 
   Table, 
   TableBody, 
@@ -32,17 +39,27 @@ import {
   Truck,
   Edit,
   Trash2,
-  Eye
+  Eye,
+  Minus,
+  CreditCard,
+  DollarSign
 } from "lucide-react";
 
 export default function OfflineOrders() {
-  const { products, loading: productsLoading } = useOfflineProducts();
-  const { suppliers, loading: suppliersLoading } = useOfflineSuppliers();
-  const { stockLocations, loading: locationsLoading } = useOfflineStockLocations();
   const { orders, loading: ordersLoading, createOrder, updateOrder, deleteOrder, generateOrderNumber } = useOfflinePurchaseOrders();
-  const { items: orderItems, createItem, loadItems } = useOfflinePurchaseOrderItems();
+  const { suppliers, loading: suppliersLoading } = useOfflineSuppliers();
+  const { products, loading: productsLoading } = useOfflineProducts();
+  const { createTransaction } = useOfflineStockTransactions();
   const { toast } = useToast();
   const { t } = useI18n();
+
+  // Load stock locations
+  const [stockLocations, setStockLocations] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const locations = offlineStockLocationStorage.getAll();
+    setStockLocations(locations);
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
@@ -50,12 +67,16 @@ export default function OfflineOrders() {
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("");
   const [orderProducts, setOrderProducts] = useState<{productId: string, quantity: number, unitCost: number}[]>([]);
   const [notes, setNotes] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit' | 'bank_check'>('credit');
+  const [paidAmount, setPaidAmount] = useState<number>(0);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [paymentOrderId, setPaymentOrderId] = useState<string | null>(null);
   const [receivingOrderId, setReceivingOrderId] = useState<string | null>(null);
   const [receivingItems, setReceivingItems] = useState<{itemId: string, receivedQuantity: number}[]>([]);
   const [viewingOrderId, setViewingOrderId] = useState<string | null>(null);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
 
-  const loading = productsLoading || suppliersLoading || locationsLoading || ordersLoading;
+  const loading = productsLoading || suppliersLoading || ordersLoading;
 
   const handleCreateOrder = () => {
     try {
@@ -73,17 +94,21 @@ export default function OfflineOrders() {
         subtotal,
         tax,
         total,
-        notes: notes || undefined
+        notes: notes || undefined,
+        paymentMethod: paymentMethod,
+        paymentStatus: paidAmount >= total ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid',
+        paidAmount: paidAmount,
+        remainingAmount: total - paidAmount
       });
 
-      // Create order items
-      orderProducts.forEach(orderProduct => {
-        createItem({
+      // Create order items for each product
+      orderProducts.forEach(op => {
+        offlinePurchaseOrderItemStorage.create({
           orderId: newOrder.id,
-          productId: orderProduct.productId,
-          quantity: orderProduct.quantity,
-          unitCost: orderProduct.unitCost,
-          totalCost: orderProduct.quantity * orderProduct.unitCost,
+          productId: op.productId,
+          quantity: op.quantity,
+          unitCost: op.unitCost,
+          totalCost: op.quantity * op.unitCost,
           receivedQuantity: 0
         });
       });
@@ -98,6 +123,8 @@ export default function OfflineOrders() {
       setSelectedWarehouse("");
       setOrderProducts([]);
       setNotes("");
+      setPaymentMethod('credit');
+      setPaidAmount(0);
       setIsCreateOrderOpen(false);
     } catch (error) {
       toast({
@@ -113,47 +140,56 @@ export default function OfflineOrders() {
       const order = orders.find(o => o.id === orderId);
       if (!order) return;
 
-      // Load order items
-      loadItems(orderId);
+      // Get order items from storage
+      const orderItems = offlinePurchaseOrderItemStorage.getByOrderId(orderId);
       
-      // Get order items from storage directly since loadItems is async
-      const items = offlinePurchaseOrderItemStorage.getByOrderId(orderId);
-      
-      // Update stock quantities in the warehouse for each item
-      items.forEach((item: any) => {
-        if (item.quantity > 0) {
-          // Get current stock for this product at this warehouse
-          const currentStock = offlineProductStockStorage.getByProductAndLocation(item.productId, order.warehouseId);
-          const newQuantity = (currentStock?.quantity || 0) + item.quantity;
-          
-          // Update warehouse-specific stock
-          offlineProductStockStorage.upsert({
-            productId: item.productId,
-            locationId: order.warehouseId,
-            quantity: newQuantity,
-            minStockLevel: currentStock?.minStockLevel || 0
-          });
+      // Update stock quantities for each item and record transactions
+      orderItems.forEach((item: any) => {
+        const currentStock = offlineProductStockStorage.getByProductAndLocation(item.productId, order.warehouseId);
+        const previousQuantity = currentStock?.quantity || 0;
+        const receivedQuantity = item.receivedQuantity || item.quantity;
+        const newQuantity = previousQuantity + receivedQuantity;
+        
+        // Update stock
+        offlineProductStockStorage.upsert({
+          productId: item.productId,
+          locationId: order.warehouseId,
+          quantity: newQuantity,
+          minStockLevel: 0
+        });
 
-          // Update item received quantity
-          offlinePurchaseOrderItemStorage.update(item.id, { 
-            receivedQuantity: item.quantity 
-          });
-        }
+        // Record stock transaction
+        createTransaction({
+          productId: item.productId,
+          warehouseId: order.warehouseId,
+          type: 'purchase',
+          quantity: receivedQuantity,
+          previousQuantity,
+          newQuantity,
+          reason: 'Purchase Order Received',
+          reference: order.orderNumber,
+          relatedId: orderId
+        });
       });
 
-      // Update order status to received
+      // Update order status
       updateOrder(orderId, { 
-        status: 'received', 
-        receivedDate: new Date().toISOString() 
+        status: 'received',
+        receivedDate: new Date().toISOString()
       });
+
+      // Update remaining amount calculation
+      const updatedOrder = orders.find(o => o.id === orderId);
+      if (updatedOrder) {
+        const remainingAmount = updatedOrder.total - (updatedOrder.paidAmount || 0);
+        updateOrder(orderId, { remainingAmount });
+      }
 
       toast({
         title: "Success",
-        description: `Order ${order.orderNumber} received and stock updated`
+        description: "Order received and stock updated"
       });
-
     } catch (error) {
-      console.error('Error receiving order:', error);
       toast({
         title: "Error",
         description: "Failed to receive order",
@@ -164,7 +200,6 @@ export default function OfflineOrders() {
 
   const handleViewOrder = (orderId: string) => {
     setViewingOrderId(orderId);
-    loadItems(orderId);
   };
 
   const handleDeleteOrder = (orderId: string) => {
@@ -179,6 +214,66 @@ export default function OfflineOrders() {
       toast({
         title: "Error",
         description: "Failed to delete order",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handlePaymentDialog = (orderId: string) => {
+    setPaymentOrderId(orderId);
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      setPaidAmount(order.paidAmount || 0);
+      setPaymentMethod(order.paymentMethod || 'credit');
+    }
+    setShowPaymentDialog(true);
+  };
+
+  const handleMakePayment = () => {
+    if (!paymentOrderId) return;
+    
+    try {
+      const order = orders.find(o => o.id === paymentOrderId);
+      if (!order) return;
+
+      const newPaidAmount = paidAmount;
+      const newRemainingAmount = order.total - newPaidAmount;
+      const newPaymentStatus = newPaidAmount >= order.total ? 'paid' : newPaidAmount > 0 ? 'partial' : 'unpaid';
+
+      // Update order payment information
+      updateOrder(paymentOrderId, {
+        paymentMethod: paymentMethod,
+        paymentStatus: newPaymentStatus,
+        paidAmount: newPaidAmount,
+        remainingAmount: newRemainingAmount,
+        paymentDate: newPaidAmount > 0 ? new Date().toISOString() : undefined
+      });
+
+      // Create payment record if amount > 0
+      if (newPaidAmount > (order.paidAmount || 0)) {
+        const paymentAmount = newPaidAmount - (order.paidAmount || 0);
+        offlineSupplierPaymentStorage.create({
+          supplierId: order.supplierId,
+          orderId: order.id,
+          amount: paymentAmount,
+          paymentMethod: paymentMethod === 'bank_check' ? 'bank_check' : paymentMethod === 'cash' ? 'cash' : 'bank_transfer',
+          paymentDate: new Date().toISOString(),
+          notes: `Payment for order ${order.orderNumber}`
+        });
+      }
+
+      toast({
+        title: "Success",
+        description: `Payment of $${(newPaidAmount - (order.paidAmount || 0)).toFixed(2)} recorded`
+      });
+
+      setShowPaymentDialog(false);
+      setPaymentOrderId(null);
+      setPaidAmount(0);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to record payment",
         variant: "destructive"
       });
     }
@@ -337,6 +432,42 @@ export default function OfflineOrders() {
                 />
               </div>
 
+              {/* Payment Information */}
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="font-semibold">Payment Information</h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentMethod">Payment Method</Label>
+                    <Select value={paymentMethod} onValueChange={(value: 'cash' | 'credit' | 'bank_check') => setPaymentMethod(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="credit">Credit (Pay Later)</SelectItem>
+                        <SelectItem value="bank_check">Bank Check</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {paymentMethod !== 'credit' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="paidAmount">Amount Paid</Label>
+                      <Input
+                        id="paidAmount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={paidAmount}
+                        onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Order Summary */}
               {orderProducts.length > 0 && (
                 <div className="border-t pt-4">
@@ -356,6 +487,18 @@ export default function OfflineOrders() {
                       <span>Total:</span>
                       <span>${orderProducts.reduce((sum, op) => sum + (op.quantity * op.unitCost), 0).toFixed(2)}</span>
                     </div>
+                    {paymentMethod !== 'credit' && paidAmount > 0 && (
+                      <div className="text-sm space-y-1">
+                        <div className="flex justify-between text-green-600">
+                          <span>Paid Amount:</span>
+                          <span>${paidAmount.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-orange-600">
+                          <span>Remaining:</span>
+                          <span>${(orderProducts.reduce((sum, op) => sum + (op.quantity * op.unitCost), 0) - paidAmount).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -470,15 +613,39 @@ export default function OfflineOrders() {
                         <TableCell>{supplier?.name || 'Unknown Supplier'}</TableCell>
                         <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
                         <TableCell>
-                          <Badge 
-                            variant={order.status === 'received' ? 'default' : 
-                                   order.status === 'ordered' ? 'secondary' : 
-                                   order.status === 'cancelled' ? 'destructive' : 'outline'}
-                          >
-                            {order.status}
-                          </Badge>
+                          <div className="space-y-1">
+                            <Badge 
+                              variant={order.status === 'received' ? 'default' : 
+                                     order.status === 'ordered' ? 'secondary' : 
+                                     order.status === 'cancelled' ? 'destructive' : 'outline'}
+                            >
+                              {order.status}
+                            </Badge>
+                            <Badge 
+                              variant={(order.paymentStatus || 'unpaid') === 'paid' ? 'default' : 
+                                     (order.paymentStatus || 'unpaid') === 'partial' ? 'secondary' : 'destructive'}
+                              className="text-xs"
+                            >
+                              {(order.paymentStatus || 'unpaid') === 'paid' ? 'Paid' : 
+                               (order.paymentStatus || 'unpaid') === 'partial' ? 'Partial' : 'Unpaid'}
+                            </Badge>
+                          </div>
                         </TableCell>
-                        <TableCell className="text-right">${order.total.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="space-y-1">
+                            <div>${order.total.toFixed(2)}</div>
+                            {(order.paymentStatus || 'unpaid') !== 'unpaid' && (
+                              <div className="text-xs text-green-600">
+                                Paid: ${(order.paidAmount || 0).toFixed(2)}
+                              </div>
+                            )}
+                            {(order.remainingAmount || 0) > 0 && (
+                              <div className="text-xs text-orange-600">
+                                Due: ${(order.remainingAmount || 0).toFixed(2)}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             {order.status === 'draft' || order.status === 'pending' ? (
@@ -508,6 +675,16 @@ export default function OfflineOrders() {
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
+                            {(order.paymentStatus || 'unpaid') !== 'paid' && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                title="Make Payment"
+                                onClick={() => handlePaymentDialog(order.id)}
+                              >
+                                <CreditCard className="w-4 h-4" />
+                              </Button>
+                            )}
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button 
@@ -554,7 +731,7 @@ export default function OfflineOrders() {
             const order = orders.find(o => o.id === viewingOrderId);
             const supplier = suppliers.find(s => s.id === order?.supplierId);
             const warehouse = stockLocations.find((w: any) => w.id === order?.warehouseId);
-            const items = orderItems.filter(item => item.orderId === viewingOrderId);
+            const items = offlinePurchaseOrderItemStorage.getByOrderId(viewingOrderId);
             
             if (!order) return <div>Order not found</div>;
             
@@ -631,6 +808,82 @@ export default function OfflineOrders() {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Dialog */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Make Payment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {(() => {
+              const order = orders.find(o => o.id === paymentOrderId);
+              if (!order) return null;
+              
+              return (
+                <div className="space-y-4">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <div className="text-sm space-y-1">
+                      <div><span className="font-medium">Order:</span> {order.orderNumber}</div>
+                      <div><span className="font-medium">Total:</span> ${order.total.toFixed(2)}</div>
+                      <div><span className="font-medium">Paid:</span> ${(order.paidAmount || 0).toFixed(2)}</div>
+                      <div><span className="font-medium">Due:</span> ${(order.remainingAmount || 0).toFixed(2)}</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentMethodDialog">Payment Method</Label>
+                    <Select value={paymentMethod} onValueChange={(value: 'cash' | 'credit' | 'bank_check') => setPaymentMethod(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="bank_check">Bank Check</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentAmount">Payment Amount</Label>
+                    <Input
+                      id="paymentAmount"
+                      type="number"
+                      min="0"
+                      max={order.total - (order.paidAmount || 0)}
+                      step="0.01"
+                      value={paidAmount}
+                      onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                    />
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setPaidAmount(order.total - (order.paidAmount || 0))}
+                      >
+                        Pay Full Amount
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleMakePayment}
+                      disabled={paidAmount <= 0 || paidAmount > order.remainingAmount}
+                    >
+                      Record Payment
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         </DialogContent>
       </Dialog>
 

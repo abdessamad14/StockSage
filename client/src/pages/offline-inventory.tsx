@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useOfflineProducts } from "@/hooks/use-offline-products";
+import { useOfflineStockTransactions } from "@/hooks/use-offline-stock-transactions";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -8,6 +9,7 @@ import {
   offlineStockLocationStorage,
   offlineProductStockStorage 
 } from "@/lib/offline-storage";
+import { OfflineStockTransaction } from "../../../shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -37,12 +39,17 @@ import {
   Star,
   ArrowRightLeft,
   PackagePlus,
-  PackageMinus
+  PackageMinus,
+  History,
+  TrendingUp,
+  ShoppingCart,
+  FileText
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function OfflineInventory() {
   const { products, loading, updateProduct } = useOfflineProducts();
+  const { getProductTransactions, createTransaction } = useOfflineStockTransactions();
   const { t } = useI18n();
   const { toast } = useToast();
 
@@ -72,6 +79,8 @@ export default function OfflineInventory() {
   const [entryReason, setEntryReason] = useState("");
   const [exitReason, setExitReason] = useState("");
   const [selectedLocationForEntry, setSelectedLocationForEntry] = useState("");
+  const [showStockHistory, setShowStockHistory] = useState(false);
+  const [historyProduct, setHistoryProduct] = useState<OfflineProduct | null>(null);
 
   // Load stock locations and set primary as default
   useEffect(() => {
@@ -293,6 +302,9 @@ export default function OfflineInventory() {
       return;
     }
 
+    const fromPreviousQuantity = getProductStockInLocation(selectedProduct.id, fromLocation);
+    const toPreviousQuantity = getProductStockInLocation(selectedProduct.id, toLocation);
+
     const result = offlineProductStockStorage.transferStock(
       selectedProduct.id,
       fromLocation,
@@ -301,6 +313,30 @@ export default function OfflineInventory() {
     );
 
     if (result.success) {
+      // Record transfer out transaction
+      createTransaction({
+        productId: selectedProduct.id,
+        warehouseId: fromLocation,
+        type: 'transfer_out',
+        quantity: -transferQuantity,
+        previousQuantity: fromPreviousQuantity,
+        newQuantity: fromPreviousQuantity - transferQuantity,
+        reason: `Transfer to ${stockLocations.find(l => l.id === toLocation)?.name}`,
+        relatedId: toLocation
+      });
+
+      // Record transfer in transaction
+      createTransaction({
+        productId: selectedProduct.id,
+        warehouseId: toLocation,
+        type: 'transfer_in',
+        quantity: transferQuantity,
+        previousQuantity: toPreviousQuantity,
+        newQuantity: toPreviousQuantity + transferQuantity,
+        reason: `Transfer from ${stockLocations.find(l => l.id === fromLocation)?.name}`,
+        relatedId: fromLocation
+      });
+
       toast({
         title: "Success",
         description: result.message
@@ -332,6 +368,37 @@ export default function OfflineInventory() {
     setIsStockExitOpen(true);
   };
 
+  const handleViewStockHistory = (product: OfflineProduct) => {
+    setHistoryProduct(product);
+    setShowStockHistory(true);
+  };
+
+  const getTransactionTypeLabel = (type: string) => {
+    switch (type) {
+      case 'purchase': return 'Purchase Order';
+      case 'sale': return 'Sale';
+      case 'adjustment': return 'Stock Adjustment';
+      case 'transfer_in': return 'Transfer In';
+      case 'transfer_out': return 'Transfer Out';
+      case 'entry': return 'Stock Entry';
+      case 'exit': return 'Stock Exit';
+      default: return type;
+    }
+  };
+
+  const getTransactionIcon = (type: string) => {
+    switch (type) {
+      case 'purchase': return <PackagePlus className="w-4 h-4 text-green-600" />;
+      case 'sale': return <ShoppingCart className="w-4 h-4 text-blue-600" />;
+      case 'adjustment': return <Edit className="w-4 h-4 text-orange-600" />;
+      case 'transfer_in': return <TrendingUp className="w-4 h-4 text-green-600" />;
+      case 'transfer_out': return <TrendingDown className="w-4 h-4 text-red-600" />;
+      case 'entry': return <Plus className="w-4 h-4 text-green-600" />;
+      case 'exit': return <Minus className="w-4 h-4 text-red-600" />;
+      default: return <FileText className="w-4 h-4" />;
+    }
+  };
+
   const applyStockEntry = () => {
     if (!selectedProduct || !selectedLocationForEntry || entryQuantity <= 0) {
       toast({
@@ -342,6 +409,7 @@ export default function OfflineInventory() {
       return;
     }
 
+    const previousQuantity = getProductStockInLocation(selectedProduct.id, selectedLocationForEntry);
     const result = offlineProductStockStorage.addStock(
       selectedProduct.id,
       selectedLocationForEntry,
@@ -350,6 +418,17 @@ export default function OfflineInventory() {
     );
 
     if (result.success) {
+      // Record stock transaction
+      createTransaction({
+        productId: selectedProduct.id,
+        warehouseId: selectedLocationForEntry,
+        type: 'entry',
+        quantity: entryQuantity,
+        previousQuantity,
+        newQuantity: previousQuantity + entryQuantity,
+        reason: entryReason || 'Stock entry'
+      });
+
       toast({
         title: "Success",
         description: result.message
@@ -375,6 +454,7 @@ export default function OfflineInventory() {
       return;
     }
 
+    const previousQuantity = getProductStockInLocation(selectedProduct.id, selectedLocationForEntry);
     const result = offlineProductStockStorage.removeStock(
       selectedProduct.id,
       selectedLocationForEntry,
@@ -383,6 +463,17 @@ export default function OfflineInventory() {
     );
 
     if (result.success) {
+      // Record stock transaction
+      createTransaction({
+        productId: selectedProduct.id,
+        warehouseId: selectedLocationForEntry,
+        type: 'exit',
+        quantity: -exitQuantity,
+        previousQuantity,
+        newQuantity: previousQuantity - exitQuantity,
+        reason: exitReason || 'Stock exit'
+      });
+
       toast({
         title: "Success",
         description: result.message
@@ -403,6 +494,7 @@ export default function OfflineInventory() {
 
     if (selectedLocation === "all") {
       // Adjust primary stock
+      const previousQuantity = selectedProduct.quantity;
       const newQuantity = selectedProduct.quantity + adjustmentQuantity;
       if (newQuantity < 0) {
         toast({
@@ -414,6 +506,20 @@ export default function OfflineInventory() {
       }
 
       updateProduct(selectedProduct.id, { quantity: newQuantity });
+      
+      // Record stock transaction for primary location
+      const primaryLocation = stockLocations.find(l => l.isPrimary);
+      if (primaryLocation) {
+        createTransaction({
+          productId: selectedProduct.id,
+          warehouseId: primaryLocation.id,
+          type: 'adjustment',
+          quantity: adjustmentQuantity,
+          previousQuantity,
+          newQuantity,
+          reason: adjustmentReason || 'Stock adjustment'
+        });
+      }
     } else {
       // Adjust stock for specific location
       const currentStock = getProductStockInLocation(selectedProduct.id, selectedLocation);
@@ -434,6 +540,17 @@ export default function OfflineInventory() {
         locationId: selectedLocation,
         quantity: newQuantity,
         minStockLevel: selectedProduct.minStockLevel
+      });
+
+      // Record stock transaction
+      createTransaction({
+        productId: selectedProduct.id,
+        warehouseId: selectedLocation,
+        type: 'adjustment',
+        quantity: adjustmentQuantity,
+        previousQuantity: currentStock,
+        newQuantity,
+        reason: adjustmentReason || 'Stock adjustment'
       });
     }
     
@@ -691,6 +808,15 @@ export default function OfflineInventory() {
                           title="Remove Stock (Exit)"
                         >
                           <PackageMinus className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewStockHistory(product)}
+                          className="h-8 w-8 p-0"
+                          title="View Stock History"
+                        >
+                          <History className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -1151,6 +1277,146 @@ export default function OfflineInventory() {
             >
               <PackageMinus className="w-4 h-4 mr-2" />
               Remove Stock
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stock History Dialog */}
+      <Dialog open={showStockHistory} onOpenChange={setShowStockHistory}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5" />
+              Stock History - {historyProduct?.name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {historyProduct && (
+            <div className="space-y-4">
+              {/* Current Stock Summary */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium mb-2">Current Stock Levels</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  {selectedLocation === "all" ? (
+                    <>
+                      <div>
+                        <span className="text-gray-600">Total Stock:</span>
+                        <div className="font-bold">{getTotalProductStock(historyProduct.id)} units</div>
+                      </div>
+                      {stockLocations.map(location => {
+                        const stock = getProductStockInLocation(historyProduct.id, location.id);
+                        return (
+                          <div key={location.id}>
+                            <span className="text-gray-600">{location.name}:</span>
+                            <div className="font-bold">{stock} units</div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  ) : (
+                    <div>
+                      <span className="text-gray-600">
+                        {stockLocations.find(l => l.id === selectedLocation)?.name || 'Selected Location'}:
+                      </span>
+                      <div className="font-bold">
+                        {getProductStockInLocation(historyProduct.id, selectedLocation)} units
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Transaction History */}
+              <div>
+                <h4 className="font-medium mb-3">Transaction History</h4>
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead className="text-center">Quantity</TableHead>
+                        <TableHead className="text-center">Previous</TableHead>
+                        <TableHead className="text-center">New</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Reference</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(() => {
+                        let productTransactions = getProductTransactions(historyProduct.id);
+                        
+                        // Filter by selected warehouse if not "all"
+                        if (selectedLocation && selectedLocation !== "all") {
+                          productTransactions = productTransactions.filter(t => t.warehouseId === selectedLocation);
+                        }
+                        
+                        if (productTransactions.length === 0) {
+                          return (
+                            <TableRow>
+                              <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                                No stock transactions found for this product
+                                {selectedLocation && selectedLocation !== "all" && (
+                                  <div className="text-xs mt-1">
+                                    in {stockLocations.find(l => l.id === selectedLocation)?.name || 'selected location'}
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        }
+
+                        return productTransactions.map((transaction) => {
+                          const location = stockLocations.find(l => l.id === transaction.warehouseId);
+                          const isIncrease = transaction.quantity > 0;
+                          
+                          return (
+                            <TableRow key={transaction.id}>
+                              <TableCell className="text-sm">
+                                {new Date(transaction.createdAt).toLocaleDateString()} {new Date(transaction.createdAt).toLocaleTimeString()}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {getTransactionIcon(transaction.type)}
+                                  <span className="text-sm">{getTransactionTypeLabel(transaction.type)}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {location?.name || 'Unknown Location'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className={`font-medium ${isIncrease ? 'text-green-600' : 'text-red-600'}`}>
+                                  {isIncrease ? '+' : ''}{transaction.quantity}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-center text-sm">
+                                {transaction.previousQuantity}
+                              </TableCell>
+                              <TableCell className="text-center text-sm font-medium">
+                                {transaction.newQuantity}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {transaction.reason || '-'}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {transaction.reference || '-'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        });
+                      })()}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowStockHistory(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

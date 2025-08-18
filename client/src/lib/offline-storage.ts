@@ -1,5 +1,85 @@
+// Types from shared schema - defined locally to avoid import issues
+export interface OfflinePurchaseOrder {
+  id: string;
+  orderNumber: string;
+  supplierId: string;
+  warehouseId: string;
+  status: 'draft' | 'pending' | 'ordered' | 'received' | 'cancelled';
+  orderDate: string;
+  expectedDeliveryDate?: string;
+  receivedDate?: string;
+  subtotal: number;
+  tax: number;
+  total: number;
+  notes?: string;
+  paymentMethod: 'cash' | 'credit' | 'bank_check';
+  paymentStatus: 'unpaid' | 'partial' | 'paid';
+  paidAmount: number;
+  remainingAmount: number;
+  paymentDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
-import type { OfflinePurchaseOrder, OfflinePurchaseOrderItem } from '../../../shared/schema';
+export interface OfflinePurchaseOrderItem {
+  id: string;
+  orderId: string;
+  productId: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  receivedQuantity: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfflineSupplierPayment {
+  id: string;
+  supplierId: string;
+  orderId?: string;
+  amount: number;
+  paymentMethod: 'cash' | 'credit' | 'bank_check';
+  paymentDate: string;
+  reference?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfflineStockTransaction {
+  id: string;
+  productId: string;
+  warehouseId: string;
+  type: 'purchase' | 'sale' | 'adjustment' | 'transfer_in' | 'transfer_out' | 'entry' | 'exit';
+  quantity: number;
+  previousQuantity: number;
+  newQuantity: number;
+  reason?: string;
+  reference?: string;
+  relatedId?: string;
+  createdAt: string;
+}
+
+// Import and re-export types from shared schema
+import type { 
+  OfflineProduct, 
+  OfflineCustomer, 
+  OfflineSale, 
+  OfflineSupplier, 
+  OfflineSettings,
+  OfflineProductStock,
+  OfflineStockLocation
+} from '../../shared/schema';
+
+export type { 
+  OfflineProduct, 
+  OfflineCustomer, 
+  OfflineSale, 
+  OfflineSupplier, 
+  OfflineSettings,
+  OfflineProductStock,
+  OfflineStockLocation
+};
 
 // Types for offline storage - simplified and self-contained
 export interface OfflineCategory {
@@ -1416,6 +1496,104 @@ export const offlinePurchaseOrderItemStorage = {
     const items = offlinePurchaseOrderItemStorage.getAll();
     const filteredItems = items.filter(item => item.orderId !== orderId);
     localStorage.setItem('offline_purchase_order_items', JSON.stringify(filteredItems));
+    return true;
+  }
+};
+
+// Supplier Payments Storage
+export const offlineSupplierPaymentStorage = {
+  getAll: (): OfflineSupplierPayment[] => {
+    const data = localStorage.getItem('offline-supplier-payments');
+    return data ? JSON.parse(data) : [];
+  },
+
+  getBySupplierId: (supplierId: string): OfflineSupplierPayment[] => {
+    return offlineSupplierPaymentStorage.getAll().filter(payment => payment.supplierId === supplierId);
+  },
+
+  getByOrderId: (orderId: string): OfflineSupplierPayment[] => {
+    return offlineSupplierPaymentStorage.getAll().filter(payment => payment.orderId === orderId);
+  },
+
+  create: (payment: Omit<OfflineSupplierPayment, 'id' | 'createdAt' | 'updatedAt'>): OfflineSupplierPayment => {
+    const payments = offlineSupplierPaymentStorage.getAll();
+    const newPayment: OfflineSupplierPayment = {
+      ...payment,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    payments.push(newPayment);
+    localStorage.setItem('offline-supplier-payments', JSON.stringify(payments));
+    return newPayment;
+  },
+
+  update: (id: string, updates: Partial<OfflineSupplierPayment>): OfflineSupplierPayment | null => {
+    const payments = offlineSupplierPaymentStorage.getAll();
+    const index = payments.findIndex(payment => payment.id === id);
+    
+    if (index === -1) return null;
+    
+    payments[index] = {
+      ...payments[index],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    
+    localStorage.setItem('offline-supplier-payments', JSON.stringify(payments));
+    return payments[index];
+  },
+
+  delete: (id: string): boolean => {
+    const payments = offlineSupplierPaymentStorage.getAll();
+    const filteredPayments = payments.filter(payment => payment.id !== id);
+    
+    if (filteredPayments.length === payments.length) return false;
+    
+    localStorage.setItem('offline-supplier-payments', JSON.stringify(filteredPayments));
+    return true;
+  }
+};
+
+export const offlineStockTransactionStorage = {
+  getAll: (): OfflineStockTransaction[] => {
+    const data = localStorage.getItem('offline-stock-transactions');
+    return data ? JSON.parse(data) : [];
+  },
+
+  getByProduct: (productId: string): OfflineStockTransaction[] => {
+    return offlineStockTransactionStorage.getAll()
+      .filter(transaction => transaction.productId === productId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  getByWarehouse: (warehouseId: string): OfflineStockTransaction[] => {
+    return offlineStockTransactionStorage.getAll()
+      .filter(transaction => transaction.warehouseId === warehouseId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  create: (transaction: Omit<OfflineStockTransaction, 'id' | 'createdAt'>): OfflineStockTransaction => {
+    const transactions = offlineStockTransactionStorage.getAll();
+    const newTransaction: OfflineStockTransaction = {
+      ...transaction,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString()
+    };
+    
+    transactions.push(newTransaction);
+    localStorage.setItem('offline-stock-transactions', JSON.stringify(transactions));
+    return newTransaction;
+  },
+
+  delete: (id: string): boolean => {
+    const transactions = offlineStockTransactionStorage.getAll();
+    const filteredTransactions = transactions.filter(transaction => transaction.id !== id);
+    
+    if (filteredTransactions.length === transactions.length) return false;
+    
+    localStorage.setItem('offline-stock-transactions', JSON.stringify(filteredTransactions));
     return true;
   }
 };

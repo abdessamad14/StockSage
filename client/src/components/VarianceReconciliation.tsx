@@ -25,6 +25,7 @@ import {
   offlineProductStorage,
   offlineStockLocationStorage
 } from '@/lib/offline-storage';
+import { useOfflineStockTransactions } from '@/hooks/use-offline-stock-transactions';
 import type { 
   OfflineInventoryCountItem, 
   OfflineProduct, 
@@ -49,6 +50,7 @@ export default function VarianceReconciliation({
   locations, 
   onReconcile 
 }: VarianceReconciliationProps) {
+  const { createTransaction } = useOfflineStockTransactions();
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [showReconcileDialog, setShowReconcileDialog] = useState(false);
   const [reconcileAction, setReconcileAction] = useState<'accept_count' | 'keep_system' | 'manual_adjust'>('accept_count');
@@ -179,6 +181,20 @@ export default function VarianceReconciliation({
         if (updateResult) {
           updatedStockCount++;
           console.log(`Successfully updated product stock for ${item.productId}`);
+          
+          // Record stock transaction for inventory reconciliation
+          const quantityChange = finalQuantity - item.systemQuantity;
+          createTransaction({
+            productId: item.productId,
+            warehouseId: item.locationId,
+            type: 'adjustment',
+            quantity: quantityChange,
+            previousQuantity: item.systemQuantity,
+            newQuantity: finalQuantity,
+            reason: `Inventory Count Reconciliation - ${reconcileAction}`,
+            reference: `COUNT-${item.countId}`,
+            relatedId: item.countId
+          });
           
           // Always update the base product quantity for inventory reconciliation
           // This ensures the product overview shows the reconciled quantity
