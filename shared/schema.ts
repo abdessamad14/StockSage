@@ -289,6 +289,35 @@ export interface OfflineProduct {
   updatedAt: string;
 }
 
+export interface OfflinePurchaseOrder {
+  id: string;
+  orderNumber: string;
+  supplierId: string;
+  warehouseId: string;
+  status: 'draft' | 'pending' | 'ordered' | 'received' | 'cancelled';
+  orderDate: string;
+  expectedDeliveryDate?: string;
+  receivedDate?: string;
+  subtotal: number;
+  tax: number;
+  total: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfflinePurchaseOrderItem {
+  id: string;
+  orderId: string;
+  productId: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  receivedQuantity: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Extended types with related data
 export type SaleItemWithProduct = SaleItem & {
   product?: OfflineProduct;
@@ -305,6 +334,15 @@ export type OrderItemWithProduct = OrderItem & {
 
 export type OrderWithItems = Order & {
   items: OrderItemWithProduct[];
+  supplier?: Supplier;
+};
+
+export type OfflinePurchaseOrderItemWithProduct = OfflinePurchaseOrderItem & {
+  product?: OfflineProduct;
+};
+
+export type OfflinePurchaseOrderWithItems = OfflinePurchaseOrder & {
+  items: OfflinePurchaseOrderItemWithProduct[];
   supplier?: Supplier;
 };
 

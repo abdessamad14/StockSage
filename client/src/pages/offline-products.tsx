@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useOfflineProducts } from "@/hooks/use-offline-products";
+import { useOfflineStockLocations } from "@/hooks/use-offline-stock-locations";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { OfflineProduct, OfflineCategory, offlineCategoryStorage } from "@/lib/offline-storage";
+import { OfflineProduct, OfflineCategory, offlineCategoryStorage, offlineProductStockStorage } from "@/lib/offline-storage";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -45,6 +46,7 @@ type CategoryFormData = z.infer<typeof categorySchema>;
 
 export default function OfflineProducts() {
   const { products, loading, createProduct, updateProduct, deleteProduct } = useOfflineProducts();
+  const { stockLocations } = useOfflineStockLocations();
   const { t } = useI18n();
   const { toast } = useToast();
   
@@ -56,6 +58,16 @@ export default function OfflineProducts() {
   const [editingCategory, setEditingCategory] = useState<OfflineCategory | null>(null);
   const [categories, setCategories] = useState<OfflineCategory[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  // Get primary warehouse
+  const primaryWarehouse = stockLocations.find(loc => loc.isPrimary) || stockLocations[0];
+
+  // Function to get warehouse-specific stock quantity
+  const getWarehouseStock = (productId: string): number => {
+    if (!primaryWarehouse) return 0;
+    const stock = offlineProductStockStorage.getByProductAndLocation(productId, primaryWarehouse.id);
+    return stock?.quantity || 0;
+  };
 
   // Image handling functions
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -428,8 +440,8 @@ export default function OfflineProducts() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Stock:</span>
-                    <span className={`font-medium ${product.quantity <= (product.minStockLevel || 0) ? 'text-red-600' : ''}`}>
-                      {product.quantity} {product.unit}
+                    <span className={`font-medium ${getWarehouseStock(product.id) <= (product.minStockLevel || 0) ? 'text-red-600' : ''}`}>
+                      {getWarehouseStock(product.id)} {product.unit}
                     </span>
                   </div>
                   {product.barcode && (

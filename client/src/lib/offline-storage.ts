@@ -1,3 +1,6 @@
+
+import type { OfflinePurchaseOrder, OfflinePurchaseOrderItem } from '../../../shared/schema';
+
 // Types for offline storage - simplified and self-contained
 export interface OfflineCategory {
   id: string;
@@ -1319,6 +1322,101 @@ export const salesPeriodHelpers = {
       totalSales,
       totalTransactions
     });
+  }
+};
+
+// Purchase Orders Storage
+export const offlinePurchaseOrderStorage = {
+  getAll: (): OfflinePurchaseOrder[] => {
+    const data = localStorage.getItem('offline_purchase_orders');
+    return data ? JSON.parse(data) : [];
+  },
+
+  getById: (id: string): OfflinePurchaseOrder | null => {
+    const orders = offlinePurchaseOrderStorage.getAll();
+    return orders.find(order => order.id === id) || null;
+  },
+
+  create: (order: Omit<OfflinePurchaseOrder, 'id' | 'createdAt' | 'updatedAt'>): OfflinePurchaseOrder => {
+    const orders = offlinePurchaseOrderStorage.getAll();
+    const newOrder: OfflinePurchaseOrder = {
+      ...order,
+      id: generateId(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    orders.push(newOrder);
+    localStorage.setItem('offline_purchase_orders', JSON.stringify(orders));
+    return newOrder;
+  },
+
+  update: (id: string, updates: Partial<OfflinePurchaseOrder>): OfflinePurchaseOrder | null => {
+    const orders = offlinePurchaseOrderStorage.getAll();
+    const index = orders.findIndex(order => order.id === id);
+    if (index === -1) return null;
+    
+    orders[index] = { ...orders[index], ...updates, updatedAt: new Date().toISOString() };
+    localStorage.setItem('offline_purchase_orders', JSON.stringify(orders));
+    return orders[index];
+  },
+
+  delete: (id: string): boolean => {
+    const orders = offlinePurchaseOrderStorage.getAll();
+    const filteredOrders = orders.filter(order => order.id !== id);
+    if (filteredOrders.length === orders.length) return false;
+    localStorage.setItem('offline_purchase_orders', JSON.stringify(filteredOrders));
+    return true;
+  }
+};
+
+// Purchase Order Items Storage
+export const offlinePurchaseOrderItemStorage = {
+  getAll: (): OfflinePurchaseOrderItem[] => {
+    const data = localStorage.getItem('offline_purchase_order_items');
+    return data ? JSON.parse(data) : [];
+  },
+
+  getByOrderId: (orderId: string): OfflinePurchaseOrderItem[] => {
+    const items = offlinePurchaseOrderItemStorage.getAll();
+    return items.filter(item => item.orderId === orderId);
+  },
+
+  create: (item: Omit<OfflinePurchaseOrderItem, 'id' | 'createdAt' | 'updatedAt'>): OfflinePurchaseOrderItem => {
+    const items = offlinePurchaseOrderItemStorage.getAll();
+    const newItem: OfflinePurchaseOrderItem = {
+      ...item,
+      id: generateId(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    items.push(newItem);
+    localStorage.setItem('offline_purchase_order_items', JSON.stringify(items));
+    return newItem;
+  },
+
+  update: (id: string, updates: Partial<OfflinePurchaseOrderItem>): OfflinePurchaseOrderItem | null => {
+    const items = offlinePurchaseOrderItemStorage.getAll();
+    const index = items.findIndex(item => item.id === id);
+    if (index === -1) return null;
+    
+    items[index] = { ...items[index], ...updates, updatedAt: new Date().toISOString() };
+    localStorage.setItem('offline_purchase_order_items', JSON.stringify(items));
+    return items[index];
+  },
+
+  delete: (id: string): boolean => {
+    const items = offlinePurchaseOrderItemStorage.getAll();
+    const filteredItems = items.filter(item => item.id !== id);
+    if (filteredItems.length === items.length) return false;
+    localStorage.setItem('offline_purchase_order_items', JSON.stringify(filteredItems));
+    return true;
+  },
+
+  deleteByOrderId: (orderId: string): boolean => {
+    const items = offlinePurchaseOrderItemStorage.getAll();
+    const filteredItems = items.filter(item => item.orderId !== orderId);
+    localStorage.setItem('offline_purchase_order_items', JSON.stringify(filteredItems));
+    return true;
   }
 };
 
