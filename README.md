@@ -1,45 +1,43 @@
-# iGoodar Stock
+# StockSage
 
-A comprehensive inventory and point-of-sale (POS) system designed for Moroccan small businesses, with robust multi-tenant data isolation and user management capabilities.
+A comprehensive offline-first inventory and point-of-sale (POS) system designed for small businesses, featuring complete stock management with detailed transaction history and multi-warehouse support.
 
 ## Features
 
-- **Mobile-first design**: Works seamlessly on smartphones, tablets, and desktops
-- **Multi-tenant architecture**: Securely isolates data between different businesses
-- **Offline capability**: Continue working without internet connection
-- **Inventory management**: Track stock levels, set alerts for low stock
-- **Point of Sale (POS)**: Process sales quickly with an intuitive interface
-- **Customer management**: Store customer details and purchase history
-- **Supplier management**: Track suppliers and orders
-- **User management**: Control who can access what with role-based permissions
-- **Reports and analytics**: Gain insights into your business performance
-- **Thermal receipt printing**: Print professional receipts
-- **Barcode scanning**: Quickly add products to sales
+- **Offline-first architecture**: Fully functional without internet connection using browser localStorage
+- **Complete inventory management**: Multi-warehouse stock tracking with detailed transaction history
+- **Point of Sale (POS)**: Fast checkout with automatic stock updates and receipt generation
+- **Purchase order management**: Full supplier ordering workflow with receiving and payment tracking
+- **Stock transaction history**: Complete audit trail for all stock movements (sales, purchases, adjustments, transfers)
+- **Inventory counting**: Physical count reconciliation with variance tracking and automated adjustments
+- **Supplier & customer management**: Complete contact and transaction history
+- **Warehouse filtering**: View stock and history by specific locations or across all warehouses
+- **Real-time stock updates**: Automatic quantity adjustments across all operations
+- **Mobile-responsive design**: Works seamlessly on smartphones, tablets, and desktops
+- **Barcode support**: Quick product identification and processing
 
 ## Technology Stack
 
-- **Frontend**: React.js with TypeScript and Tailwind CSS
-- **Backend**: Node.js with Express
-- **Database**: PostgreSQL
-- **ORM**: Drizzle ORM
-- **Authentication**: Passport.js with session-based auth
-- **State Management**: React Query, Zustand
-- **UI Components**: Shadcn UI
+- **Frontend**: React + Vite + TypeScript + Tailwind CSS
+- **Storage**: Browser localStorage (offline-first, no server required)
+- **State Management**: Custom React hooks for offline data management
+- **UI Components**: Shadcn/ui with modern design system
+- **Build Tool**: Vite for fast development and optimized builds
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js (v18 or higher)
-- Docker and Docker Compose (for easy database setup)
+- Modern web browser with localStorage support
 
 ### Installation
 
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/yourusername/igoodar-stock.git
-cd igoodar-stock
+git clone https://github.com/yourusername/stocksage.git
+cd stocksage
 ```
 
 2. **Install dependencies**
@@ -48,153 +46,162 @@ cd igoodar-stock
 npm install
 ```
 
-3. **Set up environment variables**
-
-Create a `.env` file in the root directory:
-
-```
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/igoodar
-SESSION_SECRET=your_secret_key_here
-```
-
-4. **Setup the database (Automated Option)**
-
-Run the setup script which will:
-- Start the PostgreSQL Docker container
-- Create the .env file if it doesn't exist
-- Initialize the database schema
-
-```bash
-node scripts/setup-db.js
-```
-
-**Or perform these steps manually:**
-
-4a. **Start the PostgreSQL database using Docker**
-
-```bash
-docker-compose up -d
-```
-
-4b. **Initialize the database schema**
-
-```bash
-npm run db:push
-```
-
-6. **Start the development server**
+3. **Start the development server**
 
 ```bash
 npm run dev
 ```
 
-7. **Access the application**
+4. **Access the application**
 
-Open your browser and navigate to: `http://localhost:5000`
+Open your browser and navigate to: `http://localhost:3000`
 
-### Default Login Credentials
+### No Setup Required
 
-The application comes with pre-configured users:
+StockSage is designed to work immediately without any database setup or configuration. All data is stored locally in your browser using localStorage, making it perfect for:
 
-- **Administrator:**
-  - Username: `superadmin`
-  - Password: `admin123`
-  - Tenant: `tenant_1`
+- **Small businesses** needing immediate inventory management
+- **Offline environments** where internet connectivity is limited
+- **Demo purposes** without complex setup requirements
+- **Development** with instant data persistence
 
-- **Demo User:**
-  - Username: `demo`
-  - Password: `demo123`
-  - Tenant: `demo-tenant`
+## Core Features
+
+### Stock Management
+- **Multi-warehouse support**: Manage inventory across multiple locations
+- **Real-time stock tracking**: Automatic updates from all operations
+- **Low stock alerts**: Configurable minimum stock level warnings
+- **Stock adjustments**: Manual corrections with full audit trail
+- **Stock transfers**: Move inventory between warehouses
+
+### Transaction History
+- **Complete audit trail**: Every stock movement is recorded
+- **Transaction types**: Sales, purchases, adjustments, transfers, entries, exits
+- **Warehouse filtering**: View history by specific location or all locations
+- **Reference tracking**: Link transactions to orders, sales, or manual operations
+
+### Point of Sale
+- **Fast checkout**: Intuitive interface for quick sales processing
+- **Automatic stock updates**: Quantities decrease immediately upon sale
+- **Customer management**: Track customer purchases and credit
+- **Receipt generation**: Professional receipts with business details
+
+### Purchase Orders
+- **Supplier management**: Complete supplier contact and payment tracking
+- **Order workflow**: Draft → Ordered → Received status progression
+- **Stock receiving**: Automatic inventory updates when orders arrive
+- **Payment tracking**: Partial and full payment management with credit balances
+
+### Inventory Counting
+- **Physical count sessions**: Organize counting by location
+- **Variance detection**: Automatic identification of discrepancies
+- **Reconciliation options**: Accept count, keep system, or manual adjustment
+- **Transaction recording**: All reconciliations create audit trail entries
 
 ## Development
 
 ### Available Commands
 
-- `npm run dev` - Start the development server
+- `npm run dev` - Start the development server (port 3000)
 - `npm run build` - Build the application for production
-- `npm run start` - Run the application in production mode
-- `npm run db:push` - Push schema changes to the database
-- `npm run lint` - Run linting checks
+- `npm run start` - Run the production build
+- `npm run lint` - Run TypeScript and ESLint checks
 
-### Docker Commands
+### Data Management
 
-- Start containers: `docker-compose up -d`
-- Stop containers: `docker-compose down`
-- View logs: `docker-compose logs postgres`
-- Reset database (remove volume): `docker-compose down -v`
+Since StockSage uses localStorage:
+- **Data persistence**: All data survives browser restarts
+- **Data isolation**: Each browser/device maintains separate data
+- **No backups needed**: Data stays on the local device
+- **Privacy focused**: No data transmitted to external servers
 
 ## Production Deployment
 
-For production deployment, consider:
+StockSage can be deployed as a static website since it requires no backend:
 
-1. Setting up a proper PostgreSQL database with regular backups
-2. Using environment variables for all sensitive information
-3. Setting up a reverse proxy (like Nginx) in front of the application
-4. Enabling HTTPS for secure connections
-5. Implementing proper monitoring and logging
-
-## GitHub Repository
-
-It's recommended to upload this project to a GitHub repository for:
-
-- Version control
-- Collaboration with other developers
-- Issue tracking
-- CI/CD integration
-- Documentation hosting
-
-### Steps to Upload to GitHub
-
-1. **Create a new repository on GitHub**
-   - Go to [GitHub](https://github.com) and log in
-   - Click on "New repository"
-   - Name your repository (e.g., "igoodar-stock")
-   - Choose public or private visibility based on your needs
-   - Do not initialize with README, .gitignore, or license (we already have these)
-
-2. **Initialize git in your local project (if not already done)**
+1. **Build the application**:
    ```bash
-   git init
+   npm run build
    ```
 
-3. **Add your files to git**
-   ```bash
-   git add .
-   ```
+2. **Deploy the `dist/public` folder** to any static hosting service:
+   - Netlify, Vercel, GitHub Pages
+   - Apache, Nginx web servers
+   - CDN services
 
-4. **Create your first commit**
-   ```bash
-   git commit -m "Initial commit of iGoodar Stock application"
-   ```
+3. **HTTPS recommended** for security and PWA features
 
-5. **Add the GitHub repository as a remote**
-   ```bash
-   git remote add origin https://github.com/yourusername/igoodar-stock.git
-   ```
+## Architecture
 
-6. **Push your code to GitHub**
-   ```bash
-   git push -u origin main
-   ```
-   (Use `git push -u origin master` if your default branch is named "master")
+### Offline-First Design
+StockSage is built with an offline-first architecture:
 
-Make sure to:
-- Use the provided `.gitignore` file to exclude node_modules, .env, and other sensitive/large files
-- Document any project changes thoroughly in the README
-- Add license information if applicable
+- **No server dependencies**: Runs entirely in the browser
+- **localStorage persistence**: All data stored locally and securely
+- **Instant startup**: No network requests or database connections needed
+- **Single-tenant**: Each installation is isolated and self-contained
 
-## Security Considerations
+### File Structure
+```
+├── client/src/
+│   ├── components/     # Reusable UI components
+│   ├── hooks/         # Custom React hooks for data management
+│   ├── lib/           # Utility functions and offline storage
+│   ├── pages/         # Main application pages
+│   └── shared/        # Shared types and schemas
+├── server/            # Development server (Express)
+└── shared/            # Shared TypeScript interfaces
+```
 
-1. Never commit sensitive information like passwords or API keys to the repository
-2. Always use environment variables for configuration
-3. Keep dependencies updated regularly to avoid security vulnerabilities
-4. Implement proper input validation and sanitization
-5. Use HTTPS in production environments
+### Data Flow
+1. **User interactions** trigger React component updates
+2. **Custom hooks** manage state and call storage functions
+3. **Offline storage** persists data to localStorage
+4. **Transaction recording** creates audit trails for stock changes
+5. **UI updates** reflect changes immediately
+
+## Browser Compatibility
+
+StockSage works in all modern browsers that support:
+- ES2020+ JavaScript features
+- localStorage API
+- CSS Grid and Flexbox
+- Fetch API
+
+Tested browsers:
+- Chrome 90+
+- Firefox 88+
+- Safari 14+
+- Edge 90+
+
+## Data Security
+
+Since all data is stored locally:
+- **No data transmission**: Information never leaves the device
+- **User controlled**: Complete ownership of business data
+- **Privacy by design**: No external analytics or tracking
+- **Backup responsibility**: Users should backup their browser data if needed
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make your changes and test thoroughly
+4. Commit with descriptive messages: `git commit -m "feat: add new feature"`
+5. Push to your fork: `git push origin feature-name`
+6. Create a Pull Request
 
 ## License
 
-[Add your chosen license here]
+MIT License - see LICENSE file for details
 
 ## Support
 
-For questions or issues, please [open an issue](https://github.com/yourusername/igoodar-stock/issues) on the GitHub repository.
+For questions, issues, or feature requests:
+- Open an issue on GitHub
+- Check existing documentation
+- Review the code comments for implementation details
+
+---
+
+**StockSage** - Simple, powerful, offline inventory management for modern businesses.
