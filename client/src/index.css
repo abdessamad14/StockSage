@@ -78,6 +78,14 @@
     @apply font-sans antialiased bg-background text-foreground;
     font-family: 'Roboto', 'Cairo', sans-serif;
     -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    overscroll-behavior: none;
+    touch-action: manipulation;
   }
 
   [dir="rtl"] {
@@ -120,14 +128,72 @@
   }
   
   .btn-bottom-nav {
-    @apply flex flex-col items-center justify-center p-2;
+    @apply flex flex-col items-center justify-center p-2 min-h-[60px] transition-all duration-200;
+  }
+  
+  .btn-bottom-nav:active {
+    @apply scale-95 bg-gray-100;
   }
   
   .bottom-nav-icon {
-    @apply w-6 h-6;
+    @apply w-6 h-6 transition-colors duration-200;
   }
   
   .bottom-nav-text {
-    @apply text-xs mt-1;
+    @apply text-xs mt-1 transition-colors duration-200;
+  }
+  
+  /* Mobile-first responsive classes */
+  .mobile-container {
+    @apply max-w-sm mx-auto;
+  }
+  
+  .mobile-card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4 transition-all duration-200;
+  }
+  
+  .mobile-card:active {
+    @apply scale-[0.98] shadow-md;
+  }
+  
+  .mobile-input {
+    @apply w-full p-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent;
+  }
+  
+  .mobile-button {
+    @apply w-full py-3 px-4 text-base font-medium rounded-lg transition-all duration-200 active:scale-[0.98];
+  }
+  
+  .mobile-button-primary {
+    @apply mobile-button bg-primary text-white hover:bg-primary/90;
+  }
+  
+  .mobile-button-secondary {
+    @apply mobile-button bg-gray-100 text-gray-900 hover:bg-gray-200;
+  }
+  
+  .mobile-header {
+    @apply sticky top-0 z-50 bg-white border-b border-gray-200 backdrop-blur-sm;
+  }
+  
+  .mobile-safe-area {
+    @apply pb-safe-bottom;
+  }
+  
+  .mobile-scroll-container {
+    @apply overflow-y-auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .mobile-fab {
+    @apply fixed bottom-20 right-4 w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-all duration-200 active:scale-90;
+  }
+  
+  .mobile-list-item {
+    @apply flex items-center p-4 border-b border-gray-100 active:bg-gray-50 transition-colors duration-150;
+  }
+  
+  .mobile-swipe-action {
+    @apply absolute right-0 top-0 h-full bg-red-500 text-white flex items-center px-4 transform translate-x-full transition-transform duration-200;
   }
 }

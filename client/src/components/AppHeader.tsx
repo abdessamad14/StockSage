@@ -1,4 +1,4 @@
-import { useAuth } from '@/lib/auth';
+import { useOfflineAuth } from '@/hooks/use-offline-auth';
 import { Menu, Bell } from 'lucide-react';
 import { lowStockHelpers } from '@/lib/offline-storage';
 import { useState, useEffect } from 'react';
@@ -18,7 +18,7 @@ interface AppHeaderProps {
 }
 
 export default function AppHeader({ title, onMenuToggle, hasBackButton = false }: AppHeaderProps) {
-  const { user } = useAuth();
+  const { user } = useOfflineAuth();
   const [lowStockCount, setLowStockCount] = useState(0);
   const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
   
@@ -54,12 +54,12 @@ export default function AppHeader({ title, onMenuToggle, hasBackButton = false }
   };
 
   return (
-    <header className="bg-primary text-white shadow-md fixed top-0 left-0 w-full z-30">
-      <div className="flex items-center justify-between h-14 px-4">
+    <header className="bg-primary text-white shadow-md fixed top-0 left-0 w-full z-30 mobile-header">
+      <div className="flex items-center justify-between h-14 px-4 safe-area-inset-top">
         <div className="flex items-center">
           <button 
             onClick={onMenuToggle}
-            className="p-1 -ml-1 mr-2 rounded-full hover:bg-primary-dark focus:outline-none focus:bg-primary-dark"
+            className="p-1 -ml-1 mr-2 rounded-full hover:bg-primary-dark focus:outline-none focus:bg-primary-dark active:scale-95 transition-transform duration-150"
           >
             <Menu className="w-6 h-6" />
           </button>
@@ -68,7 +68,7 @@ export default function AppHeader({ title, onMenuToggle, hasBackButton = false }
         <div className="flex items-center">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="relative mr-2 p-1 hover:bg-primary-dark">
+              <Button variant="ghost" size="sm" className="relative mr-2 p-1 hover:bg-primary-dark active:scale-95 transition-transform duration-150">
                 <div className="w-8 h-8 flex items-center justify-center rounded-full bg-primary-dark">
                   <Bell className="w-5 h-5" />
                 </div>
@@ -119,7 +119,7 @@ export default function AppHeader({ title, onMenuToggle, hasBackButton = false }
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-          <div className="w-8 h-8 bg-primary-dark rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-primary-dark rounded-full flex items-center justify-center active:scale-95 transition-transform duration-150 cursor-pointer">
             <span className="text-sm font-semibold">{getUserInitials()}</span>
           </div>
         </div>

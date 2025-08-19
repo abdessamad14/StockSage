@@ -1,7 +1,7 @@
 import { LayoutDashboard, Store, Package, Users, ShoppingBag } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useI18n } from '@/lib/i18n';
-import { useAuth } from '@/lib/auth';
+import { useOfflineAuth } from '@/hooks/use-offline-auth';
 
 interface BottomBarProps {
   onScanClick: () => void;
@@ -10,14 +10,14 @@ interface BottomBarProps {
 export default function BottomBar({ onScanClick }: BottomBarProps) {
   const [location] = useLocation();
   const { t } = useI18n();
-  const { canUsePOS, canManageProducts, canManageCustomers } = useAuth();
+  const { canUsePOS, canManageProducts, canManageCustomers } = useOfflineAuth();
 
   const isActive = (path: string) => {
     return location === path;
   };
 
   return (
-    <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-around items-center px-4 py-2 z-30">
+    <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-around items-center px-2 py-1 z-30 safe-area-inset-bottom">
       <Link href="/" className="btn-bottom-nav">
         <LayoutDashboard className={`bottom-nav-icon ${isActive('/') ? 'text-primary' : 'text-textSecondary'}`} />
         <span className={`bottom-nav-text ${isActive('/') ? 'text-primary font-medium' : 'text-textSecondary'}`}>
@@ -37,7 +37,7 @@ export default function BottomBar({ onScanClick }: BottomBarProps) {
       <div className="relative">
         <button 
           onClick={onScanClick}
-          className="w-14 h-14 rounded-full bg-primary flex items-center justify-center shadow-lg -mt-5"
+          className="w-14 h-14 rounded-full bg-primary flex items-center justify-center shadow-lg -mt-5 active:scale-95 transition-transform duration-150"
         >
           <ShoppingBag className="w-7 h-7 text-white" />
         </button>
