@@ -28,7 +28,7 @@ export interface OfflinePurchaseOrderItem {
   quantity: number;
   unitCost: number;
   totalCost: number;
-  receivedQuantity: number;
+  receivedQuantity?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -405,7 +405,7 @@ export const offlineProductStorage = {
     const index = products.findIndex(p => p.id === id);
     if (index === -1) return null;
     
-    products[index] = { ...products[index], ...updates };
+    products[index] = { ...products[index], ...updates, updatedAt: new Date().toISOString() };
     saveToStorage(STORAGE_KEYS.PRODUCTS, products);
     return products[index];
   },
@@ -424,9 +424,15 @@ export const offlineProductStorage = {
     const lowercaseQuery = query.toLowerCase();
     return products.filter(p => 
       p.name.toLowerCase().includes(lowercaseQuery) ||
+      p.sku?.toLowerCase().includes(lowercaseQuery) ||
       p.barcode?.toLowerCase().includes(lowercaseQuery) ||
       p.description?.toLowerCase().includes(lowercaseQuery)
     );
+  },
+
+  getLowStock: (): OfflineProduct[] => {
+    const products = getFromStorage<OfflineProduct>(STORAGE_KEYS.PRODUCTS);
+    return products.filter(p => p.quantity <= (p.minStockLevel || 10));
   }
 };
 
@@ -464,6 +470,16 @@ export const offlineCustomerStorage = {
     
     saveToStorage(STORAGE_KEYS.CUSTOMERS, filteredCustomers);
     return true;
+  },
+
+  search: (query: string): OfflineCustomer[] => {
+    const customers = getFromStorage<OfflineCustomer>(STORAGE_KEYS.CUSTOMERS);
+    const lowercaseQuery = query.toLowerCase();
+    return customers.filter(c => 
+      c.name.toLowerCase().includes(lowercaseQuery) ||
+      c.email?.toLowerCase().includes(lowercaseQuery) ||
+      c.phone?.toLowerCase().includes(lowercaseQuery)
+    );
   }
 };
 
@@ -476,19 +492,23 @@ export const offlineSaleStorage = {
     return sales.find(s => s.id === id);
   },
   
-  create: (sale: Omit<OfflineSale, 'id'>): OfflineSale => {
+  create: (sale: Omit<OfflineSale, 'id' | 'saleNumber' | 'createdAt' | 'invoiceNumber'>): OfflineSale => {
     const sales = getFromStorage<OfflineSale>(STORAGE_KEYS.SALES);
+    const invoiceNumber = `INV-${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}-${(sales.length + 1).toString().padStart(3, '0')}`;
     const newSale: OfflineSale = { 
       ...sale, 
       id: generateId(),
-      date: new Date(),
-      items: sale.items.map(item => ({ ...item, id: generateId() }))
+      saleNumber: invoiceNumber,
+      invoiceNumber,
+      date: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      items: sale.items.map((item: any) => ({ ...item, id: generateId() }))
     };
     sales.push(newSale);
     saveToStorage(STORAGE_KEYS.SALES, sales);
     
     // Update product quantities
-    newSale.items.forEach(item => {
+    newSale.items.forEach((item: any) => {
       const product = offlineProductStorage.getById(item.productId);
       if (product) {
         offlineProductStorage.update(item.productId, {
@@ -582,6 +602,17 @@ export const offlineSupplierStorage = {
     
     saveToStorage(STORAGE_KEYS.SUPPLIERS, filteredSuppliers);
     return true;
+  },
+
+  search: (query: string): OfflineSupplier[] => {
+    const suppliers = getFromStorage<OfflineSupplier>(STORAGE_KEYS.SUPPLIERS);
+    const lowerQuery = query.toLowerCase();
+    return suppliers.filter(supplier => 
+      supplier.name.toLowerCase().includes(lowerQuery) ||
+      supplier.contactPerson?.toLowerCase().includes(lowerQuery) ||
+      supplier.email?.toLowerCase().includes(lowerQuery) ||
+      supplier.phone?.toLowerCase().includes(lowerQuery)
+    );
   }
 };
 
@@ -594,6 +625,10 @@ export const offlineCreditTransactionStorage = {
   getByCustomerId: (customerId: string): OfflineCreditTransaction[] => {
     const transactions = getFromStorage<OfflineCreditTransaction>(STORAGE_KEYS.CREDIT_TRANSACTIONS);
     return transactions.filter(t => t.customerId === customerId);
+  },
+
+  getByCustomer: (customerId: string): OfflineCreditTransaction[] => {
+    return offlineCreditTransactionStorage.getByCustomerId(customerId);
   },
   
   create: (transaction: Omit<OfflineCreditTransaction, 'id'>): OfflineCreditTransaction => {
@@ -1038,10 +1073,30 @@ export const offlineProductStockStorage = {
     saveToStorage(STORAGE_KEYS.PRODUCT_STOCK, filteredStocks);
   },
 
+  getTotalQuantity: (productId: string): number => {
+    const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCK);
+    return stocks
+      .filter(stock => stock.productId === productId)
+      .reduce((total, stock) => total + stock.quantity, 0);
+  },
+
+  getByProductAndWarehouse: (productId: string, warehouseId: string): OfflineProductStock | undefined => {
+    return offlineProductStockStorage.getByProductAndLocation(productId, warehouseId);
+  },
+
   deleteByLocation: (locationId: string): void => {
     const stocks = getFromStorage<OfflineProductStock>(STORAGE_KEYS.PRODUCT_STOCK);
     const filteredStocks = stocks.filter(stock => stock.locationId !== locationId);
     saveToStorage(STORAGE_KEYS.PRODUCT_STOCK, filteredStocks);
+  },
+
+  setQuantity: (productId: string, warehouseId: string, quantity: number, reason?: string): OfflineProductStock => {
+    return offlineProductStockStorage.upsert({
+      productId,
+      locationId: warehouseId,
+      quantity,
+      minStockLevel: 0
+    });
   },
 
   transferStock: (productId: string, fromLocationId: string, toLocationId: string, quantity: number): { success: boolean; message: string } => {
@@ -1417,11 +1472,13 @@ export const offlinePurchaseOrderStorage = {
     return orders.find(order => order.id === id) || null;
   },
 
-  create: (order: Omit<OfflinePurchaseOrder, 'id' | 'createdAt' | 'updatedAt'>): OfflinePurchaseOrder => {
+  create: (order: Omit<OfflinePurchaseOrder, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>): OfflinePurchaseOrder => {
     const orders = offlinePurchaseOrderStorage.getAll();
+    const orderNumber = `PO${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}-${(orders.length + 1).toString().padStart(3, '0')}`;
     const newOrder: OfflinePurchaseOrder = {
       ...order,
       id: generateId(),
+      orderNumber,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -1443,7 +1500,9 @@ export const offlinePurchaseOrderStorage = {
   delete: (id: string): boolean => {
     const orders = offlinePurchaseOrderStorage.getAll();
     const filteredOrders = orders.filter(order => order.id !== id);
+    
     if (filteredOrders.length === orders.length) return false;
+    
     localStorage.setItem('offline_purchase_orders', JSON.stringify(filteredOrders));
     return true;
   }
@@ -1456,9 +1515,13 @@ export const offlinePurchaseOrderItemStorage = {
     return data ? JSON.parse(data) : [];
   },
 
-  getByOrderId: (orderId: string): OfflinePurchaseOrderItem[] => {
+  getByOrder: (orderId: string): OfflinePurchaseOrderItem[] => {
     const items = offlinePurchaseOrderItemStorage.getAll();
     return items.filter(item => item.orderId === orderId);
+  },
+
+  getByOrderId: (orderId: string): OfflinePurchaseOrderItem[] => {
+    return offlinePurchaseOrderItemStorage.getByOrder(orderId);
   },
 
   create: (item: Omit<OfflinePurchaseOrderItem, 'id' | 'createdAt' | 'updatedAt'>): OfflinePurchaseOrderItem => {
@@ -1500,59 +1563,82 @@ export const offlinePurchaseOrderItemStorage = {
   }
 };
 
-// Supplier Payments Storage
+// Remove duplicate - will be redefined below
+
+// Supplier credit helpers
+export const supplierCreditHelpers = {
+  addCreditPurchase: (supplierId: string, amount: number, orderId: string, description: string) => {
+    // Update supplier balance
+    const supplier = offlineSupplierStorage.getById(supplierId);
+    if (supplier) {
+      offlineSupplierStorage.update(supplierId, {
+        creditBalance: (supplier.creditBalance || 0) + amount
+      });
+    }
+
+    // Record transaction
+    return offlineSupplierPaymentStorage.create({
+      supplierId,
+      orderId,
+      amount,
+      description,
+      type: 'credit_purchase'
+    });
+  },
+
+  addSupplierPayment: (supplierId: string, amount: number, paymentMethod: 'cash' | 'credit' | 'bank_check', description: string) => {
+    // Update supplier balance
+    const supplier = offlineSupplierStorage.getById(supplierId);
+    if (supplier) {
+      offlineSupplierStorage.update(supplierId, {
+        creditBalance: Math.max(0, (supplier.creditBalance || 0) - amount)
+      });
+    }
+
+    // Record payment transaction
+    return offlineSupplierPaymentStorage.create({
+      supplierId,
+      amount: -amount, // Negative for payment
+      paymentMethod,
+      description,
+      type: 'payment'
+    });
+  }
+};
+
+// Credit transaction storage for suppliers
+interface SupplierCreditTransaction {
+  id: string;
+  supplierId: string;
+  type: 'credit_purchase' | 'payment';
+  amount: number;
+  orderId?: string;
+  paymentMethod?: 'cash' | 'credit' | 'bank_check';
+  description: string;
+  date: Date;
+}
+
 export const offlineSupplierPaymentStorage = {
-  getAll: (): OfflineSupplierPayment[] => {
+  getAll: (): SupplierCreditTransaction[] => {
     const data = localStorage.getItem('offline-supplier-payments');
     return data ? JSON.parse(data) : [];
   },
 
-  getBySupplierId: (supplierId: string): OfflineSupplierPayment[] => {
-    return offlineSupplierPaymentStorage.getAll().filter(payment => payment.supplierId === supplierId);
+  getBySupplier: (supplierId: string): SupplierCreditTransaction[] => {
+    return offlineSupplierPaymentStorage.getAll().filter(t => t.supplierId === supplierId);
   },
 
-  getByOrderId: (orderId: string): OfflineSupplierPayment[] => {
-    return offlineSupplierPaymentStorage.getAll().filter(payment => payment.orderId === orderId);
-  },
-
-  create: (payment: Omit<OfflineSupplierPayment, 'id' | 'createdAt' | 'updatedAt'>): OfflineSupplierPayment => {
-    const payments = offlineSupplierPaymentStorage.getAll();
-    const newPayment: OfflineSupplierPayment = {
-      ...payment,
+  create: (transaction: Omit<SupplierCreditTransaction, 'id' | 'date'>): SupplierCreditTransaction => {
+    const transactions = offlineSupplierPaymentStorage.getAll();
+    const newTransaction: SupplierCreditTransaction = {
+      ...transaction,
       id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      date: new Date()
     };
     
-    payments.push(newPayment);
-    localStorage.setItem('offline-supplier-payments', JSON.stringify(payments));
-    return newPayment;
-  },
-
-  update: (id: string, updates: Partial<OfflineSupplierPayment>): OfflineSupplierPayment | null => {
-    const payments = offlineSupplierPaymentStorage.getAll();
-    const index = payments.findIndex(payment => payment.id === id);
-    
-    if (index === -1) return null;
-    
-    payments[index] = {
-      ...payments[index],
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
-    
-    localStorage.setItem('offline-supplier-payments', JSON.stringify(payments));
-    return payments[index];
-  },
-
-  delete: (id: string): boolean => {
-    const payments = offlineSupplierPaymentStorage.getAll();
-    const filteredPayments = payments.filter(payment => payment.id !== id);
-    
-    if (filteredPayments.length === payments.length) return false;
-    
-    localStorage.setItem('offline-supplier-payments', JSON.stringify(filteredPayments));
-    return true;
+    transactions.push(newTransaction);
+    localStorage.setItem('offline-supplier-payments', JSON.stringify(transactions));
+    return newTransaction;
   }
 };
 
@@ -1574,12 +1660,12 @@ export const offlineStockTransactionStorage = {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
-  create: (transaction: Omit<OfflineStockTransaction, 'id' | 'createdAt'>): OfflineStockTransaction => {
+  create: (transaction: Omit<OfflineStockTransaction, 'id' | 'createdAt'> & { createdAt?: string }): OfflineStockTransaction => {
     const transactions = offlineStockTransactionStorage.getAll();
     const newTransaction: OfflineStockTransaction = {
       ...transaction,
       id: Date.now().toString(),
-      createdAt: new Date().toISOString()
+      createdAt: transaction.createdAt || new Date().toISOString()
     };
     
     transactions.push(newTransaction);
