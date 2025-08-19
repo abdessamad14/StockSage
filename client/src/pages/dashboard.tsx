@@ -1,8 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/lib/auth";
+import { useOfflineAuth } from "@/hooks/use-offline-auth";
+import { offlineProductStorage, offlineSaleStorage } from "@/lib/offline-storage";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,27 +16,58 @@ import {
 export default function Dashboard() {
   const { t } = useI18n();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user } = useOfflineAuth();
   const { lastSyncTime, setLastSyncTime } = useStore();
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
 
-  // Fetch dashboard data
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['/api/dashboard'],
-  });
+  // Load offline dashboard data
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const products = offlineProductStorage.getAll();
+        const sales = offlineSaleStorage.getAll();
+        
+        const today = new Date();
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        
+        const todaySales = sales.filter(sale => 
+          new Date(sale.createdAt) >= todayStart
+        );
+        
+        const dashboardData = {
+          dailySales: todaySales.reduce((sum, sale) => sum + sale.total, 0),
+          totalProducts: products.length,
+          lowStockItems: products.filter(p => p.quantity <= (p.lowStockThreshold || 10)).length,
+          totalCustomers: 0, // Will be updated when customer storage is available
+        };
+        
+        setData(dashboardData);
+        setIsLoading(false);
+      } catch (error) {
+        setIsError(true);
+        setIsLoading(false);
+      }
+    };
+    
+    loadDashboardData();
+  }, []);
 
-  // Handle sync button click
+  // Handle sync button click (offline mode)
   const handleSync = async () => {
     try {
-      await refetch();
       setLastSyncTime(new Date());
       toast({
         title: t('success'),
-        description: t('sync_success'),
+        description: 'Data refreshed successfully (offline mode)',
       });
+      // Reload dashboard data
+      window.location.reload();
     } catch (error) {
       toast({
         title: t('error'),
-        description: t('sync_failed'),
+        description: 'Failed to refresh data',
         variant: "destructive",
       });
     }
@@ -79,7 +111,7 @@ export default function Dashboard() {
           </h2>
           <p className="mt-2 text-sm">{t('dashboard_load_error')}</p>
           <Button 
-            onClick={() => refetch()} 
+            onClick={() => window.location.reload()} 
             variant="outline" 
             className="mt-4 text-red-700 border-red-300"
           >
@@ -92,31 +124,40 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 mobile-scroll-container">
       {/* Sync Status */}
       <div className="mb-4 flex justify-between items-center p-3 bg-blue-50 rounded-lg text-sm border border-blue-100">
-        <div className="flex items-center">
-          <RefreshCw className="w-5 h-5 text-primary mr-2" />
-          <span>{t('last_sync')}: {formatSyncTime()}</span>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+          <div className="flex items-center text-xs sm:text-sm text-gray-500">
+            <Clock className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+            {t('last_sync')}: {formatSyncTime()}
+          </div>
+          <Button 
+            onClick={handleSync} 
+            variant="outline" 
+            size="sm"
+            className="flex items-center space-x-2 w-full sm:w-auto mobile-button-secondary"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>{t('sync')}</span>
+          </Button>
         </div>
-        <button 
-          className="text-primary font-medium flex items-center"
-          onClick={handleSync}
-        >
-          <RefreshCw className="w-4 h-4 mr-1" />
-          {t('sync_now')}
-        </button>
       </div>
       
-      {/* Summary Cards Row */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {/* Daily Sales */}
         <Card className="bg-white rounded-lg shadow-sm p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-muted-foreground">{t('daily_sales')}</p>
-            <span className="flex h-6 w-6 rounded-full bg-blue-100 items-center justify-center">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{t('dashboard')}</h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">
+                {t('welcome_back')}, {user?.name || 'User'}!
+              </p>
+            </div>
+            <div className="flex items-center">
               <DollarSign className="w-4 h-4 text-primary" />
-            </span>
+            </div>
           </div>
           <h3 className="text-xl font-bold">{data.dailySales.toFixed(2)} {t('currency')}</h3>
           <div className="flex items-center mt-1">
