@@ -4,9 +4,9 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "dev": "vite --host 0.0.0.0 --port 3000 --force",
     "server": "cd server && npm run dev",
-    "client": "cd client && npm run dev",
+    "client": "vite --host 0.0.0.0 --port 3000 --force",
     "build": "cd client && npm run build",
     "start": "cd server && npm start",
     "db:push": "drizzle-kit push",

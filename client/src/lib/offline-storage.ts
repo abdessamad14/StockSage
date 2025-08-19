@@ -753,6 +753,17 @@ function migrateProductStockToPrimary() {
 }
 
 export function initializeSampleData() {
+  // Force consistent data across all URLs - always reinitialize with same data
+  const DATA_VERSION = "v2.0.0";
+  const currentDataVersion = localStorage.getItem("offline_data_version");
+  
+  if (currentDataVersion !== DATA_VERSION) {
+    // Clear all existing data and reinitialize
+    localStorage.clear();
+    localStorage.setItem("offline_data_version", DATA_VERSION);
+    localStorage.setItem("app_version", "2.0.0");
+  }
+
   // Initialize stock locations first
   if (offlineStockLocationStorage.getAll().length === 0) {
     // Create primary stock location
@@ -795,16 +806,17 @@ export function initializeSampleData() {
 
     const categories = [electronicsCategory, booksCategory];
 
+    // Create consistent sample products with fixed quantities
     offlineProductStorage.create({
       name: "Sample Product 1",
       barcode: "123456789",
       description: "A sample product for testing",
       categoryId: categories[0].id,
       costPrice: 50.00,
-      sellingPrice: 75.00,
+      sellingPrice: 80.00,
       semiWholesalePrice: 70.00,
       wholesalePrice: 65.00,
-      quantity: 50,
+      quantity: 97,
       minStockLevel: 10,
       unit: "pieces",
       image: undefined,
@@ -820,7 +832,7 @@ export function initializeSampleData() {
       sellingPrice: 30.00,
       semiWholesalePrice: 28.00,
       wholesalePrice: 25.00,
-      quantity: 0,
+      quantity: 100,
       minStockLevel: 5,
       unit: "pieces",
       image: undefined,
