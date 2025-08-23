@@ -293,6 +293,18 @@ export interface OfflineSettings {
   enableNotifications: boolean;
   enableLowStockAlerts: boolean;
   enableAutoBackup: boolean;
+  // USB Thermal Printer Settings
+  printerVendorId: number | null;
+  printerProductId: number | null;
+  printerProductName: string | null;
+  printerManufacturerName: string | null;
+  printerPaperSize: string | null;
+  printerEncoding: string | null;
+  printerAutoConnect: boolean;
+  printerAutoPrint: boolean;
+  printerCashDrawer: boolean;
+  printerBuzzer: boolean;
+  printerConnected: boolean;
 }
 
 // Storage keys
