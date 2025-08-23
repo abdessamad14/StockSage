@@ -6,13 +6,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, Store, DollarSign, Bell, Palette, Globe } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Settings, Store, DollarSign, Bell, Palette, Globe, Building2, Printer } from "lucide-react";
+import USBThermalPrinterConfig from '@/components/USBThermalPrinterConfig';
 
 const settingsSchema = z.object({
   businessName: z.string().min(1, "Business name is required"),
@@ -91,10 +96,11 @@ export default function OfflineSettings() {
   }
 
   const tabs = [
-    { id: "business", label: "Business Info", icon: Store },
+    { id: "business", label: "Business", icon: Building2 },
     { id: "financial", label: "Financial", icon: DollarSign },
     { id: "notifications", label: "Notifications", icon: Bell },
-    { id: "appearance", label: "Appearance", icon: Palette }
+    { id: "appearance", label: "Appearance", icon: Palette },
+    { id: "printing", label: "Printing", icon: Printer }
   ];
 
   return (
@@ -294,6 +300,9 @@ export default function OfflineSettings() {
                     Manage alerts and notifications
                   </CardDescription>
                 </CardHeader>
+                <TabsContent value="printing" className="space-y-6">
+                  <USBThermalPrinterConfig />
+                </TabsContent>
                 <CardContent className="space-y-6">
                   <FormField
                     control={form.control}
@@ -430,6 +439,26 @@ export default function OfflineSettings() {
                       </FormItem>
                     )}
                   />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Printing Tab */}
+          {activeTab === "printing" && (
+            <div className="grid grid-cols-1 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Printer className="w-5 h-5" />
+                    Thermal Printer Configuration
+                  </CardTitle>
+                  <CardDescription>
+                    Configure your USB thermal printer for receipt printing
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <USBThermalPrinterConfig />
                 </CardContent>
               </Card>
             </div>

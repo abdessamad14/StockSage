@@ -17,6 +17,7 @@ import {
   salesPeriodHelpers, 
   offlineSalesPeriodStorage 
 } from "@/lib/offline-storage";
+import { ThermalReceiptPrinter, ReceiptData } from "@/lib/thermal-receipt-printer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -523,7 +524,22 @@ export default function OfflinePOS() {
         );
       }
 
-      setLastSale(sale);
+      // Store sale data with cart items for receipt printing
+      const saleWithItems = {
+        ...sale,
+        cartItems: cart.map(item => ({
+          name: item.product.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice
+        })),
+        subtotalAmount: subtotal,
+        discountAmountApplied: discountAmount,
+        taxAmountApplied: taxAmount,
+        customerInfo: selectedCustomer
+      };
+
+      setLastSale(saleWithItems);
       setIsCheckoutOpen(false);
       setIsReceiptOpen(true);
       clearCart();
@@ -1119,9 +1135,60 @@ export default function OfflinePOS() {
             <Button variant="outline" onClick={() => setIsReceiptOpen(false)}>
               Close
             </Button>
-            <Button onClick={() => {
-              // Could implement receipt printing here
-              setIsReceiptOpen(false);
+            <Button onClick={async () => {
+              try {
+                if (!lastSale) {
+                  toast({
+                    title: "Error",
+                    description: "No sale data available",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+
+                // Check if printer is ready
+                const printerReady = await ThermalReceiptPrinter.isPrinterReady();
+                if (!printerReady) {
+                  toast({
+                    title: "Printer Not Ready",
+                    description: "Please configure and connect your thermal printer in Settings",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+
+                // Prepare receipt data using stored sale data
+                const receiptData: ReceiptData = {
+                  invoiceNumber: lastSale.invoiceNumber || `INV-${lastSale.id}`,
+                  date: new Date(lastSale.createdAt),
+                  customerName: (lastSale as any).customerInfo?.name || undefined,
+                  items: (lastSale as any).cartItems || [],
+                  subtotal: (lastSale as any).subtotalAmount || 0,
+                  discountAmount: (lastSale as any).discountAmountApplied > 0 ? (lastSale as any).discountAmountApplied : undefined,
+                  taxAmount: (lastSale as any).taxAmountApplied > 0 ? (lastSale as any).taxAmountApplied : undefined,
+                  total: lastSale.totalAmount,
+                  paidAmount: lastSale.paidAmount,
+                  changeAmount: lastSale.changeAmount || undefined,
+                  paymentMethod: lastSale.paymentMethod
+                };
+
+                // Print receipt
+                await ThermalReceiptPrinter.printReceipt(receiptData);
+                
+                toast({
+                  title: "Success",
+                  description: "Receipt printed successfully!"
+                });
+                
+                setIsReceiptOpen(false);
+              } catch (error: any) {
+                console.error('Print receipt error:', error);
+                toast({
+                  title: "Print Error",
+                  description: error.message || "Failed to print receipt",
+                  variant: "destructive"
+                });
+              }
             }}>
               Print Receipt
             </Button>
