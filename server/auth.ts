@@ -5,9 +5,9 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { db, pool } from "./db";
+import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { users, User as SelectUser } from "@shared/schema";
+import { users, User as SelectUser } from "@shared/sqlite-schema";
 
 declare global {
   namespace Express {
@@ -205,13 +205,13 @@ export function setupAuth(app: Express) {
       
       // Try to use both direct SQL and storage methods for maximum compatibility
       
-      // Option 1: Try direct SQL query
+      // Option 1: Try direct database query with SQLite
       try {
-        const result = await pool.query('SELECT * FROM users WHERE username = $1 AND tenant_id = $2', [username, tenantId]);
-        console.log('Direct SQL query result length:', result.rows.length);
+        const userFromDb = await db.select().from(users).where(eq(users.username, username)).limit(1);
+        console.log('Direct database query result length:', userFromDb.length);
         
-        if (result.rows.length > 0) {
-          const userFromSql = result.rows[0];
+        if (userFromDb.length > 0) {
+          const userFromSql = userFromDb[0];
           
           // Simple password check for test users
           if (password === userFromSql.password) {

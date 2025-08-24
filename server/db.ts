@@ -1,15 +1,26 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
-import * as schema from "@shared/schema";
+import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import * as schema from "@shared/sqlite-schema";
+import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 
-neonConfig.webSocketConstructor = ws;
-
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+// Create data directory if it doesn't exist
+const dataDir = join(process.cwd(), 'data');
+if (!existsSync(dataDir)) {
+  mkdirSync(dataDir, { recursive: true });
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema });
+// SQLite database file path
+const dbPath = join(dataDir, 'stocksage.db');
+
+// Create SQLite connection
+const sqlite = new Database(dbPath);
+
+// Enable WAL mode for better performance
+sqlite.pragma('journal_mode = WAL');
+
+// Create drizzle instance
+export const db = drizzle(sqlite, { schema });
+
+// Export sqlite instance for direct queries if needed
+export { sqlite };

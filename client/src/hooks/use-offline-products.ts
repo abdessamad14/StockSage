@@ -1,45 +1,72 @@
 import { useState, useEffect } from 'react';
-import { offlineProductStorage, OfflineProduct } from '@/lib/offline-storage';
+import { offlineProductStorage } from '@/lib/hybrid-storage';
+import { OfflineProduct } from '@/lib/offline-storage';
 
 export function useOfflineProducts() {
   const [products, setProducts] = useState<OfflineProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadProducts = () => {
+  const loadProducts = async () => {
     setLoading(true);
-    const allProducts = offlineProductStorage.getAll();
-    setProducts(allProducts);
-    setLoading(false);
+    try {
+      const allProducts = await offlineProductStorage.getAll();
+      setProducts(allProducts);
+    } catch (error) {
+      console.error('Error loading products:', error);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadProducts();
   }, []);
 
-  const createProduct = (product: Omit<OfflineProduct, 'id'>) => {
-    const newProduct = offlineProductStorage.create(product);
-    loadProducts();
-    return newProduct;
-  };
-
-  const updateProduct = (id: string, updates: Partial<OfflineProduct>) => {
-    const updatedProduct = offlineProductStorage.update(id, updates);
-    if (updatedProduct) {
-      loadProducts();
+  const createProduct = async (product: Omit<OfflineProduct, 'id'>) => {
+    try {
+      const newProduct = await offlineProductStorage.create(product);
+      await loadProducts();
+      return newProduct;
+    } catch (error) {
+      console.error('Error creating product:', error);
+      throw error;
     }
-    return updatedProduct;
   };
 
-  const deleteProduct = (id: string) => {
-    const success = offlineProductStorage.delete(id);
-    if (success) {
-      loadProducts();
+  const updateProduct = async (id: string, updates: Partial<OfflineProduct>) => {
+    try {
+      const updatedProduct = await offlineProductStorage.update(id, updates);
+      if (updatedProduct) {
+        await loadProducts();
+      }
+      return updatedProduct;
+    } catch (error) {
+      console.error('Error updating product:', error);
+      throw error;
     }
-    return success;
   };
 
-  const searchProducts = (query: string) => {
-    return offlineProductStorage.search(query);
+  const deleteProduct = async (id: string) => {
+    try {
+      const success = await offlineProductStorage.delete(id);
+      if (success) {
+        await loadProducts();
+      }
+      return success;
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      throw error;
+    }
+  };
+
+  const searchProducts = async (query: string) => {
+    try {
+      return await offlineProductStorage.search(query);
+    } catch (error) {
+      console.error('Error searching products:', error);
+      return [];
+    }
   };
 
   return {
