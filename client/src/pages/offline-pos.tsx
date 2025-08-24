@@ -105,6 +105,8 @@ export default function OfflinePOS() {
   const [paidAmount, setPaidAmount] = useState(0);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [barcodeBuffer, setBarcodeBuffer] = useState('');
+  const [lastKeyTime, setLastKeyTime] = useState(0);
 
   // Get primary warehouse
   const primaryWarehouse = stockLocations.find(loc => loc.isPrimary) || stockLocations[0];
@@ -240,25 +242,98 @@ export default function OfflinePOS() {
     return category?.name || "Unknown";
   };
 
-  // Keyboard shortcut handler for price info
+  // Barcode scanner handler
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() === 'i' && !event.ctrlKey && !event.altKey && !event.metaKey) {
-        // Only trigger if not typing in an input field
-        const target = event.target as HTMLElement;
-        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+      const target = event.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+      
+      // Handle barcode scanning (only when not typing in input fields)
+      if (!isInputField) {
+        const currentTime = Date.now();
+        
+        // If Enter key is pressed, process the barcode
+        if (event.key === 'Enter' && barcodeBuffer.length > 0) {
           event.preventDefault();
-          if (filteredProducts.length > 0) {
-            setSelectedProductInfo(filteredProducts[0]);
-            setShowPriceInfo(true);
-          }
+          handleBarcodeScanned(barcodeBuffer);
+          setBarcodeBuffer('');
+          setLastKeyTime(0);
+          return;
+        }
+        
+        // If it's a regular character and scanner is typing fast (< 100ms between keys)
+        if (event.key.length === 1 && (currentTime - lastKeyTime < 100 || barcodeBuffer.length === 0)) {
+          event.preventDefault();
+          setBarcodeBuffer(prev => prev + event.key);
+          setLastKeyTime(currentTime);
+          return;
+        }
+        
+        // If too much time passed, reset buffer (not a scanner)
+        if (currentTime - lastKeyTime > 100) {
+          setBarcodeBuffer('');
+        }
+      }
+      
+      // Handle keyboard shortcuts (price info)
+      if (event.key.toLowerCase() === 'i' && !event.ctrlKey && !event.altKey && !event.metaKey && !isInputField) {
+        event.preventDefault();
+        if (filteredProducts.length > 0) {
+          setSelectedProductInfo(filteredProducts[0]);
+          setShowPriceInfo(true);
         }
       }
     };
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [filteredProducts]);
+  }, [filteredProducts, barcodeBuffer, lastKeyTime]);
+
+  // Handle barcode scanned
+  const handleBarcodeScanned = (barcode: string) => {
+    console.log('Barcode scanned:', barcode);
+    
+    // Find product by barcode
+    const product = products.find(p => 
+      p.active && (
+        p.barcode === barcode ||
+        p.barcode === barcode.trim() ||
+        p.id === barcode
+      )
+    );
+    
+    if (product) {
+      // Add product to cart
+      addToCart(product);
+      
+      // Show success feedback
+      toast({
+        title: "Product Added",
+        description: `${product.name} added to cart`,
+        duration: 2000
+      });
+      
+      // Visual feedback - briefly highlight the search input
+      const searchInput = document.querySelector('input[placeholder*="Search products"]') as HTMLInputElement;
+      if (searchInput) {
+        searchInput.style.backgroundColor = '#dcfce7'; // Light green
+        setTimeout(() => {
+          searchInput.style.backgroundColor = '';
+        }, 500);
+      }
+    } else {
+      // Product not found
+      toast({
+        title: "Product Not Found",
+        description: `No product found with barcode: ${barcode}`,
+        variant: "destructive",
+        duration: 3000
+      });
+      
+      // Show the barcode in search to help user
+      setSearchQuery(barcode);
+    }
+  };
 
   const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
   const discountAmount = (subtotal * discount) / 100;
