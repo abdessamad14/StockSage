@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { offlineSupplierStorage } from '@/lib/hybrid-storage';
+import { offlineSupplierStorage } from '../lib/database-storage';
 
 interface OfflineSupplier {
   id: string;

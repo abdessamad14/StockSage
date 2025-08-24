@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from './db';
-import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems } from '@shared/sqlite-schema';
+import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock } from '@shared/sqlite-schema';
 import { eq } from 'drizzle-orm';
 
 const router = express.Router();
@@ -284,6 +284,388 @@ router.get('/stock-levels/:productId', async (req, res) => {
   } catch (error) {
     console.error('Error fetching stock levels:', error);
     res.status(500).json({ error: 'Failed to fetch stock levels' });
+  }
+});
+
+// Sale Items API
+router.get('/sale-items/:saleId', async (req, res) => {
+  try {
+    const { saleId } = req.params;
+    const items = await db.select().from(saleItems).where(eq(saleItems.saleId, parseInt(saleId)));
+    res.json(items);
+  } catch (error) {
+    console.error('Error fetching sale items:', error);
+    res.status(500).json({ error: 'Failed to fetch sale items' });
+  }
+});
+
+router.post('/sale-items', async (req, res) => {
+  try {
+    const newSaleItem = await db.insert(saleItems).values({
+      tenantId: 'default',
+      ...req.body
+    }).returning();
+    res.json(newSaleItem[0]);
+  } catch (error) {
+    console.error('Error creating sale item:', error);
+    res.status(500).json({ error: 'Failed to create sale item' });
+  }
+});
+
+// Orders API
+router.get('/orders', async (req, res) => {
+  try {
+    const allOrders = await db.select().from(orders);
+    res.json(allOrders);
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+router.post('/orders', async (req, res) => {
+  try {
+    const { items, ...orderData } = req.body;
+    
+    // Create order
+    const newOrder = await db.insert(orders).values({
+      tenantId: 'default',
+      ...orderData
+    }).returning();
+    
+    // Create order items
+    if (items && items.length > 0) {
+      const orderItemsData = items.map((item: any) => ({
+        tenantId: 'default',
+        orderId: newOrder[0].id,
+        ...item
+      }));
+      
+      await db.insert(orderItems).values(orderItemsData);
+    }
+    
+    res.json(newOrder[0]);
+  } catch (error) {
+    console.error('Error creating order:', error);
+    res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+router.put('/orders/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedOrder = await db.update(orders)
+      .set(req.body)
+      .where(eq(orders.id, parseInt(id)))
+      .returning();
+    
+    if (updatedOrder.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    res.json(updatedOrder[0]);
+  } catch (error) {
+    console.error('Error updating order:', error);
+    res.status(500).json({ error: 'Failed to update order' });
+  }
+});
+
+router.delete('/orders/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const orderId = parseInt(id);
+    
+    // Delete order items first
+    await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+    
+    // Delete the order
+    const deletedOrder = await db.delete(orders)
+      .where(eq(orders.id, orderId))
+      .returning();
+    
+    if (deletedOrder.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting order:', error);
+    res.status(500).json({ error: 'Failed to delete order' });
+  }
+});
+
+// Order Items API
+router.get('/order-items/:orderId', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, parseInt(orderId)));
+    res.json(items);
+  } catch (error) {
+    console.error('Error fetching order items:', error);
+    res.status(500).json({ error: 'Failed to fetch order items' });
+  }
+});
+
+// Settings API
+router.get('/settings', async (req, res) => {
+  try {
+    const allSettings = await db.select().from(settings).limit(1);
+    res.json(allSettings[0] || null);
+  } catch (error) {
+    console.error('Error fetching settings:', error);
+    res.status(500).json({ error: 'Failed to fetch settings' });
+  }
+});
+
+router.post('/settings', async (req, res) => {
+  try {
+    const newSettings = await db.insert(settings).values({
+      tenantId: 'default',
+      ...req.body
+    }).returning();
+    res.json(newSettings[0]);
+  } catch (error) {
+    console.error('Error creating settings:', error);
+    res.status(500).json({ error: 'Failed to create settings' });
+  }
+});
+
+router.put('/settings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedSettings = await db.update(settings)
+      .set(req.body)
+      .where(eq(settings.id, parseInt(id)))
+      .returning();
+    
+    if (updatedSettings.length === 0) {
+      return res.status(404).json({ error: 'Settings not found' });
+    }
+    
+    res.json(updatedSettings[0]);
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
+// Update/Delete suppliers endpoints
+router.put('/suppliers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedSupplier = await db.update(suppliers)
+      .set(req.body)
+      .where(eq(suppliers.id, parseInt(id)))
+      .returning();
+    
+    if (updatedSupplier.length === 0) {
+      return res.status(404).json({ error: 'Supplier not found' });
+    }
+    
+    res.json(updatedSupplier[0]);
+  } catch (error) {
+    console.error('Error updating supplier:', error);
+    res.status(500).json({ error: 'Failed to update supplier' });
+  }
+});
+
+router.delete('/suppliers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedSupplier = await db.delete(suppliers)
+      .where(eq(suppliers.id, parseInt(id)))
+      .returning();
+    
+    if (deletedSupplier.length === 0) {
+      return res.status(404).json({ error: 'Supplier not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting supplier:', error);
+    res.status(500).json({ error: 'Failed to delete supplier' });
+  }
+});
+
+router.delete('/customers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedCustomer = await db.delete(customers)
+      .where(eq(customers.id, parseInt(id)))
+      .returning();
+    
+    if (deletedCustomer.length === 0) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting customer:', error);
+    res.status(500).json({ error: 'Failed to delete customer' });
+  }
+});
+
+// Sales update/delete endpoints
+router.put('/sales/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedSale = await db.update(sales)
+      .set(req.body)
+      .where(eq(sales.id, parseInt(id)))
+      .returning();
+    
+    if (updatedSale.length === 0) {
+      return res.status(404).json({ error: 'Sale not found' });
+    }
+    
+    res.json(updatedSale[0]);
+  } catch (error) {
+    console.error('Error updating sale:', error);
+    res.status(500).json({ error: 'Failed to update sale' });
+  }
+});
+
+router.delete('/sales/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const saleId = parseInt(id);
+    
+    // Delete sale items first
+    await db.delete(saleItems).where(eq(saleItems.saleId, saleId));
+    
+    // Delete the sale
+    const deletedSale = await db.delete(sales)
+      .where(eq(sales.id, saleId))
+      .returning();
+    
+    if (deletedSale.length === 0) {
+      return res.status(404).json({ error: 'Sale not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting sale:', error);
+    res.status(500).json({ error: 'Failed to delete sale' });
+  }
+});
+
+// Product Stock API
+router.get('/product-stock', async (req, res) => {
+  try {
+    const allStock = await db.select().from(productStock);
+    res.json(allStock);
+  } catch (error) {
+    console.error('Error fetching product stock:', error);
+    res.status(500).json({ error: 'Failed to fetch product stock' });
+  }
+});
+
+router.get('/product-stock/:productId/:locationId', async (req, res) => {
+  try {
+    const { productId, locationId } = req.params;
+    const stock = await db.select().from(productStock)
+      .where(eq(productStock.productId, parseInt(productId)) && eq(productStock.locationId, locationId));
+    
+    if (stock.length === 0) {
+      return res.status(404).json({ error: 'Product stock not found' });
+    }
+    
+    res.json(stock[0]);
+  } catch (error) {
+    console.error('Error fetching product stock:', error);
+    res.status(500).json({ error: 'Failed to fetch product stock' });
+  }
+});
+
+router.post('/product-stock', async (req, res) => {
+  try {
+    const newStock = await db.insert(productStock).values({
+      tenantId: 'default',
+      ...req.body
+    }).returning();
+    
+    res.json(newStock[0]);
+  } catch (error) {
+    console.error('Error creating product stock:', error);
+    res.status(500).json({ error: 'Failed to create product stock' });
+  }
+});
+
+router.put('/product-stock/upsert', async (req, res) => {
+  try {
+    const { productId, locationId, quantity, minStockLevel } = req.body;
+    
+    // Try to find existing stock record
+    const existingStock = await db.select().from(productStock)
+      .where(eq(productStock.productId, productId) && eq(productStock.locationId, locationId));
+    
+    if (existingStock.length > 0) {
+      // Update existing record
+      const updated = await db.update(productStock)
+        .set({
+          quantity,
+          minStockLevel: minStockLevel || 0,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(productStock.id, existingStock[0].id))
+        .returning();
+      
+      res.json(updated[0]);
+    } else {
+      // Create new record
+      const created = await db.insert(productStock).values({
+        tenantId: 'default',
+        productId,
+        locationId,
+        quantity,
+        minStockLevel: minStockLevel || 0
+      }).returning();
+      
+      res.json(created[0]);
+    }
+  } catch (error) {
+    console.error('Error upserting product stock:', error);
+    res.status(500).json({ error: 'Failed to upsert product stock' });
+  }
+});
+
+router.put('/product-stock/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await db.update(productStock)
+      .set({
+        ...req.body,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(productStock.id, parseInt(id)))
+      .returning();
+    
+    if (updated.length === 0) {
+      return res.status(404).json({ error: 'Product stock not found' });
+    }
+    
+    res.json(updated[0]);
+  } catch (error) {
+    console.error('Error updating product stock:', error);
+    res.status(500).json({ error: 'Failed to update product stock' });
+  }
+});
+
+router.delete('/product-stock/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await db.delete(productStock)
+      .where(eq(productStock.id, parseInt(id)))
+      .returning();
+    
+    if (deleted.length === 0) {
+      return res.status(404).json({ error: 'Product stock not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting product stock:', error);
+    res.status(500).json({ error: 'Failed to delete product stock' });
   }
 });
 

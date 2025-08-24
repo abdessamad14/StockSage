@@ -143,13 +143,14 @@ export default function OfflinePOS() {
 
   // Get price based on selected pricing tier
   const getPriceForTier = (product: OfflineProduct, tier: 'retail' | 'semi-wholesale' | 'wholesale'): number => {
+    const defaultPrice = product.sellingPrice || 0;
     switch (tier) {
       case 'semi-wholesale':
-        return product.semiWholesalePrice || product.sellingPrice;
+        return product.semiWholesalePrice || defaultPrice;
       case 'wholesale':
-        return product.wholesalePrice || product.semiWholesalePrice || product.sellingPrice;
+        return product.wholesalePrice || product.semiWholesalePrice || defaultPrice;
       default:
-        return product.sellingPrice;
+        return defaultPrice;
     }
   };
 
@@ -791,7 +792,7 @@ export default function OfflinePOS() {
                         </span>
                         {pricingTier !== 'retail' && (
                           <span className="text-xs text-gray-500 line-through">
-                            ${product.sellingPrice.toFixed(2)}
+                            ${(product.sellingPrice || 0).toFixed(2)}
                           </span>
                         )}
                       </div>

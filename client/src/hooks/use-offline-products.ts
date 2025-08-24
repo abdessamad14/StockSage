@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { offlineProductStorage } from '@/lib/hybrid-storage';
+import { offlineProductStorage } from '../lib/database-storage';
 import { OfflineProduct, offlineStockLocationStorage, offlineProductStockStorage, offlineStockTransactionStorage } from '@/lib/offline-storage';
 
 export function useOfflineProducts() {
