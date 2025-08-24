@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useOfflineProducts } from "@/hooks/use-offline-products";
 import { useOfflineStockLocations } from "@/hooks/use-offline-stock-locations";
+import { useOfflineStockTransactions } from "@/hooks/use-offline-stock-transactions";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { OfflineProduct, OfflineCategory, offlineCategoryStorage, offlineProductStockStorage } from "@/lib/offline-storage";
@@ -45,8 +46,9 @@ type ProductFormData = z.infer<typeof productSchema>;
 type CategoryFormData = z.infer<typeof categorySchema>;
 
 export default function OfflineProducts() {
-  const { products, loading, createProduct, updateProduct, deleteProduct } = useOfflineProducts();
+  const { products, createProduct, updateProduct, deleteProduct } = useOfflineProducts();
   const { stockLocations } = useOfflineStockLocations();
+  const { createTransaction } = useOfflineStockTransactions();
   const { t } = useI18n();
   const { toast } = useToast();
   
@@ -253,6 +255,11 @@ export default function OfflineProducts() {
     if (!editingProduct) return;
     
     try {
+      // Get current stock quantity before update
+      const currentStock = getWarehouseStock(editingProduct.id);
+      const newQuantity = data.quantity;
+      
+      // Update product information
       updateProduct(editingProduct.id, {
         ...data,
         categoryId: data.categoryId === "none" ? undefined : data.categoryId || undefined,
@@ -264,6 +271,33 @@ export default function OfflineProducts() {
         wholesalePrice: data.wholesalePrice || undefined,
         image: selectedImage || undefined
       });
+
+      // Update stock quantity in primary warehouse if quantity changed
+      if (primaryWarehouse && newQuantity !== currentStock) {
+        offlineProductStockStorage.upsert({
+          productId: editingProduct.id,
+          locationId: primaryWarehouse.id,
+          quantity: newQuantity,
+          minStockLevel: data.minStockLevel || 0
+        });
+
+        // Create stock transaction history for the quantity change
+        const quantityDifference = newQuantity - currentStock;
+        const transactionType = quantityDifference > 0 ? "entry" : "exit";
+        const reason = quantityDifference > 0 ? "Stock adjustment - increase" : "Stock adjustment - decrease";
+
+        createTransaction({
+          productId: editingProduct.id,
+          warehouseId: primaryWarehouse.id,
+          type: transactionType,
+          quantity: Math.abs(quantityDifference),
+          previousQuantity: currentStock,
+          newQuantity: newQuantity,
+          reason: reason,
+          reference: `Product update - ${editingProduct.name}`
+        });
+      }
+
       toast({
         title: "Success",
         description: "Product updated successfully"
