@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { offlineSalesStorage } from '@/lib/hybrid-storage';
+import { offlineSaleStorage } from '@/lib/offline-storage';
 
 interface OfflineSale {
   id: string;
@@ -40,13 +41,15 @@ export function useOfflineSales() {
     loadSales();
   }, []);
 
-  const createSale = (saleData: Omit<OfflineSale, 'id' | 'date' | 'invoiceNumber'>, items: Omit<OfflineSale['items'][0], 'id'>[]) => {
+  const createSale = (saleData: Omit<OfflineSale, 'id' | 'date' | 'invoiceNumber'>, items: any[]) => {
     const invoiceNumber = `INV-${Date.now()}`;
     const sale: Omit<OfflineSale, 'id'> = {
       ...saleData,
       invoiceNumber,
-      date: new Date(),
-      items: items.map(item => ({ ...item, id: generateId() }))
+      date: new Date().toISOString(),
+      items: items.map(item => ({ ...item, id: Date.now().toString() + Math.random().toString(36).substr(2, 9) })),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
     
     const newSale = offlineSaleStorage.create(sale);
