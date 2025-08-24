@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { offlineProductStorage } from '@/lib/hybrid-storage';
-import { OfflineProduct } from '@/lib/offline-storage';
+import { OfflineProduct, offlineStockLocationStorage, offlineProductStockStorage, offlineStockTransactionStorage } from '@/lib/offline-storage';
 
 export function useOfflineProducts() {
   const [products, setProducts] = useState<OfflineProduct[]>([]);
@@ -26,6 +26,36 @@ export function useOfflineProducts() {
   const createProduct = async (product: Omit<OfflineProduct, 'id'>) => {
     try {
       const newProduct = await offlineProductStorage.create(product);
+      
+      // If product has initial quantity, create stock record in primary location
+      if (newProduct.quantity > 0) {
+        const locations = offlineStockLocationStorage.getAll();
+        const primaryLocation = locations.find(loc => loc.isPrimary) || locations[0];
+        
+        if (primaryLocation) {
+          offlineProductStockStorage.upsert({
+            productId: newProduct.id,
+            locationId: primaryLocation.id,
+            quantity: newProduct.quantity,
+            minStockLevel: newProduct.minStockLevel || 0
+          });
+          
+          // Create stock transaction record for initial stock
+          offlineStockTransactionStorage.create({
+            productId: newProduct.id,
+            warehouseId: primaryLocation.id,
+            type: 'entry',
+            quantity: newProduct.quantity,
+            previousQuantity: 0,
+            newQuantity: newProduct.quantity,
+            reason: 'Initial stock entry',
+            reference: `Product creation - ${newProduct.name}`
+          });
+          
+          console.log(`Created stock record and transaction for product ${newProduct.name} with ${newProduct.quantity} units in ${primaryLocation.name}`);
+        }
+      }
+      
       await loadProducts();
       return newProduct;
     } catch (error) {

@@ -168,7 +168,17 @@ export const hybridProductStorage = {
       };
     } catch (error) {
       console.error('Database error, falling back to localStorage:', error);
-      return this.create(product); // Recursive call will use localStorage
+      // Fallback to localStorage without recursion
+      const products = JSON.parse(localStorage.getItem('offline_products') || '[]');
+      const newProduct = {
+        ...product,
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      products.push(newProduct);
+      localStorage.setItem('offline_products', JSON.stringify(products));
+      return newProduct;
     }
   },
 
@@ -223,7 +233,14 @@ export const hybridProductStorage = {
       };
     } catch (error) {
       console.error('Database error, falling back to localStorage:', error);
-      return this.update(id, updates); // Recursive call will use localStorage
+      // Fallback to localStorage without recursion
+      const products = JSON.parse(localStorage.getItem('offline_products') || '[]');
+      const index = products.findIndex((p: any) => p.id === id);
+      if (index === -1) return null;
+      
+      products[index] = { ...products[index], ...updates, updatedAt: new Date().toISOString() };
+      localStorage.setItem('offline_products', JSON.stringify(products));
+      return products[index];
     }
   },
 
@@ -243,7 +260,13 @@ export const hybridProductStorage = {
       return true;
     } catch (error) {
       console.error('Database error, falling back to localStorage:', error);
-      return this.delete(id); // Recursive call will use localStorage
+      // Fallback to localStorage without recursion
+      const products = JSON.parse(localStorage.getItem('offline_products') || '[]');
+      const filtered = products.filter((p: any) => p.id !== id);
+      if (filtered.length === products.length) return false;
+      
+      localStorage.setItem('offline_products', JSON.stringify(filtered));
+      return true;
     }
   },
 

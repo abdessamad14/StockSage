@@ -731,11 +731,9 @@ export const creditHelpers = {
   }
 };
 
-// Migration function to move existing product stock to primary location
-function migrateProductStockToPrimary() {
-  const stockLocations = offlineStockLocationStorage.getAll();
-  const primaryLocation = stockLocations.find(location => location.isPrimary);
-  
+// Migration function to migrate existing products to stock locations
+export function migrateProductsToStockLocations() {
+  const primaryLocation = offlineStockLocationStorage.getAll().find(location => location.isPrimary);
   if (!primaryLocation) {
     console.warn('No primary stock location found for migration');
     return;
@@ -750,16 +748,16 @@ function migrateProductStockToPrimary() {
       stock => stock.productId === product.id && stock.locationId === primaryLocation.id
     );
 
-    // If product has quantity but no stock record in primary location, create it
-    if (product.quantity > 0 && !existingStock) {
+    // Always create/update stock record to match product quantity
+    if (product.quantity > 0) {
       offlineProductStockStorage.upsert({
         productId: product.id,
         locationId: primaryLocation.id,
         quantity: product.quantity,
-        minStockLevel: product.minStockLevel
+        minStockLevel: product.minStockLevel || 0
       });
       
-      console.log(`Migrated ${product.quantity} units of "${product.name}" to primary location`);
+      console.log(`${existingStock ? 'Updated' : 'Created'} stock record: ${product.quantity} units of "${product.name}" in primary location`);
     }
   });
 }
@@ -798,7 +796,7 @@ export function initializeSampleData() {
   }
 
   // Migrate existing product stock to primary location
-  migrateProductStockToPrimary();
+  migrateProductsToStockLocations();
 
   if (offlineProductStorage.getAll().length === 0) {
     // Create sample categories first

@@ -103,13 +103,12 @@ export default function OfflineInventory() {
     const productStocks = offlineProductStockStorage.getByProduct(productId);
     const totalFromLocations = productStocks.reduce((sum, stock) => sum + stock.quantity, 0);
     
-    // If no location-specific stock exists, fall back to product's base quantity
-    if (totalFromLocations === 0) {
-      const product = products.find(p => p.id === productId);
-      return product?.quantity || 0;
-    }
+    // Always fall back to product's base quantity if no location-specific stock exists
+    const product = products.find(p => p.id === productId);
+    const baseQuantity = product?.quantity || 0;
     
-    return totalFromLocations;
+    // Return the maximum of location-based stock or base quantity
+    return Math.max(totalFromLocations, baseQuantity);
   };
 
   const loadStockLocations = () => {
