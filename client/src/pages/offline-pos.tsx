@@ -552,16 +552,18 @@ export default function OfflinePOS() {
       };
 
       const sale = createSale({
-        customerId: saleData.customerId,
+        customerId: saleData.customerId || undefined,
         totalAmount: saleData.totalAmount,
-        discountAmount: saleData.discountAmount,
-        taxAmount: saleData.taxAmount,
+        discountAmount: saleData.discountAmount || undefined,
+        taxAmount: saleData.taxAmount || undefined,
         paidAmount: saleData.paidAmount,
-        changeAmount: saleData.changeAmount,
+        changeAmount: saleData.changeAmount || undefined,
         paymentMethod: saleData.paymentMethod,
         status: saleData.status,
-        notes: null,
-        items: []
+        notes: undefined,
+        items: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }, saleData.items);
 
       // Update stock quantities and record transactions
