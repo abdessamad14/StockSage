@@ -720,13 +720,29 @@ export const creditHelpers = {
   
   getCustomerCreditInfo: (customerId: string) => {
     const customer = offlineCustomerStorage.getById(customerId);
-    const transactions = offlineCreditTransactionStorage.getByCustomerId(customerId);
+    const transactions = offlineCreditTransactionStorage.getByCustomerId(customerId)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
-    const currentBalance = customer?.creditBalance || 0;
+    // Calculate current balance from transactions to ensure accuracy
+    let currentBalance = 0;
+    const transactionsWithBalance = transactions.map(transaction => {
+      if (transaction.type === 'credit_sale') {
+        currentBalance += transaction.amount;
+      } else if (transaction.type === 'payment') {
+        currentBalance += transaction.amount; // amount is already negative for payments
+      } else if (transaction.type === 'adjustment') {
+        currentBalance += transaction.amount;
+      }
+      
+      return {
+        ...transaction,
+        balanceAfter: currentBalance
+      };
+    });
     
     return {
       currentBalance,
-      transactions
+      transactions: transactionsWithBalance
     };
   }
 };

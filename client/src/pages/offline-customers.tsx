@@ -518,7 +518,9 @@ export default function OfflineCustomers() {
                             {transaction.description}
                           </TableCell>
                           <TableCell>
-                            -
+                            <span className="font-medium text-red-600">
+                              ${transaction.balanceAfter?.toFixed(2) || '0.00'}
+                            </span>
                           </TableCell>
                         </TableRow>
                       ))}
