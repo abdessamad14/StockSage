@@ -248,8 +248,13 @@ export default function OfflinePOS() {
       const target = event.target as HTMLElement;
       const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
       
-      // Handle barcode scanning (only when not typing in input fields)
-      if (!isInputField) {
+      // Check if we're inside a modal dialog
+      const isInModal = target.closest('[role="dialog"]') !== null || 
+                       target.closest('.modal') !== null ||
+                       document.querySelector('[role="dialog"]') !== null;
+      
+      // Handle barcode scanning (only when not typing in input fields and not in modals)
+      if (!isInputField && !isInModal) {
         const currentTime = Date.now();
         
         // If Enter key is pressed, process the barcode

@@ -58,6 +58,8 @@ export default function OfflineProducts() {
   const [editingCategory, setEditingCategory] = useState<OfflineCategory | null>(null);
   const [categories, setCategories] = useState<OfflineCategory[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [barcodeBuffer, setBarcodeBuffer] = useState('');
+  const [lastKeyTime, setLastKeyTime] = useState(0);
 
   // Get primary warehouse
   const primaryWarehouse = stockLocations.find(loc => loc.isPrimary) || stockLocations[0];
@@ -142,6 +144,60 @@ export default function OfflineProducts() {
     };
     loadCategories();
   }, []);
+
+  // Barcode scanner handler for modals
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+      
+      // Check if we're inside a modal dialog
+      const isInModal = target.closest('[role="dialog"]') !== null || 
+                       target.closest('.modal') !== null ||
+                       document.querySelector('[role="dialog"]') !== null;
+      
+      const currentTime = Date.now();
+      
+      // Handle barcode scanning in modals - prevent Enter from closing modal
+      if (isInModal) {
+        // If Enter key is pressed and we have barcode buffer, it's from scanner
+        if (event.key === 'Enter' && barcodeBuffer.length > 0) {
+          event.preventDefault();
+          event.stopPropagation();
+          
+          // If we're in the barcode input field, set the scanned value
+          const barcodeInput = document.querySelector('input[name="barcode"]') as HTMLInputElement;
+          if (barcodeInput && document.activeElement !== barcodeInput) {
+            barcodeInput.value = barcodeBuffer;
+            barcodeInput.focus();
+            // Trigger form field update
+            const event = new Event('input', { bubbles: true });
+            barcodeInput.dispatchEvent(event);
+          }
+          
+          setBarcodeBuffer('');
+          setLastKeyTime(0);
+          return;
+        }
+        
+        // If it's a regular character and scanner is typing fast (< 100ms between keys)
+        if (event.key.length === 1 && (currentTime - lastKeyTime < 100 || barcodeBuffer.length === 0)) {
+          setBarcodeBuffer(prev => prev + event.key);
+          setLastKeyTime(currentTime);
+          return;
+        }
+        
+        // If too much time passed, reset buffer (not a scanner)
+        if (currentTime - lastKeyTime > 100) {
+          setBarcodeBuffer('');
+        }
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [barcodeBuffer, lastKeyTime]);
 
   // Filter products
   const filteredProducts = products.filter(product => {
