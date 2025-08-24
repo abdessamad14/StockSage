@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { offlineSalesStorage } from '@/lib/hybrid-storage';
+import { offlineSalesStorage } from '../lib/database-storage';
 import { offlineSaleStorage } from '@/lib/offline-storage';
 
 interface OfflineSale {
@@ -27,7 +27,8 @@ export function useOfflineSales() {
   const loadSales = async () => {
     setLoading(true);
     try {
-      const allSales = await offlineSalesStorage.getAll();
+      // Load from offline storage where POS creates sales
+      const allSales = offlineSaleStorage.getAll();
       setSales(allSales);
     } catch (error) {
       console.error('Error loading sales:', error);

@@ -219,8 +219,9 @@ export class ThermalReceiptPrinter {
     commands.push(0x0A);
     
     // Print payment details
+    const paymentAmount = receiptData.paymentMethod === 'credit' ? receiptData.total : receiptData.paidAmount;
     const paymentInfo = [
-      formatTotalLine(`Payment (${receiptData.paymentMethod}):`, `$${receiptData.paidAmount.toFixed(2)}`),
+      formatTotalLine(`Payment (${receiptData.paymentMethod}):`, `$${paymentAmount.toFixed(2)}`),
       ...(receiptData.changeAmount ? [formatTotalLine('Change:', `$${receiptData.changeAmount.toFixed(2)}`)] : [])
     ];
     

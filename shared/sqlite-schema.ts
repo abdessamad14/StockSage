@@ -215,12 +215,18 @@ export type Customer = typeof customers.$inferSelect;
 export type Supplier = typeof suppliers.$inferSelect;
 export type Sale = typeof sales.$inferSelect;
 export type SaleItem = typeof saleItems.$inferSelect;
-export type Order = typeof orders.$inferSelect;
-export type OrderItem = typeof orderItems.$inferSelect;
-export type InventoryAdjustment = typeof inventoryAdjustments.$inferSelect;
-export type InventoryAdjustmentItem = typeof inventoryAdjustmentItems.$inferSelect;
-export type SyncLog = typeof syncLogs.$inferSelect;
-export type Settings = typeof settings.$inferSelect;
+
+// Product Stock table
+export const productStock = sqliteTable("product_stock", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tenantId: text("tenant_id").notNull(),
+  productId: integer("product_id").notNull().references(() => products.id),
+  locationId: text("location_id").notNull().default("main"),
+  quantity: integer("quantity").notNull().default(0),
+  minStockLevel: integer("min_stock_level").default(0),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+});
 
 // Offline types for client-side storage (keep existing interfaces)
 export interface OfflineProduct {
