@@ -9,12 +9,15 @@ StockSage is a comprehensive offline-first inventory management system built wit
 - All core business modules fully functional and tested
 - Offline-first architecture with localStorage persistence
 - Complete test coverage across unit and integration tests
+- **USB Hardware Integration**: Barcode scanner and thermal printer support
+- **WebUSB API**: Direct hardware communication for modern POS workflows
 
 ## Architecture
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS
 - **Storage**: Browser localStorage (offline-first)
 - **State Management**: Custom React hooks for offline data management
 - **UI Components**: Shadcn/ui components with modern design
+- **Hardware Integration**: WebUSB API for barcode scanners and thermal printers
 - **Testing**: Vitest for unit/integration tests, Playwright for E2E
 - **No Authentication**: Single-tenant application
 - **No Server Dependencies**: Fully offline for core operations
@@ -23,11 +26,14 @@ StockSage is a comprehensive offline-first inventory management system built wit
 
 ### 1. POS Module (17/17 tests passing)
 - Invoice generation with auto-numbering
+- **USB barcode scanner integration** with automatic cart addition
 - Price and quantity modifications
 - Multiple payment methods (cash, credit, mixed)
 - Tax calculations with multiple rates
+- **USB thermal printer support** with WebUSB API
 - Sale status management and refunds
 - Real-time stock integration
+- **Receipt reprinting** from Sales History
 
 ### 2. Product Module (20/20 tests passing)
 - Complete CRUD operations
@@ -122,10 +128,14 @@ StockSage is a comprehensive offline-first inventory management system built wit
 - Consolidated reporting across locations
 
 ### Advanced POS System
+- **USB barcode scanner integration** for rapid product scanning
+- **Smart scanner detection** (distinguishes from manual typing)
+- **Modal-aware scanning** (prevents interference with edit dialogs)
 - Real-time inventory integration
 - Multiple payment methods
 - Tax calculation engine
-- Receipt generation
+- **USB thermal receipt printing** via WebUSB API
+- **Receipt reprinting** for past sales
 - Customer credit integration
 
 ### Purchase Order Management
@@ -251,8 +261,9 @@ client/src/
 1. **Server Synchronization**: Add optional server sync for multi-device usage
 2. **Advanced Reporting**: Enhanced analytics and dashboard features
 3. **Mobile Optimization**: Responsive design improvements
-4. **Barcode Scanning**: Camera-based barcode input
+4. **Camera Barcode Scanning**: Browser-based barcode input as WebUSB fallback
 5. **Export/Import**: Data backup and migration features
+6. **Multi-printer Support**: Support for multiple thermal printer configurations
 
 ### Maintenance Considerations
 1. **Browser Storage Limits**: Monitor localStorage usage
@@ -277,6 +288,8 @@ client/src/
 
 ### Key Files to Know
 - `/client/src/lib/offline-storage.ts`: Core data operations
+- `/client/src/lib/thermal-receipt-printer.ts`: USB thermal printer integration
+- `/client/src/components/USBThermalPrinterConfig.tsx`: Printer configuration UI
 - `/client/src/test/unit/`: Individual module tests
 - `/client/src/test/integration/`: Workflow tests
 - `/client/src/pages/`: Main application screens
