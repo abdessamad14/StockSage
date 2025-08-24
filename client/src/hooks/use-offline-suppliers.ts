@@ -1,17 +1,5 @@
 import { useState, useEffect } from 'react';
-import { offlineSupplierStorage } from '../lib/database-storage';
-
-interface OfflineSupplier {
-  id: string;
-  name: string;
-  contactPerson?: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { offlineSupplierStorage, OfflineSupplier } from '../lib/database-storage';
 
 export function useOfflineSuppliers() {
   const [suppliers, setSuppliers] = useState<OfflineSupplier[]>([]);
@@ -60,11 +48,9 @@ export function useOfflineSuppliers() {
 
   const deleteSupplier = async (id: string) => {
     try {
-      const success = await offlineSupplierStorage.delete(id);
-      if (success) {
-        await loadSuppliers();
-      }
-      return success;
+      await offlineSupplierStorage.delete(id);
+      await loadSuppliers();
+      return true;
     } catch (error) {
       console.error('Error deleting supplier:', error);
       throw error;

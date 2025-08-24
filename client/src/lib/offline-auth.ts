@@ -129,5 +129,4 @@ export const offlineAuthHelpers = {
   }
 };
 
-// Initialize users on module load
-offlineAuthHelpers.initializeUsers();
+// Note: User initialization moved to database storage

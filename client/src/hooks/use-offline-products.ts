@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
-import { offlineProductStorage } from '../lib/database-storage';
-import { OfflineProduct, offlineStockLocationStorage, offlineProductStockStorage, offlineStockTransactionStorage } from '@/lib/offline-storage';
+import { 
+  offlineProductStorage, 
+  OfflineProduct, 
+  offlineStockLocationStorage, 
+  offlineProductStockStorage 
+} from '../lib/database-storage';
 
 export function useOfflineProducts() {
   const [products, setProducts] = useState<OfflineProduct[]>([]);
@@ -29,30 +33,18 @@ export function useOfflineProducts() {
       
       // If product has initial quantity, create stock record in primary location
       if (newProduct.quantity > 0) {
-        const locations = offlineStockLocationStorage.getAll();
-        const primaryLocation = locations.find(loc => loc.isPrimary) || locations[0];
+        const locations = await offlineStockLocationStorage.getAll();
+        const primaryLocation = locations.find((loc: any) => loc.isPrimary) || locations[0];
         
         if (primaryLocation) {
-          offlineProductStockStorage.upsert({
+          await offlineProductStockStorage.upsert({
             productId: newProduct.id,
             locationId: primaryLocation.id,
             quantity: newProduct.quantity,
             minStockLevel: newProduct.minStockLevel || 0
           });
           
-          // Create stock transaction record for initial stock
-          offlineStockTransactionStorage.create({
-            productId: newProduct.id,
-            warehouseId: primaryLocation.id,
-            type: 'entry',
-            quantity: newProduct.quantity,
-            previousQuantity: 0,
-            newQuantity: newProduct.quantity,
-            reason: 'Initial stock entry',
-            reference: `Product creation - ${newProduct.name}`
-          });
-          
-          console.log(`Created stock record and transaction for product ${newProduct.name} with ${newProduct.quantity} units in ${primaryLocation.name}`);
+          console.log(`Created stock record for product ${newProduct.name} with ${newProduct.quantity} units in ${primaryLocation.name}`);
         }
       }
       
@@ -115,9 +107,20 @@ export function useOfflineProduct(id: string) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const foundProduct = offlineProductStorage.getById(id);
-    setProduct(foundProduct || null);
-    setLoading(false);
+    const loadProduct = async () => {
+      setLoading(true);
+      try {
+        const foundProduct = await offlineProductStorage.getById(id);
+        setProduct(foundProduct || null);
+      } catch (error) {
+        console.error('Error loading product:', error);
+        setProduct(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadProduct();
   }, [id]);
 
   return { product, loading };

@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
-import { offlineStockLocationStorage } from '@/lib/offline-storage';
-import type { OfflineStockLocation } from '@/lib/offline-storage';
+import { offlineStockLocationStorage } from '../lib/database-storage';
 
 export function useOfflineStockLocations() {
-  const [stockLocations, setStockLocations] = useState<OfflineStockLocation[]>([]);
+  const [stockLocations, setStockLocations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadStockLocations = () => {
+  const loadStockLocations = async () => {
+    setLoading(true);
     try {
-      const locations = offlineStockLocationStorage.getAll();
+      const locations = await offlineStockLocationStorage.getAll();
       setStockLocations(locations);
     } catch (error) {
       console.error('Error loading stock locations:', error);
+      setStockLocations([]);
     } finally {
       setLoading(false);
     }
@@ -21,26 +22,20 @@ export function useOfflineStockLocations() {
     loadStockLocations();
   }, []);
 
-  const createStockLocation = (locationData: Omit<OfflineStockLocation, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newLocation = offlineStockLocationStorage.create(locationData);
-    setStockLocations(prev => [...prev, newLocation]);
-    return newLocation;
+  // Note: Stock location CRUD operations not implemented in database storage yet
+  const createStockLocation = (locationData: any) => {
+    console.warn('Stock location creation not implemented in database storage');
+    return null;
   };
 
-  const updateStockLocation = (id: string, updates: Partial<OfflineStockLocation>) => {
-    const updatedLocation = offlineStockLocationStorage.update(id, updates);
-    if (updatedLocation) {
-      setStockLocations(prev => prev.map(location => location.id === id ? updatedLocation : location));
-    }
-    return updatedLocation;
+  const updateStockLocation = (id: string, updates: any) => {
+    console.warn('Stock location update not implemented in database storage');
+    return null;
   };
 
   const deleteStockLocation = (id: string) => {
-    const success = offlineStockLocationStorage.delete(id);
-    if (success) {
-      setStockLocations(prev => prev.filter(location => location.id !== id));
-    }
-    return success;
+    console.warn('Stock location deletion not implemented in database storage');
+    return false;
   };
 
   return {
