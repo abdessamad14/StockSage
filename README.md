@@ -14,7 +14,9 @@ A comprehensive offline-first inventory and point-of-sale (POS) system designed 
 - **Warehouse filtering**: View stock and history by specific locations or across all warehouses
 - **Real-time stock updates**: Automatic quantity adjustments across all operations
 - **Mobile-responsive design**: Works seamlessly on smartphones, tablets, and desktops
-- **Barcode support**: Quick product identification and processing
+- **USB Barcode scanner integration**: Automatic product scanning with cart addition in POS
+- **USB Thermal printer support**: Direct receipt printing via WebUSB API
+- **Receipt reprinting**: Print receipts for past sales from Sales History
 
 ## Technology Stack
 
@@ -81,10 +83,12 @@ StockSage is designed to work immediately without any database setup or configur
 - **Reference tracking**: Link transactions to orders, sales, or manual operations
 
 ### Point of Sale
-- **Fast checkout**: Intuitive interface for quick sales processing
+- **Fast checkout**: Intuitive interface with barcode scanner support
+- **USB barcode scanner**: Automatic product scanning and cart addition
 - **Automatic stock updates**: Quantities decrease immediately upon sale
 - **Customer management**: Track customer purchases and credit
-- **Receipt generation**: Professional receipts with business details
+- **Thermal receipt printing**: Direct USB printer integration with WebUSB
+- **Receipt reprinting**: Reprint receipts for any past sale
 
 ### Purchase Orders
 - **Supplier management**: Complete supplier contact and payment tracking
@@ -168,11 +172,13 @@ StockSage works in all modern browsers that support:
 - CSS Grid and Flexbox
 - Fetch API
 
-Tested browsers:
-- Chrome 90+
-- Firefox 88+
-- Safari 14+
-- Edge 90+
+**For full hardware integration (USB thermal printer):**
+- Chrome 90+ ✅ (WebUSB support)
+- Edge 90+ ✅ (WebUSB support)
+- Firefox 88+ ⚠️ (No WebUSB - software fallback)
+- Safari 14+ ⚠️ (No WebUSB - software fallback)
+
+**Core features work in all browsers, hardware integration requires Chrome/Edge.**
 
 ## Data Security
 
