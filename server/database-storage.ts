@@ -1,5 +1,5 @@
 import { IStorage } from './storage';
-import { db, pool } from './db';
+import { db } from './db';
 import session from 'express-session';
 import connectPg from 'connect-pg-simple';
 import { eq, and, gte, lte, like, or, desc, sql } from 'drizzle-orm';
@@ -55,11 +55,8 @@ export class DatabaseStorage implements IStorage {
   public sessionStore: session.Store;
 
   constructor() {
-    this.sessionStore = new PostgresSessionStore({ 
-      pool,
-      tableName: 'session', 
-      createTableIfMissing: true 
-    });
+    // SQLite doesn't need session store for offline usage
+    this.sessionStore = null;
   }
 
   // User management

@@ -1,15 +1,39 @@
 import { useState, useEffect } from 'react';
-import { offlineSaleStorage, OfflineSale, generateId } from '@/lib/offline-storage';
+import { offlineSalesStorage } from '@/lib/hybrid-storage';
+
+interface OfflineSale {
+  id: string;
+  invoiceNumber: string;
+  date: string;
+  customerId?: string;
+  totalAmount: number;
+  discountAmount?: number;
+  taxAmount?: number;
+  paidAmount: number;
+  changeAmount?: number;
+  paymentMethod: string;
+  status: string;
+  notes?: string;
+  items: any[];
+  createdAt: string;
+  updatedAt: string;
+}
 
 export function useOfflineSales() {
   const [sales, setSales] = useState<OfflineSale[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadSales = () => {
+  const loadSales = async () => {
     setLoading(true);
-    const allSales = offlineSaleStorage.getAll();
-    setSales(allSales);
-    setLoading(false);
+    try {
+      const allSales = await offlineSalesStorage.getAll();
+      setSales(allSales);
+    } catch (error) {
+      console.error('Error loading sales:', error);
+      setSales([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

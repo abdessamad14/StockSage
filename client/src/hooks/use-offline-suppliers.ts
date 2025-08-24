@@ -1,36 +1,74 @@
 import { useState, useEffect } from 'react';
-import { offlineSupplierStorage, OfflineSupplier } from '@/lib/offline-storage';
+import { offlineSupplierStorage } from '@/lib/hybrid-storage';
+
+interface OfflineSupplier {
+  id: string;
+  name: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export function useOfflineSuppliers() {
   const [suppliers, setSuppliers] = useState<OfflineSupplier[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadSuppliers = () => {
+  const loadSuppliers = async () => {
     setLoading(true);
-    const allSuppliers = offlineSupplierStorage.getAll();
-    setSuppliers(allSuppliers);
-    setLoading(false);
+    try {
+      const allSuppliers = await offlineSupplierStorage.getAll();
+      setSuppliers(allSuppliers);
+    } catch (error) {
+      console.error('Error loading suppliers:', error);
+      setSuppliers([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadSuppliers();
   }, []);
 
-  const createSupplier = (supplierData: Omit<OfflineSupplier, 'id'>) => {
-    const newSupplier = offlineSupplierStorage.create(supplierData);
-    loadSuppliers();
-    return newSupplier;
+  const createSupplier = async (supplier: Omit<OfflineSupplier, 'id'>) => {
+    try {
+      const newSupplier = await offlineSupplierStorage.create(supplier);
+      await loadSuppliers();
+      return newSupplier;
+    } catch (error) {
+      console.error('Error creating supplier:', error);
+      throw error;
+    }
   };
 
-  const updateSupplier = (id: string, updates: Partial<OfflineSupplier>) => {
-    const updatedSupplier = offlineSupplierStorage.update(id, updates);
-    loadSuppliers();
-    return updatedSupplier;
+  const updateSupplier = async (id: string, updates: Partial<OfflineSupplier>) => {
+    try {
+      const updatedSupplier = await offlineSupplierStorage.update(id, updates);
+      if (updatedSupplier) {
+        await loadSuppliers();
+      }
+      return updatedSupplier;
+    } catch (error) {
+      console.error('Error updating supplier:', error);
+      throw error;
+    }
   };
 
-  const deleteSupplier = (id: string) => {
-    offlineSupplierStorage.delete(id);
-    loadSuppliers();
+  const deleteSupplier = async (id: string) => {
+    try {
+      const success = await offlineSupplierStorage.delete(id);
+      if (success) {
+        await loadSuppliers();
+      }
+      return success;
+    } catch (error) {
+      console.error('Error deleting supplier:', error);
+      throw error;
+    }
   };
 
   return {
@@ -48,9 +86,19 @@ export function useOfflineSupplier(id: string) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const foundSupplier = offlineSupplierStorage.getById(id);
-    setSupplier(foundSupplier || null);
-    setLoading(false);
+    const loadSupplier = async () => {
+      setLoading(true);
+      try {
+        const foundSupplier = await offlineSupplierStorage.getById(id);
+        setSupplier(foundSupplier || null);
+      } catch (error) {
+        console.error('Error loading supplier:', error);
+        setSupplier(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadSupplier();
   }, [id]);
 
   return { supplier, loading };

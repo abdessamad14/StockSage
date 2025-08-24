@@ -3,8 +3,8 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Users table
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
@@ -14,53 +14,53 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("admin"), // admin, cashier, merchant, supporter, viewer
   tenantId: text("tenant_id").notNull(),
   profileImage: text("profile_image"),
-  active: boolean("active").notNull().default(true),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
 });
 
 // Product Categories table
-export const productCategories = pgTable("product_categories", {
-  id: serial("id").primaryKey(),
+export const productCategories = sqliteTable("product_categories", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   tenantId: text("tenant_id").notNull(),
   name: text("name").notNull(),
   description: text("description"),
   color: text("color").default("#A7C7E7"),
   parent_id: integer("parent_id"),
-  active: boolean("active").notNull().default(true),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
 });
 
 // Products table
-export const products = pgTable("products", {
-  id: serial("id").primaryKey(),
+export const products = sqliteTable("products", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   tenantId: text("tenant_id").notNull(),
   name: text("name").notNull(),
   barcode: text("barcode"),
   description: text("description"),
   category: text("category"),
-  costPrice: doublePrecision("cost_price").notNull(),
-  sellingPrice: doublePrecision("selling_price").notNull(),
+  costPrice: real("cost_price").notNull(),
+  sellingPrice: real("selling_price").notNull(),
   quantity: integer("quantity").notNull().default(0),
   minStockLevel: integer("min_stock_level").default(10),
   unit: text("unit").default("pièce"),
   image: text("image"),
-  active: boolean("active").notNull().default(true),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
 });
 
 // Customers table
-export const customers = pgTable("customers", {
-  id: serial("id").primaryKey(),
+export const customers = sqliteTable("customers", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   tenantId: text("tenant_id").notNull(),
   name: text("name").notNull(),
   phone: text("phone"),
   email: text("email"),
   address: text("address"),
-  creditLimit: doublePrecision("credit_limit").default(0),
-  creditBalance: doublePrecision("credit_balance").default(0),
+  creditLimit: real("credit_limit").default(0),
+  creditBalance: real("credit_balance").default(0),
   notes: text("notes"),
 });
 
 // Suppliers table
-export const suppliers = pgTable("suppliers", {
-  id: serial("id").primaryKey(),
+export const suppliers = sqliteTable("suppliers", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   tenantId: text("tenant_id").notNull(),
   name: text("name").notNull(),
   contactPerson: text("contact_person"),
@@ -71,17 +71,17 @@ export const suppliers = pgTable("suppliers", {
 });
 
 // Sales table
-export const sales = pgTable("sales", {
-  id: serial("id").primaryKey(),
+export const sales = sqliteTable("sales", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   tenantId: text("tenant_id").notNull(),
   invoiceNumber: text("invoice_number").notNull(),
-  date: timestamp("date").notNull().defaultNow(),
+  date: text("date").notNull().default("CURRENT_TIMESTAMP"),
   customerId: integer("customer_id").references(() => customers.id),
-  totalAmount: doublePrecision("total_amount").notNull(),
-  discountAmount: doublePrecision("discount_amount").default(0),
-  taxAmount: doublePrecision("tax_amount").default(0),
-  paidAmount: doublePrecision("paid_amount").notNull(),
-  changeAmount: doublePrecision("change_amount").default(0),
+  totalAmount: real("total_amount").notNull(),
+  discountAmount: real("discount_amount").default(0),
+  taxAmount: real("tax_amount").default(0),
+  paidAmount: real("paid_amount").notNull(),
+  changeAmount: real("change_amount").default(0),
   paymentMethod: text("payment_method").notNull().default("cash"),
   status: text("status").notNull().default("completed"),
   notes: text("notes"),
@@ -89,46 +89,46 @@ export const sales = pgTable("sales", {
 });
 
 // Sale Items table
-export const saleItems = pgTable("sale_items", {
-  id: serial("id").primaryKey(),
+export const saleItems = sqliteTable("sale_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   tenantId: text("tenant_id").notNull(),
   saleId: integer("sale_id").notNull().references(() => sales.id),
   productId: integer("product_id").notNull().references(() => products.id),
   quantity: integer("quantity").notNull(),
-  unitPrice: doublePrecision("unit_price").notNull(),
-  totalPrice: doublePrecision("total_price").notNull(),
-  discount: doublePrecision("discount").default(0),
+  unitPrice: real("unit_price").notNull(),
+  totalPrice: real("total_price").notNull(),
+  discount: real("discount").default(0),
 });
 
 // Orders table
-export const orders = pgTable("orders", {
-  id: serial("id").primaryKey(),
+export const orders = sqliteTable("orders", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   tenantId: text("tenant_id").notNull(),
   orderNumber: text("order_number").notNull(),
-  date: timestamp("date").notNull().defaultNow(),
+  date: text("date").notNull().default("CURRENT_TIMESTAMP"),
   supplierId: integer("supplier_id").references(() => suppliers.id),
-  totalAmount: doublePrecision("total_amount").notNull(),
+  totalAmount: real("total_amount").notNull(),
   status: text("status").notNull().default("pending"), // pending, received, cancelled
   notes: text("notes"),
   createdBy: integer("created_by").references(() => users.id),
 });
 
 // Order Items table
-export const orderItems = pgTable("order_items", {
-  id: serial("id").primaryKey(),
+export const orderItems = sqliteTable("order_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   tenantId: text("tenant_id").notNull(),
   orderId: integer("order_id").notNull().references(() => orders.id),
   productId: integer("product_id").notNull().references(() => products.id),
   quantity: integer("quantity").notNull(),
-  unitPrice: doublePrecision("unit_price").notNull(),
-  totalPrice: doublePrecision("total_price").notNull(),
+  unitPrice: real("unit_price").notNull(),
+  totalPrice: real("total_price").notNull(),
 });
 
 // Inventory Adjustments table
-export const inventoryAdjustments = pgTable("inventory_adjustments", {
-  id: serial("id").primaryKey(),
+export const inventoryAdjustments = sqliteTable("inventory_adjustments", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   tenantId: text("tenant_id").notNull(),
-  date: timestamp("date").notNull().defaultNow(),
+  date: text("date").notNull().default("CURRENT_TIMESTAMP"),
   type: text("type").notNull(), // increase, decrease
   reason: text("reason").notNull(),
   notes: text("notes"),
@@ -136,8 +136,8 @@ export const inventoryAdjustments = pgTable("inventory_adjustments", {
 });
 
 // Inventory Adjustment Items table
-export const inventoryAdjustmentItems = pgTable("inventory_adjustment_items", {
-  id: serial("id").primaryKey(),
+export const inventoryAdjustmentItems = sqliteTable("inventory_adjustment_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   tenantId: text("tenant_id").notNull(),
   adjustmentId: integer("adjustment_id").notNull().references(() => inventoryAdjustments.id),
   productId: integer("product_id").notNull().references(() => products.id),
@@ -147,12 +147,12 @@ export const inventoryAdjustmentItems = pgTable("inventory_adjustment_items", {
 });
 
 // Sync log table
-export const syncLogs = pgTable("sync_logs", {
-  id: serial("id").primaryKey(),
+export const syncLogs = sqliteTable("sync_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   tenantId: text("tenant_id").notNull(),
   userId: integer("user_id").references(() => users.id),
   deviceId: text("device_id").notNull(),
-  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  timestamp: text("timestamp").notNull().default("CURRENT_TIMESTAMP"),
   type: text("type").notNull(), // push, pull
   entityType: text("entity_type").notNull(), // products, sales, customers, etc.
   recordCount: integer("record_count").notNull(),
@@ -161,14 +161,14 @@ export const syncLogs = pgTable("sync_logs", {
 });
 
 // Settings table
-export const settings = pgTable("settings", {
-  id: serial("id").primaryKey(),
+export const settings = sqliteTable("settings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   tenantId: text("tenant_id").notNull().unique(),
   businessName: text("business_name").notNull(),
   address: text("address"),
   phone: text("phone"),
   email: text("email"),
-  taxRate: doublePrecision("tax_rate").default(0),
+  taxRate: real("tax_rate").default(0),
   currency: text("currency").default("MAD"),
   logo: text("logo"),
   receiptHeader: text("receipt_header"),
@@ -211,6 +211,37 @@ export type InsertSettings = z.infer<typeof insertSettingsSchema>;
 // Define types for select operations
 export type User = typeof users.$inferSelect;
 export type ProductCategory = typeof productCategories.$inferSelect;
+export type Customer = typeof customers.$inferSelect;
+export type Supplier = typeof suppliers.$inferSelect;
+export type Sale = typeof sales.$inferSelect;
+export type SaleItem = typeof saleItems.$inferSelect;
+export type Order = typeof orders.$inferSelect;
+export type OrderItem = typeof orderItems.$inferSelect;
+export type InventoryAdjustment = typeof inventoryAdjustments.$inferSelect;
+export type InventoryAdjustmentItem = typeof inventoryAdjustmentItems.$inferSelect;
+export type SyncLog = typeof syncLogs.$inferSelect;
+export type Settings = typeof settings.$inferSelect;
+
+// Offline types for client-side storage (keep existing interfaces)
+export interface OfflineProduct {
+  id: string;
+  name: string;
+  barcode?: string;
+  description?: string;
+  categoryId?: string;
+  costPrice: number;
+  sellingPrice: number;
+  semiWholesalePrice?: number;
+  wholesalePrice?: number;
+  quantity: number;
+  minStockLevel?: number;
+  unit?: string;
+  image?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface OfflineProductStock {
   productId: string;
   locationId: string;
@@ -224,7 +255,7 @@ export interface OfflineInventoryCount {
   name: string;
   description?: string;
   type: 'full' | 'partial';
-  locationId?: string; // null for full count across all locations
+  locationId?: string;
   status: 'draft' | 'in_progress' | 'completed' | 'cancelled';
   createdBy: string;
   createdAt: string;
@@ -248,45 +279,6 @@ export interface OfflineInventoryCountItem {
   countedBy?: string;
   countedAt?: string;
   notes?: string;
-}
-
-export type Customer = typeof customers.$inferSelect;
-export type Supplier = typeof suppliers.$inferSelect;
-export type Sale = typeof sales.$inferSelect;
-export type SaleItem = typeof saleItems.$inferSelect;
-export type Order = typeof orders.$inferSelect;
-export type OrderItem = typeof orderItems.$inferSelect;
-export type InventoryAdjustment = typeof inventoryAdjustments.$inferSelect;
-export type InventoryAdjustmentItem = typeof inventoryAdjustmentItems.$inferSelect;
-export type SyncLog = typeof syncLogs.$inferSelect;
-export type Settings = typeof settings.$inferSelect;
-
-// Auth schemas
-export const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
-});
-
-export type LoginCredentials = z.infer<typeof loginSchema>;
-
-// Offline types for client-side storage
-export interface OfflineProduct {
-  id: string;
-  name: string;
-  barcode?: string;
-  description?: string;
-  categoryId?: string;
-  costPrice: number;
-  sellingPrice: number;
-  semiWholesalePrice?: number;
-  wholesalePrice?: number;
-  quantity: number;
-  minStockLevel?: number;
-  unit?: string;
-  image?: string; // Base64 encoded image or URL
-  active: boolean;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface OfflinePurchaseOrder {
@@ -323,15 +315,14 @@ export interface OfflinePurchaseOrderItem {
   updatedAt: string;
 }
 
-// Supplier Payment interface for tracking payments to suppliers
 export interface OfflineSupplierPayment {
   id: string;
   supplierId: string;
-  orderId?: string; // Optional link to specific order
+  orderId?: string;
   amount: number;
   paymentMethod: 'cash' | 'credit' | 'bank_check';
   paymentDate: string;
-  reference?: string; // Check number, transaction ID, etc.
+  reference?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -342,12 +333,12 @@ export interface OfflineStockTransaction {
   productId: string;
   warehouseId: string;
   type: 'purchase' | 'sale' | 'adjustment' | 'transfer_in' | 'transfer_out' | 'entry' | 'exit';
-  quantity: number; // Positive for increases, negative for decreases
+  quantity: number;
   previousQuantity: number;
   newQuantity: number;
   reason?: string;
-  reference?: string; // Order number, sale ID, etc.
-  relatedId?: string; // Related order/sale/transfer ID
+  reference?: string;
+  relatedId?: string;
   createdAt: string;
   createdBy?: string;
 }
@@ -385,3 +376,11 @@ export type ProductWithStockStatus = OfflineProduct & {
 };
 
 export type Role = 'admin' | 'cashier' | 'merchant' | 'supporter' | 'viewer';
+
+// Auth schemas
+export const loginSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export type LoginCredentials = z.infer<typeof loginSchema>;

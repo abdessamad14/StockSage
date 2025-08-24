@@ -3,23 +3,11 @@ import { ZodError } from "zod";
 import { Server, createServer } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { db, pool } from "./db";
+import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { users } from "@shared/schema";
+import { users, products, customers, suppliers, sales, saleItems } from "@shared/sqlite-schema";
 import {
-  Product,
-  Customer,
-  Supplier,
-  ProductCategory,
-  ProductWithStockStatus,
   loginSchema,
-  SaleWithItems,
-  OrderWithItems,
-  InventoryAdjustment,
-  Settings,
-  Sale,
-  Order,
-  InsertSaleItem,
   InsertOrderItem,
   InsertInventoryAdjustmentItem,
   InsertOrder,
@@ -118,12 +106,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (username === 'superadmin') {
         console.log('Trying direct superadmin login');
         
-        // Try direct SQL query
-        const result = await pool.query('SELECT * FROM users WHERE username = $1', ['superadmin']);
-        console.log('Direct SQL query result:', result.rows);
+        // Try direct database query
+        const result = await db.select().from(users).where(eq(users.username, 'superadmin')).limit(1);
+        console.log('Direct database query result:', result);
         
-        if (result.rows.length > 0) {
-          const userFromSql = result.rows[0];
+        if (result.length > 0) {
+          const userFromSql = result[0];
           console.log('User found via direct SQL. Logging in...');
           
           // Log in using the result from SQL
@@ -192,12 +180,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Try direct SQL query first
       try {
-        console.log('Trying direct SQL query for users');
-        const result = await pool.query('SELECT * FROM users WHERE tenant_id = $1', [req.user.tenantId]);
-        console.log(`Direct SQL found ${result.rows.length} users`);
+        console.log('Trying direct database query for users');
+        const result = await db.select().from(users).where(eq(users.tenantId, req.user.tenantId));
+        console.log(`Direct database found ${result.length} users`);
         
-        if (result.rows.length > 0) {
-          return res.json(result.rows);
+        if (result.length > 0) {
+          return res.json(result);
         }
       } catch (sqlError) {
         console.error('Error with direct SQL query for users:', sqlError);

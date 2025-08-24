@@ -1,0 +1,9 @@
+@echo off
+echo Starting StockSage Inventory System...
+echo.
+echo Installing dependencies...
+call npm install
+echo.
+echo Starting application...
+call npm start
+pause
