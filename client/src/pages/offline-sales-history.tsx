@@ -6,6 +6,7 @@ import { useOfflineCustomers } from "@/hooks/use-offline-customers";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { OfflineSale } from "@/lib/offline-storage";
+import { ThermalReceiptPrinter, ReceiptData } from "@/lib/thermal-receipt-printer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -74,6 +75,56 @@ export default function OfflineSalesHistory() {
   const handleViewDetails = (sale: OfflineSale) => {
     setSelectedSale(sale);
     setIsDetailOpen(true);
+  };
+
+  const handlePrintReceipt = async (sale: OfflineSale) => {
+    try {
+      // Check if printer is ready
+      const printerReady = await ThermalReceiptPrinter.isPrinterReady();
+      if (!printerReady) {
+        toast({
+          title: "Printer Not Ready",
+          description: "Please configure and connect your thermal printer in Settings",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Prepare receipt data
+      const receiptData: ReceiptData = {
+        invoiceNumber: sale.invoiceNumber,
+        date: new Date(sale.date),
+        customerName: getCustomerName(sale.customerId) !== "Walk-in Customer" ? getCustomerName(sale.customerId) : undefined,
+        items: sale.items.map(item => ({
+          name: getProductName(item.productId),
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice
+        })),
+        subtotal: sale.items.reduce((sum, item) => sum + item.totalPrice, 0),
+        discountAmount: sale.discountAmount || undefined,
+        taxAmount: sale.taxAmount || undefined,
+        total: sale.totalAmount,
+        paidAmount: sale.paidAmount,
+        changeAmount: sale.changeAmount || undefined,
+        paymentMethod: sale.paymentMethod
+      };
+
+      // Print receipt
+      await ThermalReceiptPrinter.printReceipt(receiptData);
+      
+      toast({
+        title: "Success",
+        description: "Receipt printed successfully"
+      });
+    } catch (error) {
+      console.error('Print error:', error);
+      toast({
+        title: "Print Error",
+        description: "Failed to print receipt. Please check your printer connection.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleExportData = () => {
@@ -255,13 +306,23 @@ export default function OfflineSalesHistory() {
                     ${sale.totalAmount.toFixed(2)}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleViewDetails(sale)}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewDetails(sale)}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handlePrintReceipt(sale)}
+                        title="Print Receipt"
+                      >
+                        <Receipt className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -391,13 +452,7 @@ export default function OfflineSalesHistory() {
             <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
               Close
             </Button>
-            <Button onClick={() => {
-              // Could implement receipt printing here
-              toast({
-                title: "Info",
-                description: "Print functionality would be implemented here"
-              });
-            }}>
+            <Button onClick={() => selectedSale && handlePrintReceipt(selectedSale)}>
               Print Receipt
             </Button>
           </DialogFooter>
