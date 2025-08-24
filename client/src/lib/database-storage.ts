@@ -1,75 +1,5 @@
 // Database-only storage layer for StockSage
-import { OfflineProduct, OfflineOrder } from './offline-storage';
-
-// Define types based on SQLite schema
-interface OfflineCustomer {
-  id: string;
-  name: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  creditLimit?: number;
-  creditBalance?: number;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface OfflineSupplier {
-  id: string;
-  name: string;
-  contactPerson?: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface OfflineSale {
-  id: string;
-  invoiceNumber: string;
-  date: string;
-  customerId?: string;
-  totalAmount: number;
-  discountAmount?: number;
-  taxAmount?: number;
-  paidAmount: number;
-  changeAmount?: number;
-  paymentMethod: string;
-  status: string;
-  notes?: string;
-  items: any[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface OfflineSaleItem {
-  id: string;
-  saleId: string;
-  productId: string;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface OfflineSettings {
-  id: string;
-  businessName: string;
-  businessAddress?: string;
-  businessPhone?: string;
-  businessEmail?: string;
-  taxRate?: number;
-  currency: string;
-  receiptFooter?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
+// All operations go through API endpoints to SQLite database
 
 const API_BASE = 'http://localhost:5003/api/offline';
 
@@ -88,6 +18,170 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
 
   return response.json();
+}
+
+// Type definitions for database entities
+export interface OfflineProduct {
+  id: string;
+  name: string;
+  description?: string;
+  barcode?: string;
+  categoryId?: string;
+  costPrice: number;
+  sellingPrice: number;
+  semiWholesalePrice?: number;
+  wholesalePrice?: number;
+  quantity: number;
+  minStockLevel?: number;
+  unit?: string;
+  image?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface OfflineCustomer {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  creditLimit?: number;
+  creditBalance?: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfflineSupplier {
+  id: string;
+  name: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfflineSale {
+  id: string;
+  invoiceNumber: string;
+  date: string;
+  customerId?: string;
+  totalAmount: number;
+  discountAmount?: number;
+  taxAmount?: number;
+  paidAmount: number;
+  changeAmount?: number;
+  paymentMethod: string;
+  status: string;
+  notes?: string;
+  items: any[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfflineSaleItem {
+  id: string;
+  saleId: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfflineSettings {
+  id: string;
+  businessName: string;
+  businessAddress?: string;
+  businessPhone?: string;
+  businessEmail?: string;
+  taxRate?: number;
+  currency: string;
+  receiptFooter?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfflineOrder {
+  id: string;
+  orderNumber: string;
+  date: Date;
+  supplierId: string | null;
+  totalAmount: number;
+  status: string;
+  notes: string | null;
+  items: OfflineOrderItem[];
+}
+
+export interface OfflineOrderItem {
+  id: string;
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface OfflineStockLocation {
+  id: string;
+  name: string;
+  description?: string;
+  isPrimary?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfflineInventoryCount {
+  id: string;
+  name: string;
+  locationId: string;
+  status: string;
+  startDate: string;
+  endDate?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfflineInventoryCountItem {
+  id: string;
+  countId: string;
+  productId: string;
+  expectedQuantity: number;
+  actualQuantity?: number;
+  variance?: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfflineStockTransaction {
+  id: string;
+  productId: string;
+  warehouseId: string;
+  type: 'entry' | 'exit' | 'adjustment' | 'transfer';
+  quantity: number;
+  previousQuantity: number;
+  newQuantity: number;
+  reason: string;
+  reference?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfflineSupplierPayment {
+  id: string;
+  supplierId: string;
+  amount: number;
+  paymentMethod: string;
+  reference?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Database Product Storage
@@ -709,17 +803,62 @@ export interface OfflineProductStock {
   updatedAt: string;
 }
 
-// Mock storage for categories (not implemented in backend yet)
+// Real database storage for categories
 export const offlineCategoryStorage = {
   async getAll(): Promise<OfflineCategory[]> {
-    return [];
+    try {
+      const categories = await apiCall<any[]>('/categories');
+      return categories.map(c => ({
+        id: c.id.toString(),
+        name: c.name,
+        description: c.description,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt
+      }));
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      return [];
+    }
   }
 };
 
-// Mock storage for stock locations
+// Real database storage for stock locations
 export const offlineStockLocationStorage = {
-  async getAll(): Promise<any[]> {
-    return [{ id: 'main', name: 'Main Warehouse' }];
+  async getAll(): Promise<OfflineStockLocation[]> {
+    try {
+      const locations = await apiCall<any[]>('/stock-locations');
+      return locations.map(l => ({
+        id: l.id.toString(),
+        name: l.name,
+        description: l.description,
+        isPrimary: l.isPrimary || false,
+        createdAt: l.createdAt,
+        updatedAt: l.updatedAt
+      }));
+    } catch (error) {
+      console.error('Error fetching stock locations:', error);
+      return [];
+    }
+  },
+
+  async create(location: Omit<OfflineStockLocation, 'id' | 'createdAt' | 'updatedAt'>): Promise<OfflineStockLocation> {
+    try {
+      const newLocation = await apiCall<any>('/stock-locations', {
+        method: 'POST',
+        body: JSON.stringify(location)
+      });
+      return {
+        id: newLocation.id.toString(),
+        name: newLocation.name,
+        description: newLocation.description,
+        isPrimary: newLocation.isPrimary || false,
+        createdAt: newLocation.createdAt,
+        updatedAt: newLocation.updatedAt
+      };
+    } catch (error) {
+      console.error('Error creating stock location:', error);
+      throw error;
+    }
   }
 };
 
@@ -727,6 +866,424 @@ export const offlineStockLocationStorage = {
 export const offlineSalesPeriodStorage = {
   async getAll(): Promise<OfflineSalesPeriod[]> {
     return [];
+  },
+  
+  getCurrentPeriod(): OfflineSalesPeriod | null {
+    // Return a default current period for POS functionality
+    return {
+      id: 'current',
+      name: 'Current Period',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+  }
+};
+
+// Real database storage for inventory count items
+export const offlineInventoryCountItemStorage = {
+  async getAll(): Promise<OfflineInventoryCountItem[]> {
+    try {
+      const items = await apiCall<any[]>('/inventory-count-items');
+      return items.map(i => ({
+        id: i.id.toString(),
+        countId: i.countId.toString(),
+        productId: i.productId.toString(),
+        expectedQuantity: i.expectedQuantity,
+        actualQuantity: i.actualQuantity,
+        variance: i.variance,
+        notes: i.notes,
+        createdAt: i.createdAt,
+        updatedAt: i.updatedAt
+      }));
+    } catch (error) {
+      console.error('Error fetching inventory count items:', error);
+      return [];
+    }
+  },
+  
+  async getByCountId(countId: string): Promise<OfflineInventoryCountItem[]> {
+    try {
+      const items = await apiCall<any[]>(`/inventory-count-items/count/${countId}`);
+      return items.map(i => ({
+        id: i.id.toString(),
+        countId: i.countId.toString(),
+        productId: i.productId.toString(),
+        expectedQuantity: i.expectedQuantity,
+        actualQuantity: i.actualQuantity,
+        variance: i.variance,
+        notes: i.notes,
+        createdAt: i.createdAt,
+        updatedAt: i.updatedAt
+      }));
+    } catch (error) {
+      console.error('Error fetching inventory count items:', error);
+      return [];
+    }
+  },
+  
+  async create(item: Omit<OfflineInventoryCountItem, 'id' | 'createdAt' | 'updatedAt'>): Promise<OfflineInventoryCountItem> {
+    try {
+      const newItem = await apiCall<any>('/inventory-count-items', {
+        method: 'POST',
+        body: JSON.stringify({
+          countId: parseInt(item.countId),
+          productId: parseInt(item.productId),
+          expectedQuantity: item.expectedQuantity,
+          actualQuantity: item.actualQuantity,
+          variance: item.variance,
+          notes: item.notes
+        })
+      });
+      return {
+        id: newItem.id.toString(),
+        countId: newItem.countId.toString(),
+        productId: newItem.productId.toString(),
+        expectedQuantity: newItem.expectedQuantity,
+        actualQuantity: newItem.actualQuantity,
+        variance: newItem.variance,
+        notes: newItem.notes,
+        createdAt: newItem.createdAt,
+        updatedAt: newItem.updatedAt
+      };
+    } catch (error) {
+      console.error('Error creating inventory count item:', error);
+      throw error;
+    }
+  },
+  
+  async update(id: string, updates: Partial<OfflineInventoryCountItem>): Promise<OfflineInventoryCountItem | null> {
+    try {
+      const updated = await apiCall<any>(`/inventory-count-items/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates)
+      });
+      return {
+        id: updated.id.toString(),
+        countId: updated.countId.toString(),
+        productId: updated.productId.toString(),
+        expectedQuantity: updated.expectedQuantity,
+        actualQuantity: updated.actualQuantity,
+        variance: updated.variance,
+        notes: updated.notes,
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt
+      };
+    } catch (error) {
+      console.error('Error updating inventory count item:', error);
+      return null;
+    }
+  }
+};
+
+// Real database storage for stock transactions
+export const offlineStockTransactionStorage = {
+  async getAll(): Promise<OfflineStockTransaction[]> {
+    try {
+      const transactions = await apiCall<any[]>('/stock-transactions');
+      return transactions.map(t => ({
+        id: t.id.toString(),
+        productId: t.productId.toString(),
+        warehouseId: t.warehouseId,
+        type: t.type,
+        quantity: t.quantity,
+        previousQuantity: t.previousQuantity,
+        newQuantity: t.newQuantity,
+        reason: t.reason,
+        reference: t.reference,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt || t.createdAt
+      }));
+    } catch (error) {
+      console.error('Error fetching stock transactions:', error);
+      return [];
+    }
+  },
+  
+  async getByProductId(productId: string): Promise<OfflineStockTransaction[]> {
+    try {
+      const transactions = await apiCall<any[]>(`/stock-transactions/product/${productId}`);
+      return transactions.map(t => ({
+        id: t.id.toString(),
+        productId: t.productId.toString(),
+        warehouseId: t.warehouseId,
+        type: t.type,
+        quantity: t.quantity,
+        previousQuantity: t.previousQuantity,
+        newQuantity: t.newQuantity,
+        reason: t.reason,
+        reference: t.reference,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt || t.createdAt
+      }));
+    } catch (error) {
+      console.error('Error fetching product stock transactions:', error);
+      return [];
+    }
+  },
+  
+  async create(transaction: Omit<OfflineStockTransaction, 'id' | 'createdAt'>): Promise<OfflineStockTransaction> {
+    try {
+      const newTransaction = await apiCall<any>('/stock-transactions', {
+        method: 'POST',
+        body: JSON.stringify({
+          productId: parseInt(transaction.productId),
+          warehouseId: transaction.warehouseId,
+          type: transaction.type,
+          quantity: transaction.quantity,
+          previousQuantity: transaction.previousQuantity,
+          newQuantity: transaction.newQuantity,
+          reason: transaction.reason,
+          reference: transaction.reference
+        })
+      });
+      return {
+        id: newTransaction.id.toString(),
+        productId: newTransaction.productId.toString(),
+        warehouseId: newTransaction.warehouseId,
+        type: newTransaction.type,
+        quantity: newTransaction.quantity,
+        previousQuantity: newTransaction.previousQuantity,
+        newQuantity: newTransaction.newQuantity,
+        reason: newTransaction.reason,
+        reference: newTransaction.reference,
+        createdAt: newTransaction.createdAt,
+        updatedAt: newTransaction.updatedAt || newTransaction.createdAt
+      };
+    } catch (error) {
+      console.error('Error creating stock transaction:', error);
+      throw error;
+    }
+  }
+};
+
+// Real database storage for inventory counts
+export const offlineInventoryCountStorage = {
+  async getAll(): Promise<OfflineInventoryCount[]> {
+    try {
+      const counts = await apiCall<any[]>('/inventory-counts');
+      return counts.map(c => ({
+        id: c.id.toString(),
+        name: c.name,
+        locationId: c.locationId,
+        status: c.status,
+        startDate: c.startDate,
+        endDate: c.endDate,
+        notes: c.notes,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt
+      }));
+    } catch (error) {
+      console.error('Error fetching inventory counts:', error);
+      return [];
+    }
+  },
+  
+  async getById(id: string): Promise<OfflineInventoryCount | null> {
+    try {
+      const count = await apiCall<any>(`/inventory-counts/${id}`);
+      return {
+        id: count.id.toString(),
+        name: count.name,
+        locationId: count.locationId,
+        status: count.status,
+        startDate: count.startDate,
+        endDate: count.endDate,
+        notes: count.notes,
+        createdAt: count.createdAt,
+        updatedAt: count.updatedAt
+      };
+    } catch (error) {
+      console.error('Error fetching inventory count:', error);
+      return null;
+    }
+  },
+  
+  async create(count: Omit<OfflineInventoryCount, 'id' | 'createdAt' | 'updatedAt'>): Promise<OfflineInventoryCount> {
+    try {
+      const newCount = await apiCall<any>('/inventory-counts', {
+        method: 'POST',
+        body: JSON.stringify(count)
+      });
+      return {
+        id: newCount.id.toString(),
+        name: newCount.name,
+        locationId: newCount.locationId,
+        status: newCount.status,
+        startDate: newCount.startDate,
+        endDate: newCount.endDate,
+        notes: newCount.notes,
+        createdAt: newCount.createdAt,
+        updatedAt: newCount.updatedAt
+      };
+    } catch (error) {
+      console.error('Error creating inventory count:', error);
+      throw error;
+    }
+  },
+  
+  async update(id: string, updates: Partial<OfflineInventoryCount>): Promise<OfflineInventoryCount | null> {
+    try {
+      const updated = await apiCall<any>(`/inventory-counts/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates)
+      });
+      return {
+        id: updated.id.toString(),
+        name: updated.name,
+        locationId: updated.locationId,
+        status: updated.status,
+        startDate: updated.startDate,
+        endDate: updated.endDate,
+        notes: updated.notes,
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt
+      };
+    } catch (error) {
+      console.error('Error updating inventory count:', error);
+      return null;
+    }
+  },
+  
+  async delete(id: string): Promise<void> {
+    try {
+      await apiCall(`/inventory-counts/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.error('Error deleting inventory count:', error);
+      throw error;
+    }
+  }
+};
+
+// Real database storage for purchase order items (using existing order items table)
+export const offlinePurchaseOrderItemStorage = {
+  async getAll(): Promise<OfflineOrderItem[]> {
+    try {
+      const items = await apiCall<any[]>('/order-items');
+      return items.map(i => ({
+        id: i.id.toString(),
+        productId: i.productId.toString(),
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        totalPrice: i.totalPrice
+      }));
+    } catch (error) {
+      console.error('Error fetching order items:', error);
+      return [];
+    }
+  },
+  
+  async getByOrderId(orderId: string): Promise<OfflineOrderItem[]> {
+    try {
+      const items = await apiCall<any[]>(`/order-items/order/${orderId}`);
+      return items.map(i => ({
+        id: i.id.toString(),
+        productId: i.productId.toString(),
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        totalPrice: i.totalPrice
+      }));
+    } catch (error) {
+      console.error('Error fetching order items:', error);
+      return [];
+    }
+  },
+  
+  async create(item: Omit<OfflineOrderItem, 'id'>): Promise<OfflineOrderItem> {
+    try {
+      const newItem = await apiCall<any>('/order-items', {
+        method: 'POST',
+        body: JSON.stringify({
+          productId: parseInt(item.productId),
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice
+        })
+      });
+      return {
+        id: newItem.id.toString(),
+        productId: newItem.productId.toString(),
+        quantity: newItem.quantity,
+        unitPrice: newItem.unitPrice,
+        totalPrice: newItem.totalPrice
+      };
+    } catch (error) {
+      console.error('Error creating order item:', error);
+      throw error;
+    }
+  }
+};
+
+// Real database storage for supplier payments
+export const offlineSupplierPaymentStorage = {
+  async getAll(): Promise<OfflineSupplierPayment[]> {
+    try {
+      const payments = await apiCall<any[]>('/supplier-payments');
+      return payments.map(p => ({
+        id: p.id.toString(),
+        supplierId: p.supplierId.toString(),
+        amount: p.amount,
+        paymentMethod: p.paymentMethod,
+        reference: p.reference,
+        notes: p.notes,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt
+      }));
+    } catch (error) {
+      console.error('Error fetching supplier payments:', error);
+      return [];
+    }
+  },
+  
+  async getBySupplierId(supplierId: string): Promise<OfflineSupplierPayment[]> {
+    try {
+      const payments = await apiCall<any[]>(`/supplier-payments/supplier/${supplierId}`);
+      return payments.map(p => ({
+        id: p.id.toString(),
+        supplierId: p.supplierId.toString(),
+        amount: p.amount,
+        paymentMethod: p.paymentMethod,
+        reference: p.reference,
+        notes: p.notes,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt
+      }));
+    } catch (error) {
+      console.error('Error fetching supplier payments:', error);
+      return [];
+    }
+  },
+  
+  async create(payment: Omit<OfflineSupplierPayment, 'id' | 'createdAt' | 'updatedAt'>): Promise<OfflineSupplierPayment> {
+    try {
+      const newPayment = await apiCall<any>('/supplier-payments', {
+        method: 'POST',
+        body: JSON.stringify({
+          supplierId: parseInt(payment.supplierId),
+          amount: payment.amount,
+          paymentMethod: payment.paymentMethod,
+          reference: payment.reference,
+          notes: payment.notes
+        })
+      });
+      return {
+        id: newPayment.id.toString(),
+        supplierId: newPayment.supplierId.toString(),
+        amount: newPayment.amount,
+        paymentMethod: newPayment.paymentMethod,
+        reference: newPayment.reference,
+        notes: newPayment.notes,
+        createdAt: newPayment.createdAt,
+        updatedAt: newPayment.updatedAt
+      };
+    } catch (error) {
+      console.error('Error creating supplier payment:', error);
+      throw error;
+    }
   }
 };
 
@@ -734,17 +1291,140 @@ export const offlineSalesPeriodStorage = {
 export const creditHelpers = {
   calculateCreditBalance: (customer: OfflineCustomer): number => {
     return customer.creditBalance || 0;
+  },
+
+  addCreditSale: async (customerId: string, amount: number, saleId: string) => {
+    try {
+      await apiCall('/customer-credits', {
+        method: 'POST',
+        body: JSON.stringify({
+          customerId,
+          amount,
+          saleId,
+          type: 'sale',
+          date: new Date().toISOString()
+        })
+      });
+    } catch (error) {
+      console.error('Error adding credit sale:', error);
+      throw error;
+    }
+  },
+
+  getCustomerCreditInfo: (customer: OfflineCustomer) => {
+    return {
+      creditBalance: customer.creditBalance || 0,
+      creditLimit: customer.creditLimit || 0,
+      availableCredit: (customer.creditLimit || 0) - (customer.creditBalance || 0)
+    };
   }
 };
 
 export const salesPeriodHelpers = {
-  getCurrentPeriod: (): OfflineSalesPeriod | null => {
-    return null;
+  getCurrentPeriod: async (): Promise<OfflineSalesPeriod | null> => {
+    try {
+      const periods = await offlineSalesPeriodStorage.getAll();
+      return periods.find((p: OfflineSalesPeriod) => p.isActive) || null;
+    } catch (error) {
+      console.error('Error getting current period:', error);
+      return null;
+    }
+  },
+  
+  getTodaysSalesData: async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const sales = await databaseSalesStorage.getAll();
+      const todaysSales = sales.filter((sale: OfflineSale) => 
+        sale.date && sale.date.startsWith(today)
+      );
+      
+      const totalSales = todaysSales.reduce((sum: number, sale: OfflineSale) => sum + (sale.totalAmount || 0), 0);
+      const totalTransactions = todaysSales.length;
+      
+      return {
+        totalSales,
+        totalTransactions,
+        sales: todaysSales
+      };
+    } catch (error) {
+      console.error('Error getting today\'s sales data:', error);
+      return {
+        totalSales: 0,
+        totalTransactions: 0,
+        sales: []
+      };
+    }
+  },
+
+  updatePeriodStats: async (periodId: string, stats: any) => {
+    try {
+      await apiCall(`/sales-periods/${periodId}`, {
+        method: 'PUT',
+        body: JSON.stringify(stats)
+      });
+    } catch (error) {
+      console.error('Error updating period stats:', error);
+    }
+  },
+
+  openSalesPeriod: async (name: string, openingBalance: number) => {
+    try {
+      const period = await apiCall('/sales-periods', {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          startDate: new Date().toISOString(),
+          endDate: new Date().toISOString(),
+          isActive: true,
+          openingBalance
+        })
+      });
+      return period;
+    } catch (error) {
+      console.error('Error opening sales period:', error);
+      throw error;
+    }
+  },
+
+  closeSalesPeriod: async (periodId: string) => {
+    try {
+      await apiCall(`/sales-periods/${periodId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          isActive: false,
+          endDate: new Date().toISOString()
+        })
+      });
+    } catch (error) {
+      console.error('Error closing sales period:', error);
+      throw error;
+    }
   }
 };
 
-// Export types
-export type { OfflineCustomer, OfflineSupplier, OfflineSale, OfflineSaleItem, OfflineSettings };
+// Low stock helpers
+export const lowStockHelpers = {
+  isLowStockAlertsEnabled: (): boolean => {
+    // For now, always return true - this could be configurable via settings
+    return true;
+  },
+
+  getLowStockProducts: async (): Promise<OfflineProduct[]> => {
+    try {
+      const products = await databaseProductStorage.getAll();
+      return products.filter((product: OfflineProduct) => 
+        product.minStockLevel && 
+        product.quantity <= product.minStockLevel
+      );
+    } catch (error) {
+      console.error('Error getting low stock products:', error);
+      return [];
+    }
+  }
+};
+
+// Types are already exported above
 
 // Export the database storage as the main offline storage
 export { 

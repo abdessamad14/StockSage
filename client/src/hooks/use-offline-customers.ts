@@ -1,18 +1,5 @@
 import { useState, useEffect } from 'react';
-import { offlineCustomerStorage } from '../lib/database-storage';
-
-interface OfflineCustomer {
-  id: string;
-  name: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  creditLimit?: number;
-  creditBalance?: number;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { offlineCustomerStorage, OfflineCustomer } from '../lib/database-storage';
 
 export function useOfflineCustomers() {
   const [customers, setCustomers] = useState<OfflineCustomer[]>([]);
@@ -61,11 +48,9 @@ export function useOfflineCustomers() {
 
   const deleteCustomer = async (id: string) => {
     try {
-      const success = await offlineCustomerStorage.delete(id);
-      if (success) {
-        await loadCustomers();
-      }
-      return success;
+      await offlineCustomerStorage.delete(id);
+      await loadCustomers();
+      return true;
     } catch (error) {
       console.error('Error deleting customer:', error);
       throw error;

@@ -220,17 +220,16 @@ export default function OfflinePOS() {
       // Create sale
       const sale: OfflineSale = {
         id: `sale-${Date.now()}`,
-        invoiceNumber: `INV-${Date.now()}`,
-        date: new Date().toISOString(),
-        customerId: selectedCustomer?.id,
+        customerId: selectedCustomer?.id || null,
+        customerName: selectedCustomer?.name || 'Walk-in Customer',
+        items: saleItems,
+        subtotal,
+        tax,
         totalAmount: total,
-        discountAmount: 0,
-        taxAmount: tax,
+        paymentMethod,
         paidAmount: paymentMethod === 'cash' ? paidAmount : total,
         changeAmount: paymentMethod === 'cash' ? change : 0,
-        paymentMethod,
-        status: 'completed',
-        items: saleItems,
+        date: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -310,8 +309,8 @@ export default function OfflinePOS() {
                 <div className="flex flex-col items-center text-center">
                   <Package className="h-12 w-12 text-gray-400 mb-2" />
                   <h3 className="font-medium text-sm mb-1 line-clamp-2">{product.name}</h3>
-                  <p className="text-xs text-gray-500 mb-2">{product.barcode}</p>
-                  <p className="font-bold text-lg mb-2">${(product.sellingPrice || 0).toFixed(2)}</p>
+                  <p className="text-xs text-gray-500 mb-2">{product.sku}</p>
+                  <p className="font-bold text-lg mb-2">${(product.retailPrice || 0).toFixed(2)}</p>
                   <Button
                     onClick={() => addToCart(product)}
                     size="sm"
@@ -434,21 +433,17 @@ export default function OfflinePOS() {
         {/* Customer Selection */}
         <div className="mb-4">
           <Select
-            value={selectedCustomer?.id || 'walk-in'}
+            value={selectedCustomer?.id || ''}
             onValueChange={(value) => {
-              if (value === 'walk-in') {
-                setSelectedCustomer(null);
-              } else {
-                const customer = customers.find(c => c.id === value);
-                setSelectedCustomer(customer || null);
-              }
+              const customer = customers.find(c => c.id === value);
+              setSelectedCustomer(customer || null);
             }}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select Customer (Optional)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="walk-in">Walk-in Customer</SelectItem>
+              <SelectItem value="">Walk-in Customer</SelectItem>
               {customers.map(customer => (
                 <SelectItem key={customer.id} value={customer.id}>
                   {customer.name}
@@ -557,11 +552,11 @@ export default function OfflinePOS() {
               <div className="space-y-1">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>${(lastSale.totalAmount - (lastSale.taxAmount || 0)).toFixed(2)}</span>
+                  <span>${lastSale.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax:</span>
-                  <span>${(lastSale.taxAmount || 0).toFixed(2)}</span>
+                  <span>${lastSale.tax.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-bold">
                   <span>Total:</span>
@@ -571,10 +566,10 @@ export default function OfflinePOS() {
                   <span>Paid ({lastSale.paymentMethod}):</span>
                   <span>${lastSale.paidAmount.toFixed(2)}</span>
                 </div>
-                {(lastSale.changeAmount || 0) > 0 && (
+                {lastSale.changeAmount > 0 && (
                   <div className="flex justify-between">
                     <span>Change:</span>
-                    <span>${(lastSale.changeAmount || 0).toFixed(2)}</span>
+                    <span>${lastSale.changeAmount.toFixed(2)}</span>
                   </div>
                 )}
               </div>

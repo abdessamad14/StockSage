@@ -180,6 +180,78 @@ export const settings = sqliteTable("settings", {
   syncInterval: integer("sync_interval").default(15), // minutes
 });
 
+// Stock Locations table
+export const stockLocations = sqliteTable("stock_locations", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tenantId: text("tenant_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isPrimary: integer("is_primary", { mode: "boolean" }).default(false),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+// Supplier Payments table
+export const supplierPayments = sqliteTable("supplier_payments", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tenantId: text("tenant_id").notNull(),
+  supplierId: integer("supplier_id").notNull().references(() => suppliers.id),
+  orderId: integer("order_id").references(() => orders.id),
+  amount: real("amount").notNull(),
+  paymentMethod: text("payment_method").notNull().default("cash"),
+  paymentDate: text("payment_date").notNull().default("CURRENT_TIMESTAMP"),
+  reference: text("reference"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+// Stock Transactions table
+export const stockTransactions = sqliteTable("stock_transactions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tenantId: text("tenant_id").notNull(),
+  productId: integer("product_id").notNull().references(() => products.id),
+  warehouseId: text("warehouse_id").notNull().default("main"),
+  type: text("type").notNull(), // purchase, sale, adjustment, transfer_in, transfer_out, entry, exit
+  quantity: integer("quantity").notNull(),
+  previousQuantity: integer("previous_quantity").notNull(),
+  newQuantity: integer("new_quantity").notNull(),
+  reason: text("reason"),
+  reference: text("reference"),
+  relatedId: text("related_id"),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdBy: integer("created_by").references(() => users.id),
+});
+
+// Inventory Counts table
+export const inventoryCounts = sqliteTable("inventory_counts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tenantId: text("tenant_id").notNull(),
+  name: text("name").notNull(),
+  locationId: text("location_id").notNull().default("main"),
+  status: text("status").notNull().default("draft"), // draft, in_progress, completed, cancelled
+  startDate: text("start_date").notNull().default("CURRENT_TIMESTAMP"),
+  endDate: text("end_date"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdBy: integer("created_by").references(() => users.id),
+});
+
+// Inventory Count Items table
+export const inventoryCountItems = sqliteTable("inventory_count_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tenantId: text("tenant_id").notNull(),
+  countId: integer("count_id").notNull().references(() => inventoryCounts.id),
+  productId: integer("product_id").notNull().references(() => products.id),
+  expectedQuantity: integer("expected_quantity").notNull(),
+  actualQuantity: integer("actual_quantity"),
+  variance: integer("variance"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
 // Insert schemas for each table
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertProductCategorySchema = createInsertSchema(productCategories).omit({ id: true });
@@ -193,6 +265,11 @@ export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: t
 export const insertInventoryAdjustmentSchema = createInsertSchema(inventoryAdjustments).omit({ id: true });
 export const insertInventoryAdjustmentItemSchema = createInsertSchema(inventoryAdjustmentItems).omit({ id: true });
 export const insertSettingsSchema = createInsertSchema(settings).omit({ id: true });
+export const insertStockLocationSchema = createInsertSchema(stockLocations).omit({ id: true });
+export const insertSupplierPaymentSchema = createInsertSchema(supplierPayments).omit({ id: true });
+export const insertStockTransactionSchema = createInsertSchema(stockTransactions).omit({ id: true });
+export const insertInventoryCountSchema = createInsertSchema(inventoryCounts).omit({ id: true });
+export const insertInventoryCountItemSchema = createInsertSchema(inventoryCountItems).omit({ id: true });
 
 // Define types for insert operations
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -207,6 +284,11 @@ export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
 export type InsertInventoryAdjustment = z.infer<typeof insertInventoryAdjustmentSchema>;
 export type InsertInventoryAdjustmentItem = z.infer<typeof insertInventoryAdjustmentItemSchema>;
 export type InsertSettings = z.infer<typeof insertSettingsSchema>;
+export type InsertStockLocation = z.infer<typeof insertStockLocationSchema>;
+export type InsertSupplierPayment = z.infer<typeof insertSupplierPaymentSchema>;
+export type InsertStockTransaction = z.infer<typeof insertStockTransactionSchema>;
+export type InsertInventoryCount = z.infer<typeof insertInventoryCountSchema>;
+export type InsertInventoryCountItem = z.infer<typeof insertInventoryCountItemSchema>;
 
 // Define types for select operations
 export type User = typeof users.$inferSelect;
@@ -215,6 +297,13 @@ export type Customer = typeof customers.$inferSelect;
 export type Supplier = typeof suppliers.$inferSelect;
 export type Sale = typeof sales.$inferSelect;
 export type SaleItem = typeof saleItems.$inferSelect;
+export type Order = typeof orders.$inferSelect;
+export type OrderItem = typeof orderItems.$inferSelect;
+export type StockLocation = typeof stockLocations.$inferSelect;
+export type SupplierPayment = typeof supplierPayments.$inferSelect;
+export type StockTransaction = typeof stockTransactions.$inferSelect;
+export type InventoryCount = typeof inventoryCounts.$inferSelect;
+export type InventoryCountItem = typeof inventoryCountItems.$inferSelect;
 
 // Product Stock table
 export const productStock = sqliteTable("product_stock", {

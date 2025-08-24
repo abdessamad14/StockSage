@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from './db';
-import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock } from '@shared/sqlite-schema';
+import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems } from '@shared/sqlite-schema';
 import { eq } from 'drizzle-orm';
 
 const router = express.Router();
@@ -666,6 +666,235 @@ router.delete('/product-stock/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting product stock:', error);
     res.status(500).json({ error: 'Failed to delete product stock' });
+  }
+});
+
+// Stock Locations API
+router.get('/stock-locations', async (req, res) => {
+  try {
+    const locations = await db.select().from(stockLocations);
+    res.json(locations);
+  } catch (error) {
+    console.error('Error fetching stock locations:', error);
+    res.status(500).json({ error: 'Failed to fetch stock locations' });
+  }
+});
+
+router.post('/stock-locations', async (req, res) => {
+  try {
+    const newLocation = await db.insert(stockLocations).values({
+      tenantId: 'default',
+      ...req.body
+    }).returning();
+    res.json(newLocation[0]);
+  } catch (error) {
+    console.error('Error creating stock location:', error);
+    res.status(500).json({ error: 'Failed to create stock location' });
+  }
+});
+
+// Supplier Payments API
+router.get('/supplier-payments', async (req, res) => {
+  try {
+    const payments = await db.select().from(supplierPayments);
+    res.json(payments);
+  } catch (error) {
+    console.error('Error fetching supplier payments:', error);
+    res.status(500).json({ error: 'Failed to fetch supplier payments' });
+  }
+});
+
+router.get('/supplier-payments/supplier/:supplierId', async (req, res) => {
+  try {
+    const { supplierId } = req.params;
+    const payments = await db.select().from(supplierPayments)
+      .where(eq(supplierPayments.supplierId, parseInt(supplierId)));
+    res.json(payments);
+  } catch (error) {
+    console.error('Error fetching supplier payments:', error);
+    res.status(500).json({ error: 'Failed to fetch supplier payments' });
+  }
+});
+
+router.post('/supplier-payments', async (req, res) => {
+  try {
+    const newPayment = await db.insert(supplierPayments).values({
+      tenantId: 'default',
+      ...req.body
+    }).returning();
+    res.json(newPayment[0]);
+  } catch (error) {
+    console.error('Error creating supplier payment:', error);
+    res.status(500).json({ error: 'Failed to create supplier payment' });
+  }
+});
+
+// Stock Transactions API
+router.get('/stock-transactions', async (req, res) => {
+  try {
+    const transactions = await db.select().from(stockTransactions);
+    res.json(transactions);
+  } catch (error) {
+    console.error('Error fetching stock transactions:', error);
+    res.status(500).json({ error: 'Failed to fetch stock transactions' });
+  }
+});
+
+router.get('/stock-transactions/product/:productId', async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const transactions = await db.select().from(stockTransactions)
+      .where(eq(stockTransactions.productId, parseInt(productId)));
+    res.json(transactions);
+  } catch (error) {
+    console.error('Error fetching product stock transactions:', error);
+    res.status(500).json({ error: 'Failed to fetch product stock transactions' });
+  }
+});
+
+router.post('/stock-transactions', async (req, res) => {
+  try {
+    const newTransaction = await db.insert(stockTransactions).values({
+      tenantId: 'default',
+      ...req.body
+    }).returning();
+    res.json(newTransaction[0]);
+  } catch (error) {
+    console.error('Error creating stock transaction:', error);
+    res.status(500).json({ error: 'Failed to create stock transaction' });
+  }
+});
+
+// Inventory Counts API
+router.get('/inventory-counts', async (req, res) => {
+  try {
+    const counts = await db.select().from(inventoryCounts);
+    res.json(counts);
+  } catch (error) {
+    console.error('Error fetching inventory counts:', error);
+    res.status(500).json({ error: 'Failed to fetch inventory counts' });
+  }
+});
+
+router.get('/inventory-counts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const count = await db.select().from(inventoryCounts)
+      .where(eq(inventoryCounts.id, parseInt(id)));
+    
+    if (count.length === 0) {
+      return res.status(404).json({ error: 'Inventory count not found' });
+    }
+    
+    res.json(count[0]);
+  } catch (error) {
+    console.error('Error fetching inventory count:', error);
+    res.status(500).json({ error: 'Failed to fetch inventory count' });
+  }
+});
+
+router.post('/inventory-counts', async (req, res) => {
+  try {
+    const newCount = await db.insert(inventoryCounts).values({
+      tenantId: 'default',
+      ...req.body
+    }).returning();
+    res.json(newCount[0]);
+  } catch (error) {
+    console.error('Error creating inventory count:', error);
+    res.status(500).json({ error: 'Failed to create inventory count' });
+  }
+});
+
+router.put('/inventory-counts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await db.update(inventoryCounts)
+      .set({ ...req.body, updatedAt: new Date().toISOString() })
+      .where(eq(inventoryCounts.id, parseInt(id)))
+      .returning();
+    
+    if (updated.length === 0) {
+      return res.status(404).json({ error: 'Inventory count not found' });
+    }
+    
+    res.json(updated[0]);
+  } catch (error) {
+    console.error('Error updating inventory count:', error);
+    res.status(500).json({ error: 'Failed to update inventory count' });
+  }
+});
+
+router.delete('/inventory-counts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await db.delete(inventoryCounts)
+      .where(eq(inventoryCounts.id, parseInt(id)))
+      .returning();
+    
+    if (deleted.length === 0) {
+      return res.status(404).json({ error: 'Inventory count not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting inventory count:', error);
+    res.status(500).json({ error: 'Failed to delete inventory count' });
+  }
+});
+
+// Inventory Count Items API
+router.get('/inventory-count-items', async (req, res) => {
+  try {
+    const items = await db.select().from(inventoryCountItems);
+    res.json(items);
+  } catch (error) {
+    console.error('Error fetching inventory count items:', error);
+    res.status(500).json({ error: 'Failed to fetch inventory count items' });
+  }
+});
+
+router.get('/inventory-count-items/count/:countId', async (req, res) => {
+  try {
+    const { countId } = req.params;
+    const items = await db.select().from(inventoryCountItems)
+      .where(eq(inventoryCountItems.countId, parseInt(countId)));
+    res.json(items);
+  } catch (error) {
+    console.error('Error fetching inventory count items:', error);
+    res.status(500).json({ error: 'Failed to fetch inventory count items' });
+  }
+});
+
+router.post('/inventory-count-items', async (req, res) => {
+  try {
+    const newItem = await db.insert(inventoryCountItems).values({
+      tenantId: 'default',
+      ...req.body
+    }).returning();
+    res.json(newItem[0]);
+  } catch (error) {
+    console.error('Error creating inventory count item:', error);
+    res.status(500).json({ error: 'Failed to create inventory count item' });
+  }
+});
+
+router.put('/inventory-count-items/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await db.update(inventoryCountItems)
+      .set({ ...req.body, updatedAt: new Date().toISOString() })
+      .where(eq(inventoryCountItems.id, parseInt(id)))
+      .returning();
+    
+    if (updated.length === 0) {
+      return res.status(404).json({ error: 'Inventory count item not found' });
+    }
+    
+    res.json(updated[0]);
+  } catch (error) {
+    console.error('Error updating inventory count item:', error);
+    res.status(500).json({ error: 'Failed to update inventory count item' });
   }
 });
 

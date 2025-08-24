@@ -1,24 +1,5 @@
 import { useState, useEffect } from 'react';
-import { offlineSalesStorage } from '../lib/database-storage';
-import { offlineSaleStorage } from '@/lib/offline-storage';
-
-interface OfflineSale {
-  id: string;
-  invoiceNumber: string;
-  date: string;
-  customerId?: string;
-  totalAmount: number;
-  discountAmount?: number;
-  taxAmount?: number;
-  paidAmount: number;
-  changeAmount?: number;
-  paymentMethod: string;
-  status: string;
-  notes?: string;
-  items: any[];
-  createdAt: string;
-  updatedAt: string;
-}
+import { offlineSalesStorage, OfflineSale } from '../lib/database-storage';
 
 export function useOfflineSales() {
   const [sales, setSales] = useState<OfflineSale[]>([]);
@@ -27,8 +8,8 @@ export function useOfflineSales() {
   const loadSales = async () => {
     setLoading(true);
     try {
-      // Load from offline storage where POS creates sales
-      const allSales = offlineSaleStorage.getAll();
+      // Load from database storage
+      const allSales = await offlineSalesStorage.getAll();
       setSales(allSales);
     } catch (error) {
       console.error('Error loading sales:', error);
@@ -42,19 +23,17 @@ export function useOfflineSales() {
     loadSales();
   }, []);
 
-  const createSale = (saleData: Omit<OfflineSale, 'id' | 'date' | 'invoiceNumber'>, items: any[]) => {
+  const createSale = async (saleData: Omit<OfflineSale, 'id' | 'date' | 'invoiceNumber'>, items: any[]) => {
     const invoiceNumber = `INV-${Date.now()}`;
-    const sale: Omit<OfflineSale, 'id'> = {
+    const sale: Omit<OfflineSale, 'id' | 'createdAt' | 'updatedAt'> = {
       ...saleData,
       invoiceNumber,
       date: new Date().toISOString(),
-      items: items.map(item => ({ ...item, id: Date.now().toString() + Math.random().toString(36).substr(2, 9) })),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      items: items.map(item => ({ ...item, id: Date.now().toString() + Math.random().toString(36).substr(2, 9) }))
     };
     
-    const newSale = offlineSaleStorage.create(sale);
-    loadSales();
+    const newSale = await offlineSalesStorage.create(sale);
+    await loadSales();
     return newSale;
   };
 
@@ -71,9 +50,20 @@ export function useOfflineSale(id: string) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const foundSale = offlineSaleStorage.getById(id);
-    setSale(foundSale || null);
-    setLoading(false);
+    const loadSale = async () => {
+      setLoading(true);
+      try {
+        const foundSale = await offlineSalesStorage.getById(id);
+        setSale(foundSale || null);
+      } catch (error) {
+        console.error('Error loading sale:', error);
+        setSale(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadSale();
   }, [id]);
 
   return { sale, loading };

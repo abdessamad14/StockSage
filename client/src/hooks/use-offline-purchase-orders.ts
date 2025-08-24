@@ -1,25 +1,21 @@
 import { useState, useEffect } from 'react';
 import { 
-  offlinePurchaseOrderStorage, 
-  offlinePurchaseOrderItemStorage,
-  offlineProductStockStorage 
-} from '@/lib/offline-storage';
-import type { 
-  OfflinePurchaseOrder, 
-  OfflinePurchaseOrderItem,
-  OfflinePurchaseOrderWithItems 
-} from '../../../shared/schema';
+  offlineOrderStorage,
+  OfflineOrder 
+} from '../lib/database-storage';
 
 export function useOfflinePurchaseOrders() {
-  const [orders, setOrders] = useState<OfflinePurchaseOrder[]>([]);
+  const [orders, setOrders] = useState<OfflineOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadOrders = () => {
+  const loadOrders = async () => {
+    setLoading(true);
     try {
-      const orderData = offlinePurchaseOrderStorage.getAll();
+      const orderData = await offlineOrderStorage.getAll();
       setOrders(orderData);
     } catch (error) {
       console.error('Error loading purchase orders:', error);
+      setOrders([]);
     } finally {
       setLoading(false);
     }

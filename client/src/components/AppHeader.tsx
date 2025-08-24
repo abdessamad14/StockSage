@@ -24,11 +24,17 @@ export default function AppHeader({ title, onMenuToggle, hasBackButton = false }
   
   // Update low stock notifications
   useEffect(() => {
-    const updateLowStockNotifications = () => {
+    const updateLowStockNotifications = async () => {
       if (lowStockHelpers.isLowStockAlertsEnabled()) {
-        const products = lowStockHelpers.getLowStockProducts();
-        setLowStockProducts(products);
-        setLowStockCount(products.length);
+        try {
+          const products = await lowStockHelpers.getLowStockProducts();
+          setLowStockProducts(products);
+          setLowStockCount(products.length);
+        } catch (error) {
+          console.error('Error loading low stock products:', error);
+          setLowStockProducts([]);
+          setLowStockCount(0);
+        }
       } else {
         setLowStockProducts([]);
         setLowStockCount(0);

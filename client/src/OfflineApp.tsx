@@ -17,10 +17,8 @@ import OfflineReports from "@/pages/offline-reports";
 import OfflineSettings from "@/pages/offline-settings";
 import OfflineSalesHistory from "@/pages/offline-sales-history";
 import { I18nProvider } from "@/lib/i18n";
-import { initializeSampleData } from "@/lib/offline-storage";
 import { OfflineAuthProvider } from "@/hooks/use-offline-auth";
 import { OfflineProtectedRoute } from "@/lib/offline-protected-route";
-import { useEffect } from "react";
 
 function Router() {
   return (
@@ -46,10 +44,7 @@ function Router() {
 }
 
 function OfflineApp() {
-  useEffect(() => {
-    // Initialize sample data on first load
-    initializeSampleData();
-  }, []);
+  // Note: Sample data initialization removed - using database-only storage
 
   return (
     <QueryClientProvider client={offlineQueryClient}>
