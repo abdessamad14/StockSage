@@ -4,7 +4,7 @@ import { useOfflineStockLocations } from "@/hooks/use-offline-stock-locations";
 import { useOfflineStockTransactions } from "@/hooks/use-offline-stock-transactions";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { OfflineProduct, OfflineCategory, offlineCategoryStorage, offlineProductStockStorage } from "@/lib/offline-storage";
+import { OfflineProduct, OfflineCategory, offlineCategoryStorage } from "@/lib/database-storage";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -37,9 +37,7 @@ const productSchema = z.object({
 
 const categorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
-  description: z.string().optional(),
-  color: z.string().optional(),
-  active: z.boolean().default(true)
+  description: z.string().optional()
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -69,8 +67,9 @@ export default function OfflineProducts() {
   // Function to get warehouse-specific stock quantity
   const getWarehouseStock = (productId: string): number => {
     if (!primaryWarehouse) return 0;
-    const stock = offlineProductStockStorage.getByProductAndLocation(productId, primaryWarehouse.id);
-    return stock?.quantity || 0;
+    // Get stock from the products data directly since we don't have separate stock storage
+    const product = products.find(p => p.id === productId);
+    return product?.quantity || 0;
   };
 
   // Image handling functions
@@ -133,16 +132,20 @@ export default function OfflineProducts() {
     resolver: zodResolver(categorySchema),
     defaultValues: {
       name: "",
-      description: "",
-      color: "#3B82F6",
-      active: true
+      description: ""
     }
   });
 
   // Load categories
   useEffect(() => {
-    const loadCategories = () => {
-      setCategories(offlineCategoryStorage.getAll());
+    const loadCategories = async () => {
+      try {
+        const categoriesData = await offlineCategoryStorage.getAll();
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error('Error loading categories:', error);
+        setCategories([]); // Fallback to empty array
+      }
     };
     loadCategories();
   }, []);
@@ -233,7 +236,9 @@ export default function OfflineProducts() {
         unit: data.unit || undefined,
         semiWholesalePrice: data.semiWholesalePrice || undefined,
         wholesalePrice: data.wholesalePrice || undefined,
-        image: selectedImage || undefined
+        image: selectedImage || undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       });
       toast({
         title: "Success",
@@ -259,44 +264,23 @@ export default function OfflineProducts() {
       const currentStock = getWarehouseStock(editingProduct.id);
       const newQuantity = data.quantity;
       
+      // Debug logging
+      console.log('Form data categoryId:', data.categoryId);
+      console.log('Selected image:', selectedImage);
+      
       // Update product information
       updateProduct(editingProduct.id, {
         ...data,
-        categoryId: data.categoryId === "none" ? undefined : data.categoryId || undefined,
+        categoryId: data.categoryId === "none" ? undefined : data.categoryId,
         barcode: data.barcode || undefined,
         description: data.description || undefined,
         minStockLevel: data.minStockLevel || undefined,
         unit: data.unit || undefined,
         semiWholesalePrice: data.semiWholesalePrice || undefined,
         wholesalePrice: data.wholesalePrice || undefined,
-        image: selectedImage || undefined
+        image: selectedImage || undefined,
+        updatedAt: new Date().toISOString()
       });
-
-      // Update stock quantity in primary warehouse if quantity changed
-      if (primaryWarehouse && newQuantity !== currentStock) {
-        offlineProductStockStorage.upsert({
-          productId: editingProduct.id,
-          locationId: primaryWarehouse.id,
-          quantity: newQuantity,
-          minStockLevel: data.minStockLevel || 0
-        });
-
-        // Create stock transaction history for the quantity change
-        const quantityDifference = newQuantity - currentStock;
-        const transactionType = quantityDifference > 0 ? "entry" : "exit";
-        const reason = quantityDifference > 0 ? "Stock adjustment - increase" : "Stock adjustment - decrease";
-
-        createTransaction({
-          productId: editingProduct.id,
-          warehouseId: primaryWarehouse.id,
-          type: transactionType,
-          quantity: Math.abs(quantityDifference),
-          previousQuantity: currentStock,
-          newQuantity: newQuantity,
-          reason: reason,
-          reference: `Product update - ${editingProduct.name}`
-        });
-      }
 
       toast({
         title: "Success",
@@ -315,7 +299,7 @@ export default function OfflineProducts() {
     }
   };
 
-  const handleDeleteProduct = (productId: string) => {
+  const handleDeleteProduct = async (productId: string) => {
     try {
       deleteProduct(productId);
       toast({
@@ -331,36 +315,37 @@ export default function OfflineProducts() {
     }
   };
 
+  const getProductStock = async (productId: string) => {
+    // Get stock from the products data directly
+    const product = products.find(p => p.id === productId);
+    return product ? { quantity: product.quantity } : { quantity: 0 };
+  };
+
   // Category handlers
-  const handleCreateCategory = (data: CategoryFormData) => {
+  const handleDeleteCategory = async (categoryId: string) => {
     try {
-      offlineCategoryStorage.create({
-        ...data,
-        description: data.description || null,
-        color: data.color || null
-      });
-      setCategories(offlineCategoryStorage.getAll());
+      await offlineCategoryStorage.delete(categoryId);
+      const updatedCategories = await offlineCategoryStorage.getAll();
+      setCategories(updatedCategories);
       toast({
         title: "Success",
-        description: "Category created successfully"
+        description: "Category deleted successfully"
       });
-      setIsCategoryDialogOpen(false);
-      categoryForm.reset();
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create category",
+        description: "Failed to delete category",
         variant: "destructive"
       });
     }
   };
 
-  const handleUpdateCategory = (data: CategoryFormData) => {
+  const handleUpdateCategory = async (data: CategoryFormData) => {
     if (!editingCategory) return;
-    
     try {
-      offlineCategoryStorage.update(editingCategory.id, data);
-      setCategories(offlineCategoryStorage.getAll());
+      await offlineCategoryStorage.update(editingCategory.id, data);
+      const updatedCategories = await offlineCategoryStorage.getAll();
+      setCategories(updatedCategories);
       toast({
         title: "Success",
         description: "Category updated successfully"
@@ -377,18 +362,22 @@ export default function OfflineProducts() {
     }
   };
 
-  const handleDeleteCategory = (categoryId: string) => {
+
+  const handleCreateCategory = async (data: CategoryFormData) => {
     try {
-      offlineCategoryStorage.delete(categoryId);
-      setCategories(offlineCategoryStorage.getAll());
+      const newCategory = await offlineCategoryStorage.create(data);
+      const updatedCategories = await offlineCategoryStorage.getAll();
+      setCategories(updatedCategories);
       toast({
         title: "Success",
-        description: "Category deleted successfully"
+        description: "Category created successfully"
       });
+      setIsCategoryDialogOpen(false);
+      categoryForm.reset();
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to delete category",
+        description: "Failed to create category",
         variant: "destructive"
       });
     }
@@ -397,6 +386,7 @@ export default function OfflineProducts() {
   const openProductDialog = (product?: OfflineProduct) => {
     if (product) {
       setEditingProduct(product);
+      setSelectedImage(product.image || null);
       productForm.reset({
         name: product.name,
         barcode: product.barcode || "",
@@ -404,17 +394,18 @@ export default function OfflineProducts() {
         categoryId: product.categoryId || "none",
         costPrice: product.costPrice,
         sellingPrice: product.sellingPrice,
+        semiWholesalePrice: product.semiWholesalePrice || 0,
+        wholesalePrice: product.wholesalePrice || 0,
         quantity: product.quantity,
         minStockLevel: product.minStockLevel || 0,
         unit: product.unit || "",
         image: product.image || "",
         active: product.active
       });
-      setSelectedImage(product.image || null);
     } else {
       setEditingProduct(null);
-      productForm.reset();
       setSelectedImage(null);
+      productForm.reset();
     }
     setIsProductDialogOpen(true);
   };
@@ -424,9 +415,7 @@ export default function OfflineProducts() {
       setEditingCategory(category);
       categoryForm.reset({
         name: category.name,
-        description: category.description || "",
-        color: category.color || "#3B82F6",
-        active: category.active
+        description: category.description || ""
       });
     } else {
       setEditingCategory(null);
@@ -477,7 +466,7 @@ export default function OfflineProducts() {
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="uncategorized">Uncategorized</SelectItem>
-                {categories.map((category) => (
+                {(categories || []).map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
                   </SelectItem>
@@ -562,7 +551,7 @@ export default function OfflineProducts() {
                     <div className="flex items-center gap-2">
                       <div 
                         className="w-4 h-4 rounded-full" 
-                        style={{ backgroundColor: category.color || '#3B82F6' }}
+                        style={{ backgroundColor: '#3B82F6' }}
                       />
                       <CardTitle className="text-lg">{category.name}</CardTitle>
                     </div>
@@ -922,19 +911,6 @@ export default function OfflineProducts() {
                 )}
               />
 
-              <FormField
-                control={categoryForm.control}
-                name="color"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Color</FormLabel>
-                    <FormControl>
-                      <Input type="color" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsCategoryDialogOpen(false)}>

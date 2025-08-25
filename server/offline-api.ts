@@ -20,10 +20,19 @@ router.post('/products', async (req, res) => {
   try {
     console.log('POST /products received:', req.body);
     
+    // Map categoryId to category for database schema
+    const productData = {
+      ...req.body,
+      category: req.body.categoryId === undefined ? null : req.body.categoryId,
+      categoryId: undefined // Remove categoryId as it doesn't exist in DB schema
+    };
+    
+    console.log('Mapped product data:', productData);
+    
     // Create the product
     const newProduct = await db.insert(products).values({
       tenantId: 'default',
-      ...req.body
+      ...productData
     }).returning();
     
     const product = newProduct[0];
@@ -64,8 +73,28 @@ router.post('/products', async (req, res) => {
 router.put('/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Process the request body to handle undefined values properly and map categoryId to category
+    const updateData = {
+      ...req.body,
+      // Map categoryId to category for database schema
+      category: req.body.categoryId === undefined ? null : req.body.categoryId,
+      categoryId: undefined, // Remove categoryId as it doesn't exist in DB schema
+      // Ensure other optional fields are handled properly
+      barcode: req.body.barcode === undefined ? null : req.body.barcode,
+      description: req.body.description === undefined ? null : req.body.description,
+      minStockLevel: req.body.minStockLevel === undefined ? null : req.body.minStockLevel,
+      unit: req.body.unit === undefined ? null : req.body.unit,
+      semiWholesalePrice: req.body.semiWholesalePrice === undefined ? null : req.body.semiWholesalePrice,
+      wholesalePrice: req.body.wholesalePrice === undefined ? null : req.body.wholesalePrice,
+      image: req.body.image === undefined ? null : req.body.image,
+      updatedAt: new Date().toISOString()
+    };
+    
+    console.log('Updating product with data:', updateData);
+    
     const updatedProduct = await db.update(products)
-      .set(req.body)
+      .set(updateData)
       .where(eq(products.id, parseInt(id)))
       .returning();
     
