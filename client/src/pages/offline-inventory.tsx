@@ -49,7 +49,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function OfflineInventory() {
   const { products, loading, updateProduct } = useOfflineProducts();
-  const { getProductTransactions, createTransaction } = useOfflineStockTransactions();
+  const { getTransactionsByProduct, createTransaction } = useOfflineStockTransactions();
   const { t } = useI18n();
   const { toast } = useToast();
 
@@ -81,18 +81,45 @@ export default function OfflineInventory() {
   const [selectedLocationForEntry, setSelectedLocationForEntry] = useState("");
   const [showStockHistory, setShowStockHistory] = useState(false);
   const [historyProduct, setHistoryProduct] = useState<OfflineProduct | null>(null);
+  const [productTransactions, setProductTransactions] = useState<OfflineStockTransaction[]>([]);
 
   // Load stock locations and set primary as default
   useEffect(() => {
-    const locations = offlineStockLocationStorage.getAll();
-    setStockLocations(locations);
+    const loadLocations = async () => {
+      try {
+        const locations = await offlineStockLocationStorage.getAll();
+        setStockLocations(locations);
+        
+        // Set primary location as default
+        const primaryLocation = locations.find(location => location.isPrimary);
+        if (primaryLocation && !selectedLocation) {
+          setSelectedLocation(primaryLocation.id);
+        }
+      } catch (error) {
+        console.error('Error loading locations:', error);
+        // Set empty array as fallback
+        setStockLocations([]);
+      }
+    };
     
-    // Set primary location as default
-    const primaryLocation = locations.find(location => location.isPrimary);
-    if (primaryLocation && !selectedLocation) {
-      setSelectedLocation(primaryLocation.id);
-    }
+    loadLocations();
   }, [selectedLocation]);
+
+  // Load product transactions when history dialog opens
+  useEffect(() => {
+    if (showStockHistory && historyProduct) {
+      const loadTransactions = async () => {
+        try {
+          const transactions = await getTransactionsByProduct(historyProduct.id);
+          setProductTransactions(transactions);
+        } catch (error) {
+          console.error('Error loading product transactions:', error);
+          setProductTransactions([]);
+        }
+      };
+      loadTransactions();
+    }
+  }, [showStockHistory, historyProduct, getTransactionsByProduct]);
 
   const getProductStockInLocation = (productId: string, locationId: string): number => {
     const productStock = offlineProductStockStorage.getByProductAndLocation(productId, locationId);
@@ -111,8 +138,9 @@ export default function OfflineInventory() {
     return Math.max(totalFromLocations, baseQuantity);
   };
 
-  const loadStockLocations = () => {
-    setStockLocations(offlineStockLocationStorage.getAll());
+  const loadStockLocations = async () => {
+    const locations = await offlineStockLocationStorage.getAll();
+    setStockLocations(locations);
   };
 
   const resetLocationForm = () => {
@@ -125,7 +153,7 @@ export default function OfflineInventory() {
     setEditingLocation(null);
   };
 
-  const handleCreateLocation = () => {
+  const handleCreateLocation = async () => {
     if (!locationForm.name.trim()) {
       toast({
         title: "Error",
@@ -137,15 +165,16 @@ export default function OfflineInventory() {
 
     try {
       if (editingLocation) {
-        offlineStockLocationStorage.update(editingLocation.id, locationForm);
+        await offlineStockLocationStorage.update(editingLocation.id, locationForm);
         toast({
           title: "Success",
           description: "Stock location updated successfully",
         });
       } else {
-        offlineStockLocationStorage.create({
-          ...locationForm,
-          active: true
+        await offlineStockLocationStorage.create({
+          name: locationForm.name,
+          description: locationForm.description,
+          isPrimary: locationForm.isPrimary
         });
         toast({
           title: "Success",
@@ -1345,11 +1374,11 @@ export default function OfflineInventory() {
                     </TableHeader>
                     <TableBody>
                       {(() => {
-                        let productTransactions = getProductTransactions(historyProduct.id);
+                        let filteredTransactions = productTransactions;
                         
                         // Filter by selected warehouse if not "all"
                         if (selectedLocation && selectedLocation !== "all") {
-                          productTransactions = productTransactions.filter(t => t.warehouseId === selectedLocation);
+                          filteredTransactions = productTransactions.filter((t: any) => t.warehouseId === selectedLocation);
                         }
                         
                         if (productTransactions.length === 0) {
