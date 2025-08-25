@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { ThermalReceiptPrinter, ReceiptData } from '@/lib/thermal-receipt-printer';
 import { 
   ShoppingCart, 
   Plus, 
@@ -16,7 +17,8 @@ import {
   DollarSign,
   Receipt,
   User,
-  Package
+  Package,
+  Printer
 } from 'lucide-react';
 
 // Import offline storage and types
@@ -28,9 +30,9 @@ import {
   OfflineCategory,
   OfflineStockLocation,
   OfflineSalesPeriod,
-  offlineProductStorage,
+  databaseProductStorage,
   offlineCategoryStorage,
-  offlineCustomerStorage,
+  databaseCustomerStorage,
   databaseSalesStorage,
   offlineStockLocationStorage,
   salesPeriodHelpers
@@ -74,8 +76,8 @@ export default function OfflinePOS() {
     const loadData = async () => {
       try {
         const [productsData, customersData, categoriesData, stockLocationsData] = await Promise.all([
-          offlineProductStorage.getAll(),
-          offlineCustomerStorage.getAll(),
+          databaseProductStorage.getAll(),
+          databaseCustomerStorage.getAll(),
           offlineCategoryStorage.getAll(),
           offlineStockLocationStorage.getAll()
         ]);
@@ -183,6 +185,46 @@ export default function OfflinePOS() {
   const total = subtotal + tax;
   const change = paidAmount - total;
 
+  // Print thermal receipt
+  const printThermalReceipt = async () => {
+    if (!lastSale) return;
+
+    try {
+      const receiptData: ReceiptData = {
+        invoiceNumber: lastSale.invoiceNumber,
+        date: new Date(lastSale.date),
+        customerName: selectedCustomer?.name,
+        items: lastSale.items.map(item => ({
+          name: item.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice
+        })),
+        subtotal: lastSale.totalAmount - (lastSale.taxAmount || 0),
+        discountAmount: lastSale.discountAmount,
+        taxAmount: lastSale.taxAmount,
+        total: lastSale.totalAmount,
+        paidAmount: lastSale.paidAmount,
+        changeAmount: lastSale.changeAmount,
+        paymentMethod: lastSale.paymentMethod
+      };
+
+      await ThermalReceiptPrinter.printReceipt(receiptData);
+      
+      toast({
+        title: "Success",
+        description: "Receipt printed successfully",
+      });
+    } catch (error) {
+      console.error('Print error:', error);
+      toast({
+        title: "Print Error",
+        description: error instanceof Error ? error.message : "Failed to print receipt",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Process sale
   const processSale = async () => {
     if (cart.length === 0) {
@@ -217,12 +259,11 @@ export default function OfflinePOS() {
         updatedAt: new Date().toISOString()
       }));
 
-      // Create sale
-      const sale: OfflineSale = {
-        id: `sale-${Date.now()}`,
+      // Create sale data (without id, createdAt, updatedAt as they're auto-generated)
+      const saleData = {
         invoiceNumber: `INV-${Date.now()}`,
         date: new Date().toISOString(),
-        customerId: selectedCustomer?.id,
+        customerId: selectedCustomer?.id ? parseInt(selectedCustomer.id) : null,
         totalAmount: total,
         discountAmount: 0,
         taxAmount: tax,
@@ -230,18 +271,20 @@ export default function OfflinePOS() {
         changeAmount: paymentMethod === 'cash' ? change : 0,
         paymentMethod,
         status: 'completed',
-        items: saleItems,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        items: saleItems.map(item => ({
+          productId: parseInt(item.productId),
+          productName: item.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice
+        })),
+        notes: undefined
       };
 
-      // Update sale items with sale ID
-      sale.items = sale.items.map(item => ({ ...item, saleId: sale.id }));
-
       // Save sale to database
-      await databaseSalesStorage.create(sale);
+      const createdSale = await databaseSalesStorage.create(saleData);
 
-      setLastSale(sale);
+      setLastSale(createdSale);
       setIsCheckoutOpen(false);
       setIsReceiptOpen(true);
       clearCart();
@@ -580,7 +623,15 @@ export default function OfflinePOS() {
               </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={printThermalReceipt}
+              disabled={!lastSale}
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              Print Receipt
+            </Button>
             <Button onClick={() => setIsReceiptOpen(false)}>
               <Receipt className="h-4 w-4 mr-2" />
               Close

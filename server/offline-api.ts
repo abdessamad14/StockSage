@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from './db';
-import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems } from '@shared/sqlite-schema';
+import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems, productCategories } from '@shared/sqlite-schema';
 import { eq } from 'drizzle-orm';
 
 const router = express.Router();
@@ -895,6 +895,67 @@ router.put('/inventory-count-items/:id', async (req, res) => {
   } catch (error) {
     console.error('Error updating inventory count item:', error);
     res.status(500).json({ error: 'Failed to update inventory count item' });
+  }
+});
+
+// Categories API
+router.get('/categories', async (req, res) => {
+  try {
+    const allCategories = await db.select().from(productCategories);
+    res.json(allCategories);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ error: 'Failed to fetch categories' });
+  }
+});
+
+router.post('/categories', async (req, res) => {
+  try {
+    const newCategory = await db.insert(productCategories).values({
+      tenantId: 'default',
+      ...req.body
+    }).returning();
+    res.json(newCategory[0]);
+  } catch (error) {
+    console.error('Error creating category:', error);
+    res.status(500).json({ error: 'Failed to create category' });
+  }
+});
+
+router.put('/categories/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedCategory = await db.update(productCategories)
+      .set(req.body)
+      .where(eq(productCategories.id, parseInt(id)))
+      .returning();
+    
+    if (updatedCategory.length === 0) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+    
+    res.json(updatedCategory[0]);
+  } catch (error) {
+    console.error('Error updating category:', error);
+    res.status(500).json({ error: 'Failed to update category' });
+  }
+});
+
+router.delete('/categories/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedCategory = await db.delete(productCategories)
+      .where(eq(productCategories.id, parseInt(id)))
+      .returning();
+    
+    if (deletedCategory.length === 0) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    res.status(500).json({ error: 'Failed to delete category' });
   }
 });
 

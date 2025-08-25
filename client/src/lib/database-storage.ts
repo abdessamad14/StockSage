@@ -68,7 +68,7 @@ export interface OfflineSale {
   id: string;
   invoiceNumber: string;
   date: string;
-  customerId?: string;
+  customerId?: number | null;
   totalAmount: number;
   discountAmount?: number;
   taxAmount?: number;
