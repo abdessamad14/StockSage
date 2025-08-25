@@ -4,7 +4,7 @@ A comprehensive offline-first inventory and point-of-sale (POS) system designed 
 
 ## Features
 
-- **Offline-first architecture**: Fully functional without internet connection using browser localStorage
+- **Offline-first architecture**: Fully functional without internet connection using local SQLite database
 - **Complete inventory management**: Multi-warehouse stock tracking with detailed transaction history
 - **Point of Sale (POS)**: Fast checkout with automatic stock updates and receipt generation
 - **Purchase order management**: Full supplier ordering workflow with receiving and payment tracking
@@ -21,8 +21,10 @@ A comprehensive offline-first inventory and point-of-sale (POS) system designed 
 ## Technology Stack
 
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS
-- **Storage**: Browser localStorage (offline-first, no server required)
-- **State Management**: Custom React hooks for offline data management
+- **Database**: SQLite with better-sqlite3 (embedded, zero-configuration)
+- **Backend**: Express.js REST API for database operations
+- **Storage**: SQLite database with better-sqlite3 (embedded)
+- **State Management**: Custom React hooks with async database operations
 - **UI Components**: Shadcn/ui with modern design system
 - **Build Tool**: Vite for fast development and optimized builds
 
@@ -31,7 +33,8 @@ A comprehensive offline-first inventory and point-of-sale (POS) system designed 
 ### Prerequisites
 
 - Node.js (v18 or higher)
-- Modern web browser with localStorage support
+- Modern web browser
+- SQLite database automatically created on first run (no installation required)
 
 ### Installation
 
@@ -48,24 +51,29 @@ cd stocksage
 npm install
 ```
 
-3. **Start the development server**
+3. **Start the application**
 
 ```bash
-npm run dev
+node start.js
 ```
+
+This will:
+- Initialize the SQLite database automatically
+- Start the backend API server (port 5003)
+- Start the frontend development server (port 3001)
 
 4. **Access the application**
 
-Open your browser and navigate to: `http://localhost:3000`
+Open your browser and navigate to: `http://localhost:3001`
 
-### No Setup Required
+### Simple Setup
 
-StockSage is designed to work immediately without any database setup or configuration. All data is stored locally in your browser using localStorage, making it perfect for:
+StockSage is designed to work immediately with minimal setup. The SQLite database is automatically initialized and all services start with one command, making it perfect for:
 
 - **Small businesses** needing immediate inventory management
 - **Offline environments** where internet connectivity is limited
-- **Demo purposes** without complex setup requirements
-- **Development** with instant data persistence
+- **Demo purposes** with one-command deployment
+- **Development** with persistent local database
 
 ## Core Features
 
@@ -106,43 +114,52 @@ StockSage is designed to work immediately without any database setup or configur
 
 ### Available Commands
 
-- `npm run dev` - Start the development server (port 3000)
-- `npm run build` - Build the application for production
-- `npm run start` - Run the production build
+- `node start.js` - Start the complete application (database + API + frontend)
+- `npm run dev` - Start frontend only in development mode
+- `npm run build` - Build the frontend for production
 - `npm run lint` - Run TypeScript and ESLint checks
+- `npm run test` - Run the test suite
 
 ### Data Management
 
-Since StockSage uses localStorage:
-- **Data persistence**: All data survives browser restarts
-- **Data isolation**: Each browser/device maintains separate data
-- **No backups needed**: Data stays on the local device
-- **Privacy focused**: No data transmitted to external servers
+StockSage uses a local SQLite database:
+- **Data persistence**: All data stored in `/data/stocksage.db`
+- **Automatic backups**: Database file can be easily copied/backed up
+- **Cross-device access**: Multiple devices can access the same database
+- **Privacy focused**: All data stays on your local machine
+- **Real-time updates**: Direct database operations with immediate UI feedback
 
 ## Production Deployment
 
-StockSage can be deployed as a static website since it requires no backend:
+StockSage requires both frontend and backend for full functionality:
 
-1. **Build the application**:
+1. **Simple deployment** (recommended for small businesses):
    ```bash
-   npm run build
+   node start.js
+   ```
+   This starts everything needed on a single machine.
+
+2. **Docker deployment** (for advanced users):
+   ```bash
+   docker-compose up -d
    ```
 
-2. **Deploy the `dist/public` folder** to any static hosting service:
-   - Netlify, Vercel, GitHub Pages
-   - Apache, Nginx web servers
-   - CDN services
+3. **Manual deployment**:
+   - Build frontend: `npm run build`
+   - Deploy backend API server
+   - Configure database path and API endpoints
 
-3. **HTTPS recommended** for security and PWA features
+**Note**: Database and application run on the same machine for optimal offline performance.
 
 ## Architecture
 
 ### Offline-First Design
 StockSage is built with an offline-first architecture:
 
-- **No server dependencies**: Runs entirely in the browser
-- **localStorage persistence**: All data stored locally and securely
-- **Instant startup**: No network requests or database connections needed
+- **Local database**: SQLite database runs on the same machine as the application
+- **No internet required**: All operations work without external connectivity
+- **Direct database access**: All operations use SQLite for immediate persistence
+- **Instant startup**: Database initializes automatically on first run
 - **Single-tenant**: Each installation is isolated and self-contained
 
 ### File Structure
@@ -150,27 +167,29 @@ StockSage is built with an offline-first architecture:
 ├── client/src/
 │   ├── components/     # Reusable UI components
 │   ├── hooks/         # Custom React hooks for data management
-│   ├── lib/           # Utility functions and offline storage
+│   ├── lib/           # Database storage and utility functions
 │   ├── pages/         # Main application pages
 │   └── shared/        # Shared types and schemas
-├── server/            # Development server (Express)
+├── server/            # Express.js API server
+├── data/              # SQLite database files
+├── scripts/           # Database initialization scripts
 └── shared/            # Shared TypeScript interfaces
 ```
 
 ### Data Flow
 1. **User interactions** trigger React component updates
-2. **Custom hooks** manage state and call storage functions
-3. **Offline storage** persists data to localStorage
-4. **Transaction recording** creates audit trails for stock changes
-5. **UI updates** reflect changes immediately
+2. **Custom hooks** manage state and call database storage functions
+3. **Database storage** calls API endpoints for SQLite operations
+4. **API endpoints** perform direct SQLite database operations
+5. **Transaction recording** creates audit trails for stock changes
+6. **UI updates** reflect changes immediately from cache
 
 ## Browser Compatibility
 
 StockSage works in all modern browsers that support:
 - ES2020+ JavaScript features
-- localStorage API
+- Fetch API for database communication
 - CSS Grid and Flexbox
-- Fetch API
 
 **For full hardware integration (USB thermal printer):**
 - Chrome 90+ ✅ (WebUSB support)
@@ -182,11 +201,12 @@ StockSage works in all modern browsers that support:
 
 ## Data Security
 
-Since all data is stored locally:
-- **No data transmission**: Information never leaves the device
-- **User controlled**: Complete ownership of business data
+With local SQLite database storage:
+- **No data transmission**: Information never leaves your local machine
+- **User controlled**: Complete ownership of business data in `/data/stocksage.db`
 - **Privacy by design**: No external analytics or tracking
-- **Backup responsibility**: Users should backup their browser data if needed
+- **Easy backups**: Simply copy the database file for backups
+- **File-based**: Database can be moved, copied, or restored easily
 
 ## Contributing
 
