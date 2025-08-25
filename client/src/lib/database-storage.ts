@@ -908,6 +908,37 @@ export const offlineStockLocationStorage = {
       console.error('Error creating stock location:', error);
       throw error;
     }
+  },
+
+  async update(id: string, updates: Partial<OfflineStockLocation>): Promise<OfflineStockLocation> {
+    try {
+      const updatedLocation = await apiCall<any>(`/stock-locations/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates)
+      });
+      return {
+        id: updatedLocation.id.toString(),
+        name: updatedLocation.name,
+        description: updatedLocation.description,
+        isPrimary: updatedLocation.isPrimary || false,
+        createdAt: updatedLocation.createdAt,
+        updatedAt: updatedLocation.updatedAt
+      };
+    } catch (error) {
+      console.error('Error updating stock location:', error);
+      throw error;
+    }
+  },
+
+  async delete(id: string): Promise<void> {
+    try {
+      await apiCall(`/stock-locations/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.error('Error deleting stock location:', error);
+      throw error;
+    }
   }
 };
 
