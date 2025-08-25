@@ -193,7 +193,7 @@ export const databaseProductStorage = {
       name: p.name,
       description: p.description || undefined,
       barcode: p.barcode || undefined,
-      categoryId: p.categoryId || undefined,
+      categoryId: p.category || undefined, // Map category to categoryId
       costPrice: p.costPrice || 0,
       sellingPrice: p.sellingPrice || 0,
       semiWholesalePrice: p.semiWholesalePrice || undefined,
@@ -216,7 +216,7 @@ export const databaseProductStorage = {
         name: product.name,
         description: product.description || undefined,
         barcode: product.barcode || undefined,
-        categoryId: product.categoryId || undefined,
+        categoryId: product.category || undefined, // Map category to categoryId
         costPrice: product.costPrice || 0,
         sellingPrice: product.sellingPrice || 0,
         semiWholesalePrice: product.semiWholesalePrice || undefined,
@@ -259,7 +259,7 @@ export const databaseProductStorage = {
       name: created.name,
       description: created.description || undefined,
       barcode: created.barcode || undefined,
-      categoryId: created.categoryId || undefined,
+      categoryId: created.category || undefined, // Map category back to categoryId
       costPrice: created.costPrice || 0,
       sellingPrice: created.sellingPrice || 0,
       semiWholesalePrice: created.semiWholesalePrice || undefined,
@@ -299,7 +299,7 @@ export const databaseProductStorage = {
       name: updated.name,
       description: updated.description || undefined,
       barcode: updated.barcode || undefined,
-      categoryId: updated.categoryId || undefined,
+      categoryId: updated.category || undefined, // Map category back to categoryId
       costPrice: updated.costPrice || 0,
       sellingPrice: updated.sellingPrice || 0,
       semiWholesalePrice: updated.semiWholesalePrice || undefined,
@@ -818,6 +818,55 @@ export const offlineCategoryStorage = {
     } catch (error) {
       console.error('Error fetching categories:', error);
       return [];
+    }
+  },
+
+  async create(category: Omit<OfflineCategory, 'id' | 'createdAt' | 'updatedAt'>): Promise<OfflineCategory> {
+    try {
+      const newCategory = await apiCall<any>('/categories', {
+        method: 'POST',
+        body: JSON.stringify(category)
+      });
+      return {
+        id: newCategory.id.toString(),
+        name: newCategory.name,
+        description: newCategory.description,
+        createdAt: newCategory.createdAt,
+        updatedAt: newCategory.updatedAt
+      };
+    } catch (error) {
+      console.error('Error creating category:', error);
+      throw error;
+    }
+  },
+
+  async update(id: string, category: Partial<Omit<OfflineCategory, 'id' | 'createdAt' | 'updatedAt'>>): Promise<OfflineCategory> {
+    try {
+      const updatedCategory = await apiCall<any>(`/categories/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(category)
+      });
+      return {
+        id: updatedCategory.id.toString(),
+        name: updatedCategory.name,
+        description: updatedCategory.description,
+        createdAt: updatedCategory.createdAt,
+        updatedAt: updatedCategory.updatedAt
+      };
+    } catch (error) {
+      console.error('Error updating category:', error);
+      throw error;
+    }
+  },
+
+  async delete(id: string): Promise<void> {
+    try {
+      await apiCall(`/categories/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      throw error;
     }
   }
 };
