@@ -284,6 +284,54 @@ export default function OfflinePOS() {
       // Save sale to database
       const createdSale = await databaseSalesStorage.create(saleData);
 
+      // Update product stock quantities and create stock history entries
+      for (const item of cart) {
+        const currentProduct = products.find(p => p.id === item.product.id);
+        if (currentProduct) {
+          const previousQuantity = currentProduct.quantity;
+          const newQuantity = previousQuantity - item.quantity;
+          
+          // Update product quantity
+          await databaseProductStorage.update(item.product.id, {
+            quantity: newQuantity,
+            updatedAt: new Date().toISOString()
+          });
+
+          // Create stock transaction entry for sale
+          try {
+            const response = await fetch('http://localhost:5003/api/offline/stock-transactions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                tenantId: 'offline',
+                productId: parseInt(item.product.id),
+                warehouseId: primaryWarehouse?.id || 'main',
+                type: 'sale',
+                quantity: -item.quantity, // Negative for stock decrease
+                previousQuantity: previousQuantity,
+                newQuantity: newQuantity,
+                reason: 'POS Sale',
+                reference: createdSale.invoiceNumber,
+                relatedId: createdSale.id?.toString(),
+                createdAt: new Date().toISOString()
+              }),
+            });
+
+            if (!response.ok) {
+              console.error('Failed to create stock transaction for product:', item.product.id);
+            }
+          } catch (stockError) {
+            console.error('Error creating stock transaction:', stockError);
+          }
+        }
+      }
+
+      // Reload products to reflect updated quantities
+      const updatedProducts = await databaseProductStorage.getAll();
+      setProducts(updatedProducts);
+
       setLastSale(createdSale);
       setIsCheckoutOpen(false);
       setIsReceiptOpen(true);

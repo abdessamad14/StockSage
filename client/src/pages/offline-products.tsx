@@ -186,7 +186,7 @@ export default function OfflineProducts() {
         }
         
         // If it's a regular character and scanner is typing fast (< 100ms between keys)
-        if (event.key.length === 1 && (currentTime - lastKeyTime < 100 || barcodeBuffer.length === 0)) {
+        if (event.key && event.key.length === 1 && (currentTime - lastKeyTime < 100 || barcodeBuffer.length === 0)) {
           setBarcodeBuffer(prev => prev + event.key);
           setLastKeyTime(currentTime);
           return;
