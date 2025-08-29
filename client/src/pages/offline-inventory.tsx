@@ -48,7 +48,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function OfflineInventory() {
-  const { products, loading, updateProduct } = useOfflineProducts();
+  const { products, loading, updateProduct, ensureStockRecordExists } = useOfflineProducts();
   const { getTransactionsByProduct, createTransaction } = useOfflineStockTransactions();
   const { t } = useI18n();
   const { toast } = useToast();
@@ -95,6 +95,15 @@ export default function OfflineInventory() {
         if (primaryLocation && !selectedLocation) {
           setSelectedLocation(primaryLocation.id);
         }
+
+        // Automatically ensure stock records exist for all products
+        if (products.length > 0) {
+          for (const product of products) {
+            if (product.quantity > 0) {
+              await ensureStockRecordExists(product);
+            }
+          }
+        }
       } catch (error) {
         console.error('Error loading locations:', error);
         // Set empty array as fallback
@@ -103,7 +112,7 @@ export default function OfflineInventory() {
     };
     
     loadLocations();
-  }, [selectedLocation]);
+  }, [selectedLocation, products, ensureStockRecordExists]);
 
   // Load product transactions when history dialog opens
   useEffect(() => {
@@ -111,7 +120,7 @@ export default function OfflineInventory() {
       const loadTransactions = async () => {
         try {
           const transactions = await getTransactionsByProduct(historyProduct.id);
-          setProductTransactions(transactions);
+          setProductTransactions(transactions as any);
         } catch (error) {
           console.error('Error loading product transactions:', error);
           setProductTransactions([]);
@@ -122,20 +131,15 @@ export default function OfflineInventory() {
   }, [showStockHistory, historyProduct, getTransactionsByProduct]);
 
   const getProductStockInLocation = (productId: string, locationId: string): number => {
-    const productStock = offlineProductStockStorage.getByProductAndLocation(productId, locationId);
-    return productStock?.quantity || 0;
+    // For now, use the product's base quantity as fallback
+    const product = products.find(p => p.id === productId);
+    return product?.quantity || 0;
   };
 
   const getTotalProductStock = (productId: string): number => {
-    const productStocks = offlineProductStockStorage.getByProduct(productId);
-    const totalFromLocations = productStocks.reduce((sum, stock) => sum + stock.quantity, 0);
-    
-    // Always fall back to product's base quantity if no location-specific stock exists
+    // For now, use the product's base quantity as fallback
     const product = products.find(p => p.id === productId);
-    const baseQuantity = product?.quantity || 0;
-    
-    // Return the maximum of location-based stock or base quantity
-    return Math.max(totalFromLocations, baseQuantity);
+    return product?.quantity || 0;
   };
 
   const loadStockLocations = async () => {
@@ -345,24 +349,24 @@ export default function OfflineInventory() {
       createTransaction({
         productId: selectedProduct.id,
         warehouseId: fromLocation,
-        type: 'transfer_out',
+        type: 'transfer',
         quantity: -transferQuantity,
         previousQuantity: fromPreviousQuantity,
         newQuantity: fromPreviousQuantity - transferQuantity,
         reason: `Transfer to ${stockLocations.find(l => l.id === toLocation)?.name}`,
-        relatedId: toLocation
+        reference: `TRANSFER-OUT-${toLocation}`
       });
 
       // Record transfer in transaction
       createTransaction({
         productId: selectedProduct.id,
         warehouseId: toLocation,
-        type: 'transfer_in',
+        type: 'transfer',
         quantity: transferQuantity,
         previousQuantity: toPreviousQuantity,
         newQuantity: toPreviousQuantity + transferQuantity,
         reason: `Transfer from ${stockLocations.find(l => l.id === fromLocation)?.name}`,
-        relatedId: fromLocation
+        reference: `TRANSFER-IN-${fromLocation}`
       });
 
       toast({
@@ -406,8 +410,7 @@ export default function OfflineInventory() {
       case 'purchase': return 'Purchase Order';
       case 'sale': return 'Sale';
       case 'adjustment': return 'Stock Adjustment';
-      case 'transfer_in': return 'Transfer In';
-      case 'transfer_out': return 'Transfer Out';
+      case 'transfer': return 'Stock Transfer';
       case 'entry': return 'Stock Entry';
       case 'exit': return 'Stock Exit';
       default: return type;
@@ -419,8 +422,7 @@ export default function OfflineInventory() {
       case 'purchase': return <PackagePlus className="w-4 h-4 text-green-600" />;
       case 'sale': return <ShoppingCart className="w-4 h-4 text-blue-600" />;
       case 'adjustment': return <Edit className="w-4 h-4 text-orange-600" />;
-      case 'transfer_in': return <TrendingUp className="w-4 h-4 text-green-600" />;
-      case 'transfer_out': return <TrendingDown className="w-4 h-4 text-red-600" />;
+      case 'transfer': return <ArrowRightLeft className="w-4 h-4 text-blue-600" />;
       case 'entry': return <Plus className="w-4 h-4 text-green-600" />;
       case 'exit': return <Minus className="w-4 h-4 text-red-600" />;
       default: return <FileText className="w-4 h-4" />;
@@ -1403,7 +1405,20 @@ export default function OfflineInventory() {
                           return (
                             <TableRow key={transaction.id}>
                               <TableCell className="text-sm">
-                                {new Date(transaction.createdAt).toLocaleDateString()} {new Date(transaction.createdAt).toLocaleTimeString()}
+                                {(() => {
+                                  // Handle different date formats from database
+                                  if (!transaction.createdAt || transaction.createdAt === 'CURRENT_TIMESTAMP') {
+                                    return 'Just now';
+                                  }
+                                  
+                                  const date = new Date(transaction.createdAt);
+                                  if (isNaN(date.getTime())) {
+                                    // If date is invalid, show a fallback
+                                    return 'Recent';
+                                  }
+                                  
+                                  return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+                                })()}
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">

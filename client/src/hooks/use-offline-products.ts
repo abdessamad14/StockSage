@@ -27,25 +27,15 @@ export function useOfflineProducts() {
     loadProducts();
   }, []);
 
+  // Enhanced product creation with automatic stock tracking
   const createProduct = async (product: Omit<OfflineProduct, 'id'>) => {
+    setLoading(true);
     try {
       const newProduct = await offlineProductStorage.create(product);
       
-      // If product has initial quantity, create stock record in primary location
+      // Automatically create stock records and initial transaction if product has quantity
       if (newProduct.quantity > 0) {
-        const locations = await offlineStockLocationStorage.getAll();
-        const primaryLocation = locations.find((loc: any) => loc.isPrimary) || locations[0];
-        
-        if (primaryLocation) {
-          await offlineProductStockStorage.upsert({
-            productId: newProduct.id,
-            locationId: primaryLocation.id,
-            quantity: newProduct.quantity,
-            minStockLevel: newProduct.minStockLevel || 0
-          });
-          
-          console.log(`Created stock record for product ${newProduct.name} with ${newProduct.quantity} units in ${primaryLocation.name}`);
-        }
+        await ensureStockRecordExists(newProduct);
       }
       
       await loadProducts();
@@ -58,8 +48,23 @@ export function useOfflineProducts() {
 
   const updateProduct = async (id: string, updates: Partial<OfflineProduct>) => {
     try {
+      // Get the current product from loaded products state
+      const currentProduct = products.find(p => p.id === id);
+      if (!currentProduct) {
+        throw new Error('Product not found in loaded products');
+      }
+
       const updatedProduct = await offlineProductStorage.update(id, updates);
       if (updatedProduct) {
+        // Check if quantity was changed and create stock history entry
+        if (updates.quantity !== undefined && updates.quantity !== currentProduct.quantity) {
+          await createStockHistoryForQuantityChange(
+            currentProduct,
+            currentProduct.quantity,
+            updates.quantity
+          );
+        }
+        
         await loadProducts();
       }
       return updatedProduct;
@@ -91,6 +96,90 @@ export function useOfflineProducts() {
     }
   };
 
+  const createStockHistoryForQuantityChange = async (
+    product: OfflineProduct,
+    previousQuantity: number,
+    newQuantity: number
+  ) => {
+    try {
+      const locations = await offlineStockLocationStorage.getAll();
+      const primaryLocation = locations.find((loc: any) => loc.isPrimary) || locations[0];
+      
+      if (!primaryLocation) {
+        console.warn('No primary location found for stock history creation');
+        return;
+      }
+
+      // Import stock transaction storage dynamically
+      const { offlineStockTransactionStorage } = await import('../lib/database-storage');
+      
+      const quantityDifference = newQuantity - previousQuantity;
+      const transactionType = quantityDifference > 0 ? 'adjustment' : 'adjustment';
+      
+      await offlineStockTransactionStorage.create({
+        productId: product.id,
+        warehouseId: primaryLocation.id,
+        type: transactionType,
+        quantity: quantityDifference,
+        previousQuantity: previousQuantity,
+        newQuantity: newQuantity,
+        reason: 'Product quantity updated via edit',
+        reference: `EDIT-${product.id}-${Date.now()}`,
+        updatedAt: new Date().toISOString()
+      });
+      
+      console.log(`Created stock history entry for ${product.name}: ${previousQuantity} → ${newQuantity}`);
+    } catch (error) {
+      console.error('Error creating stock history for quantity change:', error);
+    }
+  };
+
+  const ensureStockRecordExists = async (product: OfflineProduct) => {
+    try {
+      const locations = await offlineStockLocationStorage.getAll();
+      const primaryLocation = locations.find((loc: any) => loc.isPrimary) || locations[0];
+      
+      if (!primaryLocation) {
+        console.warn('No primary location found for stock record creation');
+        return;
+      }
+
+      // Check if stock record already exists
+      const existingStock = await offlineProductStockStorage.getByProductAndLocation(product.id, primaryLocation.id);
+      
+      if (!existingStock && product.quantity > 0) {
+        // Create stock record in primary location
+        await offlineProductStockStorage.upsert({
+          productId: product.id,
+          locationId: primaryLocation.id,
+          quantity: product.quantity,
+          minStockLevel: product.minStockLevel || 0
+        });
+
+        // Create initial stock transaction for history tracking
+        try {
+          const { offlineStockTransactionStorage } = await import('../lib/database-storage');
+          await offlineStockTransactionStorage.create({
+            productId: product.id,
+            warehouseId: primaryLocation.id,
+            type: 'entry',
+            quantity: product.quantity,
+            previousQuantity: 0,
+            newQuantity: product.quantity,
+            reason: 'Initial stock entry',
+            reference: `INIT-${product.id}`,
+            updatedAt: new Date().toISOString()
+          });
+          console.log(`Created stock record and transaction for ${product.name}`);
+        } catch (transactionError) {
+          console.warn(`Could not create initial stock transaction for ${product.name}:`, transactionError);
+        }
+      }
+    } catch (error) {
+      console.error('Error ensuring stock record exists:', error);
+    }
+  };
+
   return {
     products,
     loading,
@@ -98,7 +187,8 @@ export function useOfflineProducts() {
     updateProduct,
     deleteProduct,
     searchProducts,
-    refetch: loadProducts
+    refetch: loadProducts,
+    ensureStockRecordExists
   };
 }
 
