@@ -785,7 +785,8 @@ router.post('/stock-transactions', async (req, res) => {
   try {
     const newTransaction = await db.insert(stockTransactions).values({
       tenantId: 'default',
-      ...req.body
+      ...req.body,
+      createdAt: new Date().toISOString()
     }).returning();
     res.json(newTransaction[0]);
   } catch (error) {

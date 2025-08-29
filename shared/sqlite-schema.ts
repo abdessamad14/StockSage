@@ -219,7 +219,7 @@ export const stockTransactions = sqliteTable("stock_transactions", {
   reason: text("reason"),
   reference: text("reference"),
   relatedId: text("related_id"),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("created_at").notNull().default("(datetime('now'))"),
   createdBy: integer("created_by").references(() => users.id),
 });
 
