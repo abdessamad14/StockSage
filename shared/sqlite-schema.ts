@@ -366,14 +366,12 @@ export interface OfflineInventoryCountItem {
   id: string;
   countId: string;
   productId: string;
-  locationId: string;
-  systemQuantity: number;
-  countedQuantity?: number;
+  expectedQuantity: number;
+  actualQuantity?: number;
   variance?: number;
-  status: 'pending' | 'counted' | 'verified';
-  countedBy?: string;
-  countedAt?: string;
   notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface OfflinePurchaseOrder {
