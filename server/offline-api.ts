@@ -858,8 +858,15 @@ router.put('/inventory-counts/:id', async (req, res) => {
 router.delete('/inventory-counts/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const countId = parseInt(id);
+    
+    // Delete all count items first
+    await db.delete(inventoryCountItems)
+      .where(eq(inventoryCountItems.countId, countId));
+    
+    // Delete the count
     const deleted = await db.delete(inventoryCounts)
-      .where(eq(inventoryCounts.id, parseInt(id)))
+      .where(eq(inventoryCounts.id, countId))
       .returning();
     
     if (deleted.length === 0) {
@@ -925,6 +932,24 @@ router.put('/inventory-count-items/:id', async (req, res) => {
   } catch (error) {
     console.error('Error updating inventory count item:', error);
     res.status(500).json({ error: 'Failed to update inventory count item' });
+  }
+});
+
+router.delete('/inventory-count-items/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await db.delete(inventoryCountItems)
+      .where(eq(inventoryCountItems.id, parseInt(id)))
+      .returning();
+    
+    if (deleted.length === 0) {
+      return res.status(404).json({ error: 'Inventory count item not found' });
+    }
+    
+    res.json({ message: 'Inventory count item deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting inventory count item:', error);
+    res.status(500).json({ error: 'Failed to delete inventory count item' });
   }
 });
 
