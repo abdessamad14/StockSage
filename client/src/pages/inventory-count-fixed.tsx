@@ -289,14 +289,14 @@ export default function InventoryCountPage() {
           );
           
           if (productStock) {
-            const countItem = {
+            const countItem: Omit<OfflineInventoryCountItem, 'id'> = {
               countId: createdCount.id,
               productId: product.id,
-              expectedQuantity: productStock.quantity,
-              actualQuantity: undefined,
-              variance: undefined,
-              notes: '',
-              tenantId: 'offline'
+              locationId: formData.locationId,
+              systemQuantity: productStock.quantity,
+              status: 'pending',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
             };
             
             await offlineInventoryCountItemStorage.create(countItem);
@@ -351,15 +351,16 @@ export default function InventoryCountPage() {
     }
   };
 
-  const updateCountItem = async (itemId: string, actualQuantity: number) => {
+  const updateCountItem = async (itemId: string, countedQuantity: number) => {
     try {
       const currentItem = countItems.find(item => item.id === itemId);
-      const expectedQuantity = currentItem?.expectedQuantity || 0;
+      const systemQuantity = currentItem?.systemQuantity || 0;
       
       const updatedItem = await offlineInventoryCountItemStorage.update(itemId, {
-        actualQuantity,
-        variance: actualQuantity - expectedQuantity,
-        updatedAt: new Date().toISOString()
+        countedQuantity,
+        variance: countedQuantity - systemQuantity,
+        status: 'counted',
+        countedAt: new Date().toISOString()
       });
       
       if (updatedItem) {
@@ -375,8 +376,7 @@ export default function InventoryCountPage() {
     try {
       const updatedCount = await offlineInventoryCountStorage.update(count.id, {
         status: 'completed',
-        completedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        completedAt: new Date().toISOString()
       });
       
       if (updatedCount) {
@@ -396,7 +396,7 @@ export default function InventoryCountPage() {
     
     // Check if all items are counted
     const updatedItems = await offlineInventoryCountItemStorage.getByCountId(activeCount?.id || '');
-    const allCounted = updatedItems.every(item => item.actualQuantity !== undefined && item.actualQuantity !== null);
+    const allCounted = updatedItems.every(item => item.status === 'counted' || item.status === 'verified');
     
     if (allCounted && activeCount?.status === 'in_progress') {
       await completeCount(activeCount);
@@ -424,7 +424,7 @@ export default function InventoryCountPage() {
     if (product) {
       const countItem = countItems.find(item => item.productId === product.id);
       if (countItem) {
-        handleStartEdit(countItem.id, countItem.actualQuantity);
+        handleStartEdit(countItem.id, countItem.countedQuantity);
       } else {
         toast.error('Product not found in this count');
       }
@@ -438,7 +438,7 @@ export default function InventoryCountPage() {
   const getCountProgress = (countId: string) => {
     const items = countItems.filter(item => item.countId === countId);
     if (items.length === 0) return 0;
-    const countedItems = items.filter(item => item.actualQuantity !== undefined && item.actualQuantity !== null);
+    const countedItems = items.filter(item => item.status === 'counted' || item.status === 'verified');
     return Math.round((countedItems.length / items.length) * 100);
   };
 
@@ -584,8 +584,8 @@ export default function InventoryCountPage() {
                   <div className="flex-1">
                     <h3 className="font-medium">{product.name}</h3>
                     <p className="text-sm text-gray-600">
-                      Expected: {item.expectedQuantity} | 
-                      Counted: {item.actualQuantity ?? 'Not counted'}
+                      System: {item.systemQuantity} | 
+                      Counted: {item.countedQuantity || 'Not counted'}
                       {hasVariance && (
                         <span className={`ml-2 font-medium ${variance > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           ({variance > 0 ? '+' : ''}{variance})
@@ -615,14 +615,14 @@ export default function InventoryCountPage() {
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => handleStartEdit(item.id, item.actualQuantity)}
+                        onClick={() => handleStartEdit(item.id, item.countedQuantity)}
                       >
-                        {item.actualQuantity !== undefined ? 'Edit' : 'Count'}
+                        {item.status === 'counted' ? 'Edit' : 'Count'}
                       </Button>
                     )}
                     
-                    <Badge variant={item.actualQuantity !== undefined ? 'default' : 'secondary'}>
-                      {item.actualQuantity !== undefined ? 'counted' : 'pending'}
+                    <Badge variant={item.status === 'counted' ? 'default' : 'secondary'}>
+                      {item.status}
                     </Badge>
                   </div>
                 </div>
