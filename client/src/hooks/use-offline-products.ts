@@ -137,8 +137,7 @@ export function useOfflineProducts() {
         previousQuantity: previousQuantity,
         newQuantity: newQuantity,
         reason: 'Product quantity updated via edit',
-        reference: `EDIT-${product.id}-${Date.now()}`,
-        updatedAt: new Date().toISOString()
+        reference: `EDIT-${product.id}-${Date.now()}`
       });
       
       console.log(`Created stock history entry for ${product.name}: ${previousQuantity} → ${newQuantity}`);
@@ -180,8 +179,7 @@ export function useOfflineProducts() {
             previousQuantity: 0,
             newQuantity: product.quantity,
             reason: 'Initial stock entry',
-            reference: `INIT-${product.id}`,
-            updatedAt: new Date().toISOString()
+            reference: `INIT-${product.id}`
           });
           console.log(`Created stock record and transaction for ${product.name}`);
         } catch (transactionError) {
