@@ -34,7 +34,9 @@ import {
   offlineInventoryCountStorage,
   offlineInventoryCountItemStorage,
   offlineProductStorage,
-  offlineStockLocationStorage
+  offlineStockLocationStorage,
+  offlineProductStockStorage,
+  offlineStockTransactionStorage
 } from '@/lib/offline-storage';
 import VarianceReconciliation from '@/components/VarianceReconciliation';
 import type { 
@@ -262,6 +264,86 @@ export default function InventoryCountPage() {
     }
   };
 
+  const handleCompleteCount = async () => {
+    if (!activeCount) return;
+
+    try {
+      // Get all count items for this count
+      const items = await offlineInventoryCountItemStorage.getByCountId(activeCount.id);
+      
+      // Check if all items have been counted
+      const unCountedItems = items.filter(item => 
+        item.actualQuantity === undefined || item.actualQuantity === null
+      );
+      
+      if (unCountedItems.length > 0) {
+        toast.error(`Please count all items first. ${unCountedItems.length} items remaining.`);
+        return;
+      }
+      
+      // Process each counted item
+      for (const item of items) {
+        if (item.actualQuantity !== undefined && item.actualQuantity !== null) {
+          const product = products.find(p => p.id === item.productId);
+          if (!product) continue;
+
+          // Update warehouse-specific stock quantity
+          const stockRecord = await offlineProductStockStorage.getByProductAndLocation(item.productId, activeCount.locationId);
+          
+          if (stockRecord) {
+            const oldQuantity = stockRecord.quantity;
+            const newQuantity = item.actualQuantity;
+            const difference = newQuantity - oldQuantity;
+
+            // Update warehouse-specific stock quantity
+            await offlineProductStockStorage.updateQuantity(item.productId, activeCount.locationId, newQuantity);
+
+            // Update main product quantity to match the counted quantity
+            const updatedProduct = {
+              ...product,
+              quantity: newQuantity,
+              updatedAt: new Date().toISOString()
+            };
+            await offlineProductStorage.update(product.id, updatedProduct);
+
+            // Create stock transaction for audit trail
+            if (difference !== 0) {
+              await offlineStockTransactionStorage.create({
+                productId: item.productId,
+                warehouseId: activeCount.locationId,
+                type: 'adjustment',
+                quantity: difference, // Use actual difference (can be negative)
+                previousQuantity: oldQuantity,
+                newQuantity: newQuantity,
+                reason: `Inventory count adjustment: ${activeCount.name}`,
+                reference: `COUNT-${activeCount.id}`
+              });
+            }
+          }
+        }
+      }
+
+      // Mark count as completed
+      const updatedCount = {
+        ...activeCount,
+        status: 'completed' as const,
+        endDate: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await offlineInventoryCountStorage.update(activeCount.id, updatedCount);
+      
+      // Update local state
+      setCounts(prev => prev.map(c => c.id === activeCount.id ? updatedCount : c));
+      setActiveCount(updatedCount);
+      
+      toast.success('Inventory count completed! Stock quantities have been updated.');
+    } catch (error) {
+      console.error('Error completing count:', error);
+      toast.error('Failed to complete inventory count');
+    }
+  };
+
   const createNewCount = async (formData: any) => {
     try {
       const newCount: Omit<OfflineInventoryCount, 'id'> = {
@@ -355,36 +437,11 @@ export default function InventoryCountPage() {
     }
   };
 
-  const completeCount = async (count: OfflineInventoryCount) => {
-    try {
-      const updatedCount = await offlineInventoryCountStorage.update(count.id, {
-        status: 'completed',
-        completedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      } as Partial<OfflineInventoryCount>);
-      
-      if (updatedCount) {
-        setActiveCount(updatedCount);
-        setCounts(prev => prev.map(c => c.id === count.id ? updatedCount : c));
-        toast.success('Inventory count completed!');
-      }
-    } catch (error) {
-      console.error('Error completing count:', error);
-      toast.error('Failed to complete inventory count');
-    }
-  };
+  // Remove the old completeCount function - it's replaced by handleCompleteCount
 
   const handleSaveCount = async (itemId: string) => {
     const quantity = parseInt(tempQuantity) || 0;
     await updateCountItem(itemId, quantity);
-    
-    // Check if all items are counted
-    const updatedItems = await offlineInventoryCountItemStorage.getByCountId(activeCount?.id || '');
-    const allCounted = updatedItems.every(item => item.actualQuantity !== undefined && item.actualQuantity !== null);
-    
-    if (allCounted && activeCount?.status === 'in_progress') {
-      await completeCount(activeCount);
-    }
     
     setEditingItemId(null);
     setTempQuantity('');
@@ -517,10 +574,22 @@ export default function InventoryCountPage() {
             Location: {locations.find(l => l.id === activeCount.locationId)?.name}
           </p>
         </div>
-        <Badge className={getStatusColor(activeCount.status)}>
-          {getStatusIcon(activeCount.status)}
-          <span className="ml-1">{activeCount.status}</span>
-        </Badge>
+        <div className="flex items-center space-x-2">
+          <Badge className={getStatusColor(activeCount.status)}>
+            {getStatusIcon(activeCount.status)}
+            <span className="ml-1">{activeCount.status}</span>
+          </Badge>
+          {activeCount.status === 'in_progress' && (
+            <Button 
+              onClick={handleCompleteCount}
+              className="bg-green-600 hover:bg-green-700"
+              disabled={getCountProgress(activeCount.id) < 100}
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Complete Count ({getCountProgress(activeCount.id)}%)
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Search and Barcode Scanner */}

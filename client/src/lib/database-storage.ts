@@ -1115,7 +1115,7 @@ export const offlineStockTransactionStorage = {
     }
   },
   
-  async create(transaction: Omit<OfflineStockTransaction, 'id' | 'createdAt'>): Promise<OfflineStockTransaction> {
+  async create(transaction: Omit<OfflineStockTransaction, 'id' | 'createdAt' | 'updatedAt'>): Promise<OfflineStockTransaction> {
     try {
       const newTransaction = await apiCall<any>('/stock-transactions', {
         method: 'POST',
