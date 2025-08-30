@@ -30,13 +30,17 @@ import {
   OfflineCategory,
   OfflineStockLocation,
   OfflineSalesPeriod,
-  databaseProductStorage,
-  offlineCategoryStorage,
-  databaseCustomerStorage,
-  databaseSalesStorage,
+  offlineProductStorage,
+  offlineCustomerStorage,
+  offlineSalesStorage,
+  offlineSettingsStorage,
   offlineStockLocationStorage,
-  salesPeriodHelpers
-} from '@/lib/database-storage';
+  offlineProductStockStorage,
+  offlineCategoryStorage,
+  databaseProductStorage,
+  databaseSalesStorage,
+  databaseCustomerStorage
+} from '@/lib/offline-storage';
 
 interface CartItem {
   product: OfflineProduct;
@@ -108,17 +112,21 @@ export default function OfflinePOS() {
   // Load sales period data
   const loadSalesPeriodData = async () => {
     try {
-      const period = await salesPeriodHelpers.getCurrentPeriod();
-      setCurrentSalesPeriod(period);
+      // Simple sales period implementation without external helpers
+      const today = new Date().toISOString().split('T')[0];
+      const todaysSales = await databaseSalesStorage.getAll();
+      const todaysSalesFiltered = todaysSales.filter(sale => 
+        sale.date.startsWith(today)
+      );
       
-      if (period) {
-        const todaysData = await salesPeriodHelpers.getTodaysSalesData();
-        setSalesPeriodStats({
-          totalSales: todaysData.totalSales,
-          totalTransactions: todaysData.totalTransactions,
-          averageTransaction: todaysData.totalTransactions > 0 ? todaysData.totalSales / todaysData.totalTransactions : 0
-        });
-      }
+      const totalSales = todaysSalesFiltered.reduce((sum, sale) => sum + sale.totalAmount, 0);
+      const totalTransactions = todaysSalesFiltered.length;
+      
+      setSalesPeriodStats({
+        totalSales,
+        totalTransactions,
+        averageTransaction: totalTransactions > 0 ? totalSales / totalTransactions : 0
+      });
     } catch (error) {
       console.error('Error loading sales period data:', error);
     }
@@ -296,6 +304,16 @@ export default function OfflinePOS() {
             quantity: newQuantity,
             updatedAt: new Date().toISOString()
           });
+
+          // Update primary warehouse stock to keep in sync
+          if (primaryWarehouse) {
+            await offlineProductStockStorage.upsert({
+              productId: item.product.id,
+              locationId: primaryWarehouse.id,
+              quantity: newQuantity,
+              minStockLevel: 0
+            });
+          }
 
           // Create stock transaction entry for sale
           try {

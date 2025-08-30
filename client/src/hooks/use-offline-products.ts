@@ -63,6 +63,19 @@ export function useOfflineProducts() {
             currentProduct.quantity,
             updates.quantity
           );
+
+          // Sync primary warehouse stock to match product quantity
+          const locations = await offlineStockLocationStorage.getAll();
+          const primaryLocation = locations.find((loc: any) => loc.isPrimary) || locations[0];
+          
+          if (primaryLocation) {
+            await offlineProductStockStorage.upsert({
+              productId: id,
+              locationId: primaryLocation.id,
+              quantity: updates.quantity,
+              minStockLevel: 0
+            });
+          }
         }
         
         await loadProducts();

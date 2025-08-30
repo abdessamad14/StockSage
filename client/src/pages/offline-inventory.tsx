@@ -82,6 +82,7 @@ export default function OfflineInventory() {
   const [showStockHistory, setShowStockHistory] = useState(false);
   const [historyProduct, setHistoryProduct] = useState<OfflineProduct | null>(null);
   const [productTransactions, setProductTransactions] = useState<OfflineStockTransaction[]>([]);
+  const [productStocks, setProductStocks] = useState<any[]>([]);
 
   // Load stock locations and set primary as default
   useEffect(() => {
@@ -95,6 +96,10 @@ export default function OfflineInventory() {
         if (primaryLocation && !selectedLocation) {
           setSelectedLocation(primaryLocation.id);
         }
+
+        // Load product stock data
+        const stocks = await offlineProductStockStorage.getAll();
+        setProductStocks(stocks);
 
         // Automatically ensure stock records exist for all products
         if (products.length > 0) {
@@ -131,9 +136,11 @@ export default function OfflineInventory() {
   }, [showStockHistory, historyProduct, getTransactionsByProduct]);
 
   const getProductStockInLocation = (productId: string, locationId: string): number => {
-    // For now, use the product's base quantity as fallback
-    const product = products.find(p => p.id === productId);
-    return product?.quantity || 0;
+    // Look up actual warehouse-specific stock quantity
+    const stockRecord = productStocks.find(stock => 
+      stock.productId === productId && stock.locationId === locationId
+    );
+    return stockRecord?.quantity || 0;
   };
 
   const getTotalProductStock = (productId: string): number => {
