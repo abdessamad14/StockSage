@@ -67,7 +67,8 @@ export default function OfflineProducts() {
   // Function to get warehouse-specific stock quantity
   const getWarehouseStock = (productId: string): number => {
     if (!primaryWarehouse) return 0;
-    // Get stock from the products data directly since we don't have separate stock storage
+    // This will be updated to use primary warehouse stock in real-time
+    // For now, return the product quantity which should match primary warehouse
     const product = products.find(p => p.id === productId);
     return product?.quantity || 0;
   };
@@ -316,7 +317,19 @@ export default function OfflineProducts() {
   };
 
   const getProductStock = async (productId: string) => {
-    // Get stock from the products data directly
+    // Get stock from primary warehouse instead of main product quantity
+    try {
+      const primaryLocation = stockLocations.find(loc => loc.isPrimary);
+      if (primaryLocation) {
+        const { offlineProductStockStorage } = await import('@/lib/database-storage');
+        const stockRecord = await offlineProductStockStorage.getByProductAndLocation(productId, primaryLocation.id);
+        return { quantity: stockRecord?.quantity || 0 };
+      }
+    } catch (error) {
+      console.warn('Could not get primary warehouse stock, falling back to product quantity');
+    }
+    
+    // Fallback to main product quantity
     const product = products.find(p => p.id === productId);
     return product ? { quantity: product.quantity } : { quantity: 0 };
   };

@@ -298,13 +298,16 @@ export default function InventoryCountPage() {
             // Update warehouse-specific stock quantity
             await offlineProductStockStorage.updateQuantity(item.productId, activeCount.locationId, newQuantity);
 
-            // Update main product quantity to match the counted quantity
-            const updatedProduct = {
-              ...product,
-              quantity: newQuantity,
-              updatedAt: new Date().toISOString()
-            };
-            await offlineProductStorage.update(product.id, updatedProduct);
+            // Only update main product quantity if this is the primary warehouse
+            const location = locations.find(l => l.id === activeCount.locationId);
+            if (location?.isPrimary) {
+              const updatedProduct = {
+                ...product,
+                quantity: newQuantity,
+                updatedAt: new Date().toISOString()
+              };
+              await offlineProductStorage.update(product.id, updatedProduct);
+            }
 
             // Create stock transaction for audit trail
             if (difference !== 0) {
@@ -361,12 +364,22 @@ export default function InventoryCountPage() {
       if (createdCount) {
         const activeProducts = products.filter(p => p.active);
         
-        // Create count items for each active product
+        // Create count items for each active product with warehouse-specific expected quantities
         for (const product of activeProducts) {
+          // Get warehouse-specific stock quantity for expected quantity
+          let expectedQuantity = 0;
+          try {
+            const stockRecord = await offlineProductStockStorage.getByProductAndLocation(product.id, formData.locationId);
+            expectedQuantity = stockRecord?.quantity || 0;
+          } catch (error) {
+            console.warn(`Could not get stock for product ${product.id} in location ${formData.locationId}, using 0`);
+            expectedQuantity = 0;
+          }
+
           const countItem = {
             countId: createdCount.id,
             productId: product.id,
-            expectedQuantity: product.quantity, // Use main product quantity as single source of truth
+            expectedQuantity: expectedQuantity, // Use warehouse-specific quantity
             actualQuantity: undefined,
             variance: undefined,
             notes: '',
