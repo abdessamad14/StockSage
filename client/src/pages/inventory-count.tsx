@@ -30,12 +30,11 @@ const toast = {
   error: (message: string) => console.error('Error:', message)
 };
 
-import { 
-  offlineInventoryCountStorage, 
+import {
+  offlineInventoryCountStorage,
   offlineInventoryCountItemStorage,
   offlineProductStorage,
-  offlineStockLocationStorage,
-  offlineProductStockStorage
+  offlineStockLocationStorage
 } from '@/lib/offline-storage';
 import VarianceReconciliation from '@/components/VarianceReconciliation';
 import type { 
@@ -278,29 +277,21 @@ export default function InventoryCountPage() {
       const createdCount = await offlineInventoryCountStorage.create(newCount);
       
       if (createdCount) {
-        // Get all active products with stock in the selected location
-        const allProductStock = await offlineProductStockStorage.getAll();
         const activeProducts = products.filter(p => p.active);
         
         // Create count items for each active product
         for (const product of activeProducts) {
-          const productStock = allProductStock.find(ps => 
-            ps.productId === product.id && ps.locationId === formData.locationId
-          );
+          const countItem = {
+            countId: createdCount.id,
+            productId: product.id,
+            expectedQuantity: product.quantity, // Use main product quantity as single source of truth
+            actualQuantity: undefined,
+            variance: undefined,
+            notes: '',
+            tenantId: 'offline'
+          };
           
-          if (productStock) {
-            const countItem = {
-              countId: createdCount.id,
-              productId: product.id,
-              expectedQuantity: productStock.quantity,
-              actualQuantity: undefined,
-              variance: undefined,
-              notes: '',
-              tenantId: 'offline'
-            };
-            
-            await offlineInventoryCountItemStorage.create(countItem);
-          }
+          await offlineInventoryCountItemStorage.create(countItem);
         }
 
         setCounts(prev => [...prev, createdCount]);
@@ -370,7 +361,7 @@ export default function InventoryCountPage() {
         status: 'completed',
         completedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
-      });
+      } as Partial<OfflineInventoryCount>);
       
       if (updatedCount) {
         setActiveCount(updatedCount);
@@ -578,7 +569,7 @@ export default function InventoryCountPage() {
                     <h3 className="font-medium">{product.name}</h3>
                     <p className="text-sm text-gray-600">
                       Expected: {item.expectedQuantity} | 
-                      Counted: {item.actualQuantity ?? 'Not counted'}
+                      Actual: {item.actualQuantity !== undefined && item.actualQuantity !== null ? item.actualQuantity : 'Not counted'}
                       {hasVariance && (
                         <span className={`ml-2 font-medium ${variance > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           ({variance > 0 ? '+' : ''}{variance})
@@ -614,8 +605,8 @@ export default function InventoryCountPage() {
                       </Button>
                     )}
                     
-                    <Badge variant={item.actualQuantity !== undefined ? 'default' : 'secondary'}>
-                      {item.actualQuantity !== undefined ? 'counted' : 'pending'}
+                    <Badge variant={item.actualQuantity !== undefined && item.actualQuantity !== null ? 'default' : 'secondary'}>
+                      {item.actualQuantity !== undefined && item.actualQuantity !== null ? 'Counted' : 'Not counted'}
                     </Badge>
                   </div>
                 </div>
