@@ -330,15 +330,8 @@ export default function InventoryCountPage() {
 
   const deleteCount = async (count: OfflineInventoryCount) => {
     try {
-      // Delete all count items first
-      const countItems = await offlineInventoryCountItemStorage.getByCountId(count.id);
-      for (const item of countItems) {
-        // Note: delete method needs to be added to storage interface
-        // await offlineInventoryCountItemStorage.delete(item.id);
-      }
-      
-      // Delete the count
-      // await offlineInventoryCountStorage.delete(count.id);
+      // Delete the count (server will handle cascade deletion of count items)
+      await offlineInventoryCountStorage.delete(count.id);
       setCounts(prev => prev.filter(c => c.id !== count.id));
       
       if (activeCount?.id === count.id) {

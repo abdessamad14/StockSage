@@ -1055,6 +1055,17 @@ export const offlineInventoryCountItemStorage = {
       console.error('Error updating inventory count item:', error);
       return null;
     }
+  },
+  
+  async delete(id: string): Promise<void> {
+    try {
+      await apiCall(`/inventory-count-items/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.error('Error deleting inventory count item:', error);
+      throw error;
+    }
   }
 };
 
