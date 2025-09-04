@@ -1581,17 +1581,20 @@ export default function OfflineInventory() {
                   <div className="flex items-center justify-between text-sm">
                     <span>Products in this location:</span>
                     <span className="font-medium">
-                      {offlineProductStockStorage.getByLocation(editingLocation.id).length}
+                      {productStocks.filter(stock => stock.locationId === editingLocation.id).length}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm mt-1">
                     <span>Total stock value:</span>
                     <span className="font-medium text-green-600">
-                      ${offlineProductStockStorage.getByLocation(editingLocation.id)
-                        .reduce((total, stock) => {
+                      ${(() => {
+                        const locationStocks = productStocks.filter(stock => stock.locationId === editingLocation.id);
+                        const totalValue = locationStocks.reduce((total, stock) => {
                           const product = products.find(p => p.id === stock.productId);
-                          return total + (product ? product.costPrice * stock.quantity : 0);
-                        }, 0).toFixed(2)}
+                          return total + (product ? product.costPrice * (stock.quantity || 0) : 0);
+                        }, 0);
+                        return totalValue.toFixed(2);
+                      })()}
                     </span>
                   </div>
                 </div>
