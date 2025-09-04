@@ -134,6 +134,13 @@ export default function OfflineInventory() {
             );
           }
           
+          // Sort transactions by date in descending order (most recent first)
+          filteredTransactions.sort((a, b) => {
+            const dateA = new Date(a.createdAt || a.date || 0);
+            const dateB = new Date(b.createdAt || b.date || 0);
+            return dateB.getTime() - dateA.getTime();
+          });
+          
           setProductTransactions(filteredTransactions);
         } catch (error) {
           console.error('Error loading product transactions:', error);
