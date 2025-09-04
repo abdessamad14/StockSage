@@ -124,8 +124,17 @@ export default function OfflineInventory() {
     if (showStockHistory && historyProduct) {
       const loadTransactions = async () => {
         try {
-          const transactions = await getTransactionsByProduct(historyProduct.id);
-          setProductTransactions(transactions as any);
+          const allTransactions = await getTransactionsByProduct(historyProduct.id);
+          
+          // Filter transactions based on selected location
+          let filteredTransactions = allTransactions as any[];
+          if (selectedLocation !== "all") {
+            filteredTransactions = filteredTransactions.filter(
+              transaction => transaction.warehouseId === selectedLocation
+            );
+          }
+          
+          setProductTransactions(filteredTransactions);
         } catch (error) {
           console.error('Error loading product transactions:', error);
           setProductTransactions([]);
@@ -133,7 +142,7 @@ export default function OfflineInventory() {
       };
       loadTransactions();
     }
-  }, [showStockHistory, historyProduct, getTransactionsByProduct]);
+  }, [showStockHistory, historyProduct, selectedLocation, getTransactionsByProduct]);
 
   const getProductStockInLocation = (productId: string, locationId: string): number => {
     // Look up actual warehouse-specific stock quantity
@@ -143,10 +152,20 @@ export default function OfflineInventory() {
     return stockRecord?.quantity || 0;
   };
 
+  // Calculate total stock across all locations for a product
+  const getTotalStockAcrossAllLocations = (productId: string): number => {
+    // Sum stock from all locations for this product
+    const totalFromLocations = productStocks
+      .filter(stock => stock.productId === productId)
+      .reduce((sum, stock) => sum + (stock.quantity || 0), 0);
+    
+    // If no location-specific stock found, fall back to product's base quantity
+    return totalFromLocations > 0 ? totalFromLocations : (products.find(p => p.id === productId)?.quantity || 0);
+  };
+
   const getTotalProductStock = (productId: string): number => {
-    // For now, use the product's base quantity as fallback
-    const product = products.find(p => p.id === productId);
-    return product?.quantity || 0;
+    // Use the same logic as getTotalStockAcrossAllLocations for consistency
+    return getTotalStockAcrossAllLocations(productId);
   };
 
   const loadStockLocations = async () => {
@@ -264,18 +283,24 @@ export default function OfflineInventory() {
     if (selectedLocation === "all") {
       // Show combined metrics across all locations
       const lowStockProducts = products.filter(product => {
-        const totalStock = getTotalProductStock(product.id);
+        const totalStock = getTotalStockAcrossAllLocations(product.id);
         return totalStock <= (product.minStockLevel || 10);
       });
       
       const totalValue = products.reduce((sum, product) => {
-        const totalStock = getTotalProductStock(product.id);
+        const totalStock = getTotalStockAcrossAllLocations(product.id);
         return sum + (totalStock * product.costPrice);
       }, 0);
 
+      // Count products that have stock in any location
+      const productsWithStock = products.filter(product => {
+        const totalStock = getTotalStockAcrossAllLocations(product.id);
+        return totalStock > 0;
+      });
+
       return {
         lowStockProducts,
-        totalProducts: products.length,
+        totalProducts: productsWithStock.length,
         totalValue,
         lowStockCount: lowStockProducts.length
       };
