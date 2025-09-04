@@ -1402,12 +1402,62 @@ export const creditHelpers = {
     }
   },
 
-  getCustomerCreditInfo: (customer: OfflineCustomer) => {
-    return {
-      creditBalance: customer.creditBalance || 0,
-      creditLimit: customer.creditLimit || 0,
-      availableCredit: (customer.creditLimit || 0) - (customer.creditBalance || 0)
-    };
+  addCreditPayment: async (customerId: string, amount: number, note: string) => {
+    try {
+      // Update customer credit balance
+      const customer = await databaseCustomerStorage.getById(customerId);
+      if (customer) {
+        const newBalance = Math.max(0, (customer.creditBalance || 0) - amount);
+        await databaseCustomerStorage.update(customerId, {
+          ...customer,
+          creditBalance: newBalance
+        });
+      }
+    } catch (error) {
+      console.error('Error adding credit payment:', error);
+      throw error;
+    }
+  },
+
+  getCustomerCreditInfo: async (customerIdOrCustomer: string | OfflineCustomer) => {
+    try {
+      let customer: OfflineCustomer;
+      
+      if (typeof customerIdOrCustomer === 'string') {
+        // If it's a customer ID, fetch the customer data
+        const fetchedCustomer = await databaseCustomerStorage.getById(customerIdOrCustomer);
+        if (!fetchedCustomer) {
+          return {
+            currentBalance: 0,
+            creditLimit: 0,
+            availableCredit: 0,
+            transactions: []
+          };
+        }
+        customer = fetchedCustomer;
+      } else {
+        // If it's already a customer object
+        customer = customerIdOrCustomer;
+      }
+
+      // For now, return empty transactions array since credit transaction storage isn't implemented yet
+      const transactions: any[] = [];
+      
+      return {
+        currentBalance: customer.creditBalance || 0,
+        creditLimit: customer.creditLimit || 0,
+        availableCredit: (customer.creditLimit || 0) - (customer.creditBalance || 0),
+        transactions: transactions || []
+      };
+    } catch (error) {
+      console.error('Error getting customer credit info:', error);
+      return {
+        currentBalance: 0,
+        creditLimit: 0,
+        availableCredit: 0,
+        transactions: []
+      };
+    }
   }
 };
 
