@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useOfflineCustomers } from "@/hooks/use-offline-customers";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { OfflineCustomer, creditHelpers } from "@/lib/offline-storage";
+import { OfflineCustomer } from "@/lib/offline-storage";
+import { creditHelpers, CreditTransaction } from "@/lib/database-storage";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -41,6 +42,13 @@ export default function OfflineCustomers() {
   const [isCreditDialogOpen, setIsCreditDialogOpen] = useState(false);
   const [creditAmount, setCreditAmount] = useState(0);
   const [creditNote, setCreditNote] = useState("");
+  const [creditInfo, setCreditInfo] = useState<{
+    currentBalance: number;
+    creditLimit: number;
+    availableCredit: number;
+    transactions: CreditTransaction[];
+  } | null>(null);
+  const [loadingCreditInfo, setLoadingCreditInfo] = useState(false);
 
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
@@ -128,27 +136,87 @@ export default function OfflineCustomers() {
     }
   };
 
+  const loadCreditInfo = async (customer: OfflineCustomer) => {
+    setLoadingCreditInfo(true);
+    try {
+      const info = await creditHelpers.getCustomerCreditInfo(customer);
+      setCreditInfo(info);
+    } catch (error) {
+      console.error('Error loading credit info:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load credit information",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingCreditInfo(false);
+    }
+  };
+
   const handleCreditAction = async () => {
-    if (!selectedCustomer || creditAmount <= 0) return;
+    console.log('=== HANDLE CREDIT ACTION CALLED ===');
+    console.log('Selected customer:', selectedCustomer);
+    console.log('Credit amount:', creditAmount);
+    console.log('Credit note:', creditNote);
+
+    if (!selectedCustomer) {
+      console.log('No customer selected');
+      toast({
+        title: "Error",
+        description: "No customer selected",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (creditAmount <= 0) {
+      console.log('Invalid amount:', creditAmount);
+      toast({
+        title: "Error",
+        description: "Please enter a valid payment amount greater than 0",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
-      await creditHelpers.addCreditPayment(
+      console.log('Processing payment for customer:', selectedCustomer.name, 'ID:', selectedCustomer.id, 'Amount:', creditAmount);
+      
+      const paymentTransaction = await creditHelpers.addCreditPayment(
         selectedCustomer.id,
         creditAmount,
         creditNote || `Credit payment - ${format(new Date(), 'MMM dd, yyyy')}`
       );
+      
+      console.log('Payment transaction returned:', paymentTransaction);
+      
+      // Force reload credit info to show updated balance and new transaction
+      console.log('Reloading credit info...');
+      await loadCreditInfo(selectedCustomer);
+      
+      // Get fresh customer data
+      const updatedCustomerInfo = await creditHelpers.getCustomerCreditInfo(selectedCustomer.id);
+      console.log('Updated customer info:', updatedCustomerInfo);
+      
+      setSelectedCustomer(prev => prev ? {
+        ...prev,
+        creditBalance: updatedCustomerInfo.currentBalance
+      } : null);
+      
       toast({
         title: "Success",
-        description: `Payment of $${creditAmount.toFixed(2)} recorded successfully`
+        description: `Payment of $${creditAmount.toFixed(2)} recorded successfully. New balance: $${updatedCustomerInfo.currentBalance.toFixed(2)}`
       });
 
-      setIsCreditDialogOpen(false);
       setCreditAmount(0);
       setCreditNote("");
+      
+      console.log('=== PAYMENT PROCESSING COMPLETED ===');
     } catch (error) {
+      console.error('Payment processing error:', error);
       toast({
         title: "Error",
-        description: "Failed to process credit payment",
+        description: `Failed to process credit payment: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive"
       });
     }
@@ -225,9 +293,10 @@ export default function OfflineCustomers() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
+                  onClick={async () => {
                     setSelectedCustomer(customer);
                     setIsCreditDialogOpen(true);
+                    await loadCreditInfo(customer);
                   }}
                   title="Manage Credit"
                 >
@@ -397,19 +466,43 @@ export default function OfflineCustomers() {
               </TabsList>
               
               <TabsContent value="overview" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  
-                  <Card className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <DollarSign className="w-5 h-5 text-red-500" />
-                      <h3 className="font-semibold">Current Balance</h3>
-                    </div>
-                    <p className="text-2xl font-bold text-red-600">
-                      ${(selectedCustomer.creditBalance || 0).toFixed(2)}
-                    </p>
-                  </Card>
-                  
-                </div>
+                {loadingCreditInfo ? (
+                  <div className="text-center py-8">
+                    <div className="text-lg">Loading credit information...</div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-5 h-5 text-red-500" />
+                        <h3 className="font-semibold">Current Balance</h3>
+                      </div>
+                      <p className="text-2xl font-bold text-red-600">
+                        ${(creditInfo?.currentBalance || 0).toFixed(2)}
+                      </p>
+                    </Card>
+                    
+                    <Card className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CreditCard className="w-5 h-5 text-blue-500" />
+                        <h3 className="font-semibold">Credit Limit</h3>
+                      </div>
+                      <p className="text-2xl font-bold text-blue-600">
+                        ${(creditInfo?.creditLimit || 0).toFixed(2)}
+                      </p>
+                    </Card>
+                    
+                    <Card className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-5 h-5 text-green-500" />
+                        <h3 className="font-semibold">Available Credit</h3>
+                      </div>
+                      <p className="text-2xl font-bold text-green-600">
+                        ${Math.max(0, (creditInfo?.availableCredit || 0)).toFixed(2)}
+                      </p>
+                    </Card>
+                  </div>
+                )}
               </TabsContent>
               
               <TabsContent value="payment" className="space-y-4">
@@ -453,14 +546,14 @@ export default function OfflineCustomers() {
                       <div className="flex justify-between">
                         <span>Current Balance:</span>
                         <span className="font-medium text-red-600">
-                          ${(selectedCustomer.creditBalance || 0).toFixed(2)}
+                          ${(creditInfo?.currentBalance || 0).toFixed(2)}
                         </span>
                       </div>
                       {creditAmount > 0 && (
                         <div className="flex justify-between">
                           <span>After Payment:</span>
                           <span className="font-medium text-green-600">
-                            ${Math.max(0, (selectedCustomer.creditBalance || 0) - creditAmount).toFixed(2)}
+                            ${Math.max(0, (creditInfo?.currentBalance || 0) - creditAmount).toFixed(2)}
                           </span>
                         </div>
                       )}
@@ -487,54 +580,63 @@ export default function OfflineCustomers() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {/* Placeholder for credit transactions - will be implemented with proper async handling */}
-                      {[].map((transaction: any) => (
-                        <TableRow key={transaction.id}>
-                          <TableCell>
-                            {format(new Date(transaction.date), 'MMM dd, yyyy HH:mm')}
-                          </TableCell>
-                          <TableCell>
-                            <Badge 
-                              variant={
-                                transaction.type === 'credit_sale' ? 'destructive' : 
-                                transaction.type === 'payment' ? 'default' : 
-                                'secondary'
-                              }
-                            >
-                              {transaction.type === 'credit_sale' ? 'sale' : transaction.type}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <span className={
-                              transaction.type === 'credit_sale' ? 'text-red-600' : 'text-green-600'
-                            }>
-                              {transaction.type === 'credit_sale' ? '+' : '-'}${Math.abs(transaction.amount).toFixed(2)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="max-w-xs truncate">
-                            {transaction.description}
-                          </TableCell>
-                          <TableCell>
-                            <span className="font-medium text-red-600">
-                              ${transaction.balanceAfter?.toFixed(2) || '0.00'}
-                            </span>
+                      {creditInfo?.transactions && creditInfo.transactions.length > 0 ? (
+                        creditInfo.transactions.map((transaction) => (
+                          <TableRow key={transaction.id}>
+                            <TableCell>
+                              {format(new Date(transaction.date), 'MMM dd, yyyy HH:mm')}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  transaction.type === 'credit_sale' ? 'destructive' : 
+                                  transaction.type === 'payment' ? 'default' : 
+                                  'secondary'
+                                }
+                              >
+                                {transaction.type === 'credit_sale' ? 'Sale' : 
+                                 transaction.type === 'payment' ? 'Payment' : 
+                                 transaction.type}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <span className={
+                                transaction.amount > 0 ? 'text-red-600' : 'text-green-600'
+                              }>
+                                {transaction.amount > 0 ? '+' : ''}${transaction.amount.toFixed(2)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="max-w-xs truncate">
+                              {transaction.description}
+                            </TableCell>
+                            <TableCell>
+                              <span className="font-medium text-red-600">
+                                ${transaction.balanceAfter.toFixed(2)}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                            {loadingCreditInfo ? 'Loading transactions...' : 'No credit transactions found'}
                           </TableCell>
                         </TableRow>
-                      ))}
+                      )}
                     </TableBody>
                   </Table>
-                  
-                  {/* Always show no transactions message for now */}
-                  <div className="text-center py-8 text-gray-500">
-                    No credit transactions found
-                  </div>
                 </div>
               </TabsContent>
             </Tabs>
           )}
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreditDialogOpen(false)}>
+            <Button variant="outline" onClick={() => {
+              setIsCreditDialogOpen(false);
+              setCreditInfo(null);
+              setCreditAmount(0);
+              setCreditNote("");
+            }}>
               Close
             </Button>
           </DialogFooter>

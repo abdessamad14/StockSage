@@ -41,6 +41,7 @@ import {
   databaseSalesStorage,
   databaseCustomerStorage
 } from '@/lib/offline-storage';
+import { creditHelpers } from '@/lib/database-storage';
 
 interface CartItem {
   product: OfflineProduct;
@@ -291,6 +292,43 @@ export default function OfflinePOS() {
 
       // Save sale to database
       const createdSale = await databaseSalesStorage.create(saleData);
+
+      // Handle credit transaction if payment method is credit
+      if (paymentMethod === 'credit' && selectedCustomer) {
+        try {
+          console.log('Processing credit sale for customer:', selectedCustomer.id, 'Amount:', total);
+          
+          // Update customer credit balance
+          const currentBalance = selectedCustomer.creditBalance || 0;
+          const newBalance = currentBalance + total;
+          
+          await databaseCustomerStorage.update(selectedCustomer.id, {
+            creditBalance: newBalance
+          });
+          
+          // Record credit transaction via API
+          await creditHelpers.addCreditSale(selectedCustomer.id, total, createdSale.id?.toString() || '');
+          
+          console.log('Credit sale recorded successfully. New balance:', newBalance);
+          
+          // Update local customer state to reflect new balance
+          setCustomers(prevCustomers => 
+            prevCustomers.map(c => 
+              c.id === selectedCustomer.id 
+                ? { ...c, creditBalance: newBalance }
+                : c
+            )
+          );
+          
+        } catch (creditError) {
+          console.error('Error processing credit transaction:', creditError);
+          toast({
+            title: "Warning",
+            description: "Sale completed but credit recording failed",
+            variant: "destructive",
+          });
+        }
+      }
 
       // Update product stock quantities and create stock history entries
       for (const item of cart) {

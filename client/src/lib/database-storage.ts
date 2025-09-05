@@ -184,6 +184,18 @@ export interface OfflineSupplierPayment {
   updatedAt: string;
 }
 
+export interface CreditTransaction {
+  id: string;
+  customerId: string;
+  type: 'credit_sale' | 'payment' | 'adjustment';
+  amount: number;
+  description: string;
+  saleId?: string;
+  balanceAfter: number;
+  date: string;
+  createdAt: string;
+}
+
 // Database Product Storage
 export const databaseProductStorage = {
   async getAll(): Promise<OfflineProduct[]> {
@@ -355,20 +367,48 @@ export const databaseCustomerStorage = {
 
   async getById(id: string): Promise<OfflineCustomer | null> {
     try {
-      const customer = await apiCall<any>(`/customers/${id}`);
-      return {
-        id: customer.id.toString(),
-        name: customer.name,
-        phone: customer.phone || undefined,
-        email: customer.email || undefined,
-        address: customer.address || undefined,
-        creditLimit: customer.creditLimit || 0,
-        creditBalance: customer.creditBalance || 0,
-        notes: customer.notes || undefined,
-        createdAt: customer.createdAt,
-        updatedAt: customer.updatedAt
-      };
+      console.log('Fetching customer by ID:', id);
+      
+      // Try individual customer endpoint first
+      try {
+        const customer = await apiCall<any>(`/customers/${id}`);
+        console.log('Customer API response:', customer);
+        
+        if (customer) {
+          const mappedCustomer = {
+            id: customer.id.toString(),
+            name: customer.name,
+            phone: customer.phone || undefined,
+            email: customer.email || undefined,
+            address: customer.address || undefined,
+            creditLimit: customer.creditLimit || 0,
+            creditBalance: customer.creditBalance || 0,
+            notes: customer.notes || undefined,
+            createdAt: customer.createdAt,
+            updatedAt: customer.updatedAt
+          };
+          
+          console.log('Mapped customer:', mappedCustomer);
+          return mappedCustomer;
+        }
+      } catch (singleError) {
+        console.warn('Single customer endpoint failed, falling back to getAll:', singleError);
+      }
+      
+      // Fallback: get all customers and find the one we need
+      console.log('Falling back to getAll customers and filtering by ID');
+      const allCustomers = await this.getAll();
+      const foundCustomer = allCustomers.find(c => c.id === id);
+      
+      if (foundCustomer) {
+        console.log('Found customer via getAll fallback:', foundCustomer);
+        return foundCustomer;
+      }
+      
+      console.log('Customer not found in getAll results');
+      return null;
     } catch (error) {
+      console.error('Error fetching customer by ID:', error);
       return null;
     }
   },
@@ -1378,6 +1418,62 @@ export const offlineSupplierPaymentStorage = {
   }
 };
 
+// Credit Transaction Interface
+export interface CreditTransaction {
+  id: string;
+  customerId: string;
+  type: 'credit_sale' | 'payment' | 'adjustment';
+  amount: number;
+  description: string;
+  saleId?: string;
+  balanceAfter: number;
+  date: string;
+  createdAt: string;
+}
+
+// In-memory credit transaction storage (with localStorage persistence)
+const CREDIT_TRANSACTIONS_KEY = 'stocksage_credit_transactions';
+
+const creditTransactionStorage = {
+  getAll: (): CreditTransaction[] => {
+    try {
+      const stored = localStorage.getItem(CREDIT_TRANSACTIONS_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Error loading credit transactions:', error);
+      return [];
+    }
+  },
+
+  save: (transactions: CreditTransaction[]) => {
+    try {
+      localStorage.setItem(CREDIT_TRANSACTIONS_KEY, JSON.stringify(transactions));
+    } catch (error) {
+      console.error('Error saving credit transactions:', error);
+    }
+  },
+
+  getByCustomerId: (customerId: string): CreditTransaction[] => {
+    const allTransactions = creditTransactionStorage.getAll();
+    return allTransactions.filter(t => t.customerId === customerId)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  },
+
+  create: (transaction: Omit<CreditTransaction, 'id' | 'createdAt'>): CreditTransaction => {
+    const newTransaction: CreditTransaction = {
+      ...transaction,
+      id: `credit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date().toISOString()
+    };
+    
+    const transactions = creditTransactionStorage.getAll();
+    transactions.push(newTransaction);
+    creditTransactionStorage.save(transactions);
+    
+    return newTransaction;
+  }
+};
+
 // Helper functions
 export const creditHelpers = {
   calculateCreditBalance: (customer: OfflineCustomer): number => {
@@ -1386,16 +1482,46 @@ export const creditHelpers = {
 
   addCreditSale: async (customerId: string, amount: number, saleId: string) => {
     try {
-      await apiCall('/customer-credits', {
-        method: 'POST',
-        body: JSON.stringify({
-          customerId,
-          amount,
-          saleId,
-          type: 'sale',
-          date: new Date().toISOString()
-        })
+      console.log('Adding credit sale:', { customerId, amount, saleId });
+      
+      // Get current customer to calculate balance after
+      const customer = await databaseCustomerStorage.getById(customerId);
+      const currentBalance = customer?.creditBalance || 0;
+      const balanceAfter = currentBalance + amount;
+      
+      // Create credit transaction record
+      const transaction = creditTransactionStorage.create({
+        customerId,
+        type: 'credit_sale',
+        amount,
+        description: `Credit sale - Invoice #${saleId}`,
+        saleId,
+        balanceAfter,
+        date: new Date().toISOString()
       });
+      
+      console.log('Credit sale transaction created:', transaction);
+      
+      // Try to save to API as well (optional, for future database persistence)
+      try {
+        await apiCall('/customer-credits', {
+          method: 'POST',
+          body: JSON.stringify({
+            customerId: parseInt(customerId),
+            amount,
+            saleId,
+            type: 'credit_sale',
+            description: transaction.description,
+            balanceAfter,
+            date: new Date().toISOString()
+          })
+        });
+        console.log('Credit transaction also saved to database');
+      } catch (apiError) {
+        console.warn('Failed to save credit transaction to database, but localStorage saved:', apiError);
+      }
+      
+      return transaction;
     } catch (error) {
       console.error('Error adding credit sale:', error);
       throw error;
@@ -1404,15 +1530,65 @@ export const creditHelpers = {
 
   addCreditPayment: async (customerId: string, amount: number, note: string) => {
     try {
+      console.log('=== STARTING CREDIT PAYMENT ===');
+      console.log('Adding credit payment:', { customerId, amount, note });
+      
       // Update customer credit balance
       const customer = await databaseCustomerStorage.getById(customerId);
-      if (customer) {
-        const newBalance = Math.max(0, (customer.creditBalance || 0) - amount);
-        await databaseCustomerStorage.update(customerId, {
-          ...customer,
-          creditBalance: newBalance
-        });
+      console.log('Found customer:', customer);
+      
+      if (!customer) {
+        throw new Error(`Customer with ID ${customerId} not found`);
       }
+      
+      const currentBalance = customer.creditBalance || 0;
+      const newBalance = Math.max(0, currentBalance - amount);
+      const balanceAfter = newBalance;
+      
+      console.log('Balance calculation:', { currentBalance, amount, newBalance });
+      
+      // Update customer balance in database
+      const updatedCustomer = await databaseCustomerStorage.update(customerId, {
+        creditBalance: newBalance
+      });
+      console.log('Customer updated in database:', updatedCustomer);
+      
+      // Create credit transaction record
+      const transaction = creditTransactionStorage.create({
+        customerId,
+        type: 'payment',
+        amount: -amount, // Negative for payment
+        description: note || `Credit payment - ${new Date().toLocaleDateString()}`,
+        balanceAfter,
+        date: new Date().toISOString()
+      });
+      
+      console.log('Credit payment transaction created:', transaction);
+      
+      // Verify transaction was saved to localStorage
+      const allTransactions = creditTransactionStorage.getByCustomerId(customerId);
+      console.log('All transactions for customer after payment:', allTransactions);
+      
+      // Try to save to API as well (optional)
+      try {
+        await apiCall('/customer-credits', {
+          method: 'POST',
+          body: JSON.stringify({
+            customerId: parseInt(customerId),
+            amount: -amount,
+            type: 'payment',
+            description: transaction.description,
+            balanceAfter,
+            date: new Date().toISOString()
+          })
+        });
+        console.log('Credit payment also saved to database');
+      } catch (apiError) {
+        console.warn('Failed to save credit payment to database, but localStorage saved:', apiError);
+      }
+      
+      console.log('=== CREDIT PAYMENT COMPLETED ===');
+      return transaction;
     } catch (error) {
       console.error('Error adding credit payment:', error);
       throw error;
@@ -1440,14 +1616,21 @@ export const creditHelpers = {
         customer = customerIdOrCustomer;
       }
 
-      // For now, return empty transactions array since credit transaction storage isn't implemented yet
-      const transactions: any[] = [];
+      // Get credit transactions from localStorage
+      const transactions = creditTransactionStorage.getByCustomerId(customer.id);
+      
+      console.log('Credit info loaded:', {
+        currentBalance: customer.creditBalance || 0,
+        creditLimit: customer.creditLimit || 0,
+        availableCredit: (customer.creditLimit || 0) - (customer.creditBalance || 0),
+        transactions: transactions
+      });
       
       return {
         currentBalance: customer.creditBalance || 0,
         creditLimit: customer.creditLimit || 0,
         availableCredit: (customer.creditLimit || 0) - (customer.creditBalance || 0),
-        transactions: transactions || []
+        transactions: transactions
       };
     } catch (error) {
       console.error('Error getting customer credit info:', error);
