@@ -57,8 +57,17 @@ export default function OfflineOrders() {
   const [stockLocations, setStockLocations] = useState<any[]>([]);
   
   useEffect(() => {
-    const locations = offlineStockLocationStorage.getAll();
-    setStockLocations(locations);
+    const loadStockLocations = async () => {
+      try {
+        const locations = await offlineStockLocationStorage.getAll();
+        setStockLocations(locations || []);
+      } catch (error) {
+        console.error('Error loading stock locations:', error);
+        setStockLocations([]);
+      }
+    };
+    
+    loadStockLocations();
   }, []);
 
   const [searchQuery, setSearchQuery] = useState("");
