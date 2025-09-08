@@ -53,9 +53,13 @@ export function useOfflinePurchaseOrders() {
     try {
       // Delete all order items first
       await offlinePurchaseOrderItemStorage.deleteByOrderId(id);
-      // Remove from local state
-      setOrders(prev => prev.filter(order => order.id !== id));
-      return true;
+      // Delete the order from database
+      const success = await databaseOrderStorage.delete(id);
+      if (success) {
+        // Remove from local state
+        setOrders(prev => prev.filter(order => order.id !== id));
+      }
+      return success;
     } catch (error) {
       console.error('Error deleting order:', error);
       return false;
