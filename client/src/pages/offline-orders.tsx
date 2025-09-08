@@ -45,6 +45,72 @@ import {
   DollarSign
 } from "lucide-react";
 
+// Component to display order items with async loading
+function OrderItemsDisplay({ orderId, products }: { orderId: string, products: any[] }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadItems = async () => {
+      try {
+        const orderItems = await offlinePurchaseOrderItemStorage.getByOrderId(orderId);
+        setItems(orderItems);
+      } catch (error) {
+        console.error('Error loading order items:', error);
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadItems();
+  }, [orderId]);
+
+  if (loading) {
+    return (
+      <div>
+        <h3 className="font-semibold mb-4">Order Items</h3>
+        <div className="text-sm text-gray-600">Loading order items...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h3 className="font-semibold mb-4">Order Items</h3>
+      {items.length === 0 ? (
+        <div className="text-sm text-gray-600">No items found for this order.</div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Product</TableHead>
+              <TableHead>Quantity</TableHead>
+              <TableHead>Unit Cost</TableHead>
+              <TableHead>Total</TableHead>
+              <TableHead>Received</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map(item => {
+              const product = products.find(p => p.id === item.productId);
+              return (
+                <TableRow key={item.id}>
+                  <TableCell>{product?.name || 'Unknown Product'}</TableCell>
+                  <TableCell>{item.quantity}</TableCell>
+                  <TableCell>${(item.unitCost || item.unitPrice || 0).toFixed(2)}</TableCell>
+                  <TableCell>${(item.totalCost || item.totalPrice || 0).toFixed(2)}</TableCell>
+                  <TableCell>{item.receivedQuantity || 0}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  );
+}
+
 export default function OfflineOrders() {
   const { orders, loading: ordersLoading, createOrder, updateOrder, deleteOrder, generateOrderNumber } = useOfflinePurchaseOrders();
   const { suppliers, loading: suppliersLoading } = useOfflineSuppliers();
@@ -106,17 +172,28 @@ export default function OfflineOrders() {
       const orderData = {
         orderNumber: generateOrderNumber(),
         supplierId: selectedSupplier,
+        warehouseId: selectedWarehouse,
         status: 'draft',
         notes: notes || null,
         date: new Date(),
+        orderDate: new Date(),
         total: total,
         totalAmount: total,
+        paymentMethod: paymentMethod,
+        paymentStatus: paymentMethod === 'credit' ? 'unpaid' : paidAmount >= total ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid',
+        paidAmount: paymentMethod === 'credit' ? 0 : paidAmount,
+        remainingAmount: paymentMethod === 'credit' ? total : total - paidAmount,
         items: []
       };
 
       console.log('Creating order with data:', orderData);
       const newOrder = await createOrder(orderData);
       console.log('Order created:', newOrder);
+      console.log('Order payment fields:', {
+        paymentStatus: newOrder.paymentStatus,
+        paidAmount: newOrder.paidAmount,
+        paymentMethod: newOrder.paymentMethod
+      });
 
       // Create order items for each product
       console.log('Creating order items...');
@@ -125,8 +202,11 @@ export default function OfflineOrders() {
           orderId: newOrder.id,
           productId: op.productId,
           quantity: op.quantity,
+          unitCost: op.unitCost,
           unitPrice: op.unitCost,
-          totalPrice: op.quantity * op.unitCost
+          totalCost: op.quantity * op.unitCost,
+          totalPrice: op.quantity * op.unitCost,
+          receivedQuantity: 0
         };
         console.log('Creating item:', itemData);
         await offlinePurchaseOrderItemStorage.create(itemData);
@@ -136,6 +216,8 @@ export default function OfflineOrders() {
         title: "Success",
         description: "Purchase order created successfully"
       });
+
+      // No need to force refresh anymore - database schema is fixed
 
       // Reset form
       setSelectedSupplier("");
@@ -258,7 +340,7 @@ export default function OfflineOrders() {
     setShowPaymentDialog(true);
   };
 
-  const handleMakePayment = () => {
+  const handleMakePayment = async () => {
     if (!paymentOrderId) return;
     
     try {
@@ -270,14 +352,31 @@ export default function OfflineOrders() {
       const newRemainingAmount = orderTotal - newPaidAmount;
       const newPaymentStatus = newPaidAmount >= orderTotal ? 'paid' : newPaidAmount > 0 ? 'partial' : 'unpaid';
 
+      console.log('Making payment:', {
+        orderId: paymentOrderId,
+        newPaidAmount,
+        orderTotal,
+        newPaymentStatus,
+        newRemainingAmount
+      });
+
       // Update order payment information
-      updateOrder(paymentOrderId, {
+      const success = await updateOrder(paymentOrderId, {
         paymentMethod: paymentMethod,
         paymentStatus: newPaymentStatus,
         paidAmount: newPaidAmount,
         remainingAmount: newRemainingAmount,
         paymentDate: newPaidAmount > 0 ? new Date().toISOString() : undefined
       });
+
+      if (!success) {
+        toast({
+          title: "Error",
+          description: "Failed to update payment information",
+          variant: "destructive"
+        });
+        return;
+      }
 
       // Create payment record if amount > 0
       if (newPaidAmount > (order.paidAmount || 0)) {
@@ -286,7 +385,6 @@ export default function OfflineOrders() {
           supplierId: order.supplierId || '',
           amount: paymentAmount,
           paymentMethod: paymentMethod === 'bank_check' ? 'bank_check' : paymentMethod === 'cash' ? 'cash' : 'bank_check',
-          paymentDate: new Date().toISOString(),
           notes: `Payment for order ${order.orderNumber}`
         });
       }
@@ -636,6 +734,7 @@ export default function OfflineOrders() {
                   .map(order => {
                     const supplier = suppliers.find(s => s.id === order.supplierId);
                     const warehouse = stockLocations.find((w: any) => w.id === order.warehouseId);
+                    console.log('Rendering order:', order.orderNumber, 'paymentStatus:', order.paymentStatus, 'paidAmount:', order.paidAmount);
                     return (
                       <TableRow key={order.id}>
                         <TableCell className="font-medium">{order.orderNumber}</TableCell>
@@ -760,7 +859,6 @@ export default function OfflineOrders() {
             const order = orders.find(o => o.id === viewingOrderId);
             const supplier = suppliers.find(s => s.id === order?.supplierId);
             const warehouse = stockLocations.find((w: any) => w.id === order?.warehouseId);
-            const items = offlinePurchaseOrderItemStorage.getByOrderId(viewingOrderId);
             
             if (!order) return <div>Order not found</div>;
             
@@ -798,12 +896,7 @@ export default function OfflineOrders() {
                 </div>
 
                 {/* Order Items */}
-                <div>
-                  <h3 className="font-semibold mb-4">Order Items</h3>
-                  <div className="text-sm text-gray-600">
-                    Loading order items...
-                  </div>
-                </div>
+                <OrderItemsDisplay orderId={viewingOrderId} products={products} />
 
                 {/* Order Summary */}
                 <div className="border-t pt-4">

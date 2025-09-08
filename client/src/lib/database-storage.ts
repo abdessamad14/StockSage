@@ -708,12 +708,19 @@ export const databaseOrderStorage = {
       id: o.id.toString(),
       orderNumber: o.orderNumber,
       date: new Date(o.orderDate || o.date),
+      orderDate: new Date(o.orderDate || o.date),
       supplierId: o.supplierId?.toString() || null,
+      warehouseId: o.warehouseId?.toString() || null,
       totalAmount: o.totalAmount || o.total || 0,
+      total: o.totalAmount || o.total || 0,
       status: o.status || 'pending',
       notes: o.notes || null,
+      paymentMethod: o.paymentMethod || 'credit',
+      paymentStatus: o.paymentStatus || 'unpaid',
+      paidAmount: o.paidAmount || 0,
+      remainingAmount: o.remainingAmount || o.totalAmount || o.total || 0,
       items: []
-    }));
+    } as any));
   },
 
   async create(order: Omit<OfflineOrder, 'id'>): Promise<OfflineOrder> {
@@ -722,23 +729,36 @@ export const databaseOrderStorage = {
       body: JSON.stringify({
         orderNumber: order.orderNumber,
         date: order.date,
+        orderDate: order.orderDate || order.date,
         supplierId: order.supplierId,
+        warehouseId: (order as any).warehouseId,
         totalAmount: order.totalAmount,
         status: order.status,
-        notes: order.notes
+        notes: order.notes,
+        paymentMethod: (order as any).paymentMethod,
+        paymentStatus: (order as any).paymentStatus,
+        paidAmount: (order as any).paidAmount,
+        remainingAmount: (order as any).remainingAmount
       })
     });
 
     return {
       id: created.id.toString(),
       orderNumber: created.orderNumber,
-      date: new Date(created.date),
+      date: new Date(created.date || created.orderDate),
+      orderDate: new Date(created.orderDate || created.date),
       supplierId: created.supplierId?.toString() || null,
+      warehouseId: created.warehouseId?.toString() || null,
       totalAmount: created.totalAmount || 0,
+      total: created.totalAmount || 0,
       status: created.status || 'pending',
       notes: created.notes || null,
+      paymentMethod: created.paymentMethod || 'credit',
+      paymentStatus: created.paymentStatus || 'unpaid',
+      paidAmount: created.paidAmount || 0,
+      remainingAmount: created.remainingAmount || created.totalAmount || 0,
       items: []
-    };
+    } as any;
   },
 
   async delete(id: string): Promise<boolean> {
@@ -749,6 +769,21 @@ export const databaseOrderStorage = {
       return true;
     } catch (error) {
       console.error('Error deleting order:', error);
+      return false;
+    }
+  },
+
+  async update(id: string, updates: Partial<any>): Promise<boolean> {
+    try {
+      console.log('Updating order in database:', id, updates);
+      const result = await apiCall(`/orders/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates)
+      });
+      console.log('Order update result:', result);
+      return true;
+    } catch (error) {
+      console.error('Error updating order:', error);
       return false;
     }
   }
