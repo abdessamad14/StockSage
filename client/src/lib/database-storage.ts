@@ -739,6 +739,18 @@ export const databaseOrderStorage = {
       notes: created.notes || null,
       items: []
     };
+  },
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      await apiCall(`/orders/${id}`, {
+        method: 'DELETE'
+      });
+      return true;
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      return false;
+    }
   }
 };
 

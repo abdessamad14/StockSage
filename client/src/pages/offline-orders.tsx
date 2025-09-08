@@ -223,13 +223,21 @@ export default function OfflineOrders() {
     setViewingOrderId(orderId);
   };
 
-  const handleDeleteOrder = (orderId: string) => {
+  const handleDeleteOrder = async (orderId: string) => {
     try {
-      deleteOrder(orderId);
-      toast({
-        title: "Success",
-        description: "Order deleted successfully"
-      });
+      const success = await deleteOrder(orderId);
+      if (success) {
+        toast({
+          title: "Success",
+          description: "Order deleted successfully"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete order",
+          variant: "destructive"
+        });
+      }
       setDeletingOrderId(null);
     } catch (error) {
       toast({
