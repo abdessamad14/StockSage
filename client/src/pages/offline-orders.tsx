@@ -87,40 +87,50 @@ export default function OfflineOrders() {
 
   const loading = productsLoading || suppliersLoading || ordersLoading;
 
-  const handleCreateOrder = () => {
+  const handleCreateOrder = async () => {
     try {
+      console.log('=== STARTING PURCHASE ORDER CREATION ===');
+      console.log('Selected supplier:', selectedSupplier);
+      console.log('Selected warehouse:', selectedWarehouse);
+      console.log('Order products:', orderProducts);
+      console.log('Payment method:', paymentMethod);
+      console.log('Paid amount:', paidAmount);
+
       const subtotal = orderProducts.reduce((sum, op) => sum + (op.quantity * op.unitCost), 0);
       const tax = 0; // No tax calculation for now
       const total = subtotal + tax;
 
+      console.log('Calculated totals:', { subtotal, tax, total });
+
       // Create the order
-      const newOrder = createOrder({
+      const orderData = {
         orderNumber: generateOrderNumber(),
         supplierId: selectedSupplier,
-        warehouseId: selectedWarehouse,
         status: 'draft',
-        orderDate: new Date().toISOString(),
-        subtotal,
-        tax,
-        total,
-        notes: notes || undefined,
-        paymentMethod: paymentMethod,
-        paymentStatus: paidAmount >= total ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid',
-        paidAmount: paidAmount,
-        remainingAmount: total - paidAmount
-      });
+        notes: notes || null,
+        date: new Date(),
+        total: total,
+        totalAmount: total,
+        items: []
+      };
+
+      console.log('Creating order with data:', orderData);
+      const newOrder = await createOrder(orderData);
+      console.log('Order created:', newOrder);
 
       // Create order items for each product
-      orderProducts.forEach(op => {
-        offlinePurchaseOrderItemStorage.create({
+      console.log('Creating order items...');
+      for (const op of orderProducts) {
+        const itemData = {
           orderId: newOrder.id,
           productId: op.productId,
           quantity: op.quantity,
-          unitCost: op.unitCost,
-          totalCost: op.quantity * op.unitCost,
-          receivedQuantity: 0
-        });
-      });
+          unitPrice: op.unitCost,
+          totalPrice: op.quantity * op.unitCost
+        };
+        console.log('Creating item:', itemData);
+        await offlinePurchaseOrderItemStorage.create(itemData);
+      }
 
       toast({
         title: "Success",
@@ -135,34 +145,37 @@ export default function OfflineOrders() {
       setPaymentMethod('credit');
       setPaidAmount(0);
       setIsCreateOrderOpen(false);
+
+      console.log('=== PURCHASE ORDER CREATION COMPLETED ===');
     } catch (error) {
+      console.error('Purchase order creation error:', error);
       toast({
         title: "Error",
-        description: "Failed to create purchase order",
+        description: `Failed to create purchase order: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive"
       });
     }
   };
 
-  const handleReceiveOrder = (orderId: string) => {
+  const handleReceiveOrder = async (orderId: string) => {
     try {
       const order = orders.find(o => o.id === orderId);
       if (!order) return;
 
       // Get order items from storage
-      const orderItems = offlinePurchaseOrderItemStorage.getByOrderId(orderId);
+      const orderItems = await offlinePurchaseOrderItemStorage.getByOrderId(orderId);
       
       // Update stock quantities for each item and record transactions
-      orderItems.forEach((item: any) => {
-        const currentStock = offlineProductStockStorage.getByProductAndLocation(item.productId, order.warehouseId);
+      for (const item of orderItems) {
+        const currentStock = await offlineProductStockStorage.getByProductAndLocation(item.productId, order.supplierId || 'default');
         const previousQuantity = currentStock?.quantity || 0;
-        const receivedQuantity = item.receivedQuantity || item.quantity;
+        const receivedQuantity = (item as any).receivedQuantity || item.quantity;
         const newQuantity = previousQuantity + receivedQuantity;
         
         // Update stock
         offlineProductStockStorage.upsert({
           productId: item.productId,
-          locationId: order.warehouseId,
+          locationId: order.warehouseId || 'default',
           quantity: newQuantity,
           minStockLevel: 0
         });
@@ -170,16 +183,15 @@ export default function OfflineOrders() {
         // Record stock transaction
         createTransaction({
           productId: item.productId,
-          warehouseId: order.warehouseId,
-          type: 'purchase',
+          warehouseId: order.warehouseId || 'default',
+          type: 'entry',
           quantity: receivedQuantity,
           previousQuantity,
           newQuantity,
           reason: 'Purchase Order Received',
-          reference: order.orderNumber,
-          relatedId: orderId
+          reference: order.orderNumber
         });
-      });
+      }
 
       // Update order status
       updateOrder(orderId, { 
@@ -190,7 +202,7 @@ export default function OfflineOrders() {
       // Update remaining amount calculation
       const updatedOrder = orders.find(o => o.id === orderId);
       if (updatedOrder) {
-        const remainingAmount = updatedOrder.total - (updatedOrder.paidAmount || 0);
+        const remainingAmount = (updatedOrder.total || updatedOrder.totalAmount || 0) - (updatedOrder.paidAmount || 0);
         updateOrder(orderId, { remainingAmount });
       }
 
@@ -233,7 +245,7 @@ export default function OfflineOrders() {
     const order = orders.find(o => o.id === orderId);
     if (order) {
       setPaidAmount(order.paidAmount || 0);
-      setPaymentMethod(order.paymentMethod || 'credit');
+      setPaymentMethod((order.paymentMethod as 'cash' | 'credit' | 'bank_check') || 'credit');
     }
     setShowPaymentDialog(true);
   };
@@ -246,8 +258,9 @@ export default function OfflineOrders() {
       if (!order) return;
 
       const newPaidAmount = paidAmount;
-      const newRemainingAmount = order.total - newPaidAmount;
-      const newPaymentStatus = newPaidAmount >= order.total ? 'paid' : newPaidAmount > 0 ? 'partial' : 'unpaid';
+      const orderTotal = order.total || order.totalAmount || 0;
+      const newRemainingAmount = orderTotal - newPaidAmount;
+      const newPaymentStatus = newPaidAmount >= orderTotal ? 'paid' : newPaidAmount > 0 ? 'partial' : 'unpaid';
 
       // Update order payment information
       updateOrder(paymentOrderId, {
@@ -262,10 +275,9 @@ export default function OfflineOrders() {
       if (newPaidAmount > (order.paidAmount || 0)) {
         const paymentAmount = newPaidAmount - (order.paidAmount || 0);
         offlineSupplierPaymentStorage.create({
-          supplierId: order.supplierId,
-          orderId: order.id,
+          supplierId: order.supplierId || '',
           amount: paymentAmount,
-          paymentMethod: paymentMethod === 'bank_check' ? 'bank_check' : paymentMethod === 'cash' ? 'cash' : 'bank_transfer',
+          paymentMethod: paymentMethod === 'bank_check' ? 'bank_check' : paymentMethod === 'cash' ? 'cash' : 'bank_check',
           paymentDate: new Date().toISOString(),
           notes: `Payment for order ${order.orderNumber}`
         });
@@ -620,7 +632,7 @@ export default function OfflineOrders() {
                       <TableRow key={order.id}>
                         <TableCell className="font-medium">{order.orderNumber}</TableCell>
                         <TableCell>{supplier?.name || 'Unknown Supplier'}</TableCell>
-                        <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}</TableCell>
                         <TableCell>
                           <div className="space-y-1">
                             <Badge 
@@ -642,7 +654,7 @@ export default function OfflineOrders() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="space-y-1">
-                            <div>${order.total.toFixed(2)}</div>
+                            <div>${(order.total || order.totalAmount || 0).toFixed(2)}</div>
                             {(order.paymentStatus || 'unpaid') !== 'unpaid' && (
                               <div className="text-xs text-green-600">
                                 Paid: ${(order.paidAmount || 0).toFixed(2)}
@@ -759,9 +771,9 @@ export default function OfflineOrders() {
                           {order.status}
                         </Badge>
                       </div>
-                      <div><span className="text-gray-600">Order Date:</span> {new Date(order.orderDate).toLocaleDateString()}</div>
+                      <div><span className="text-gray-600">Order Date:</span> {order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}</div>
                       {order.receivedDate && (
-                        <div><span className="text-gray-600">Received Date:</span> {new Date(order.receivedDate).toLocaleDateString()}</div>
+                        <div><span className="text-gray-600">Received Date:</span> {order.receivedDate ? new Date(order.receivedDate).toLocaleDateString() : 'N/A'}</div>
                       )}
                     </div>
                   </div>
@@ -780,38 +792,16 @@ export default function OfflineOrders() {
                 {/* Order Items */}
                 <div>
                   <h3 className="font-semibold mb-4">Order Items</h3>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Unit Cost</TableHead>
-                        <TableHead>Total</TableHead>
-                        <TableHead>Received</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map(item => {
-                        const product = products.find(p => p.id === item.productId);
-                        return (
-                          <TableRow key={item.id}>
-                            <TableCell>{product?.name || 'Unknown Product'}</TableCell>
-                            <TableCell>{item.quantity}</TableCell>
-                            <TableCell>${item.unitCost.toFixed(2)}</TableCell>
-                            <TableCell>${item.totalCost.toFixed(2)}</TableCell>
-                            <TableCell>{item.receivedQuantity}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                  <div className="text-sm text-gray-600">
+                    Loading order items...
+                  </div>
                 </div>
 
                 {/* Order Summary */}
                 <div className="border-t pt-4">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total Amount:</span>
-                    <span className="text-xl font-bold">${order.total.toFixed(2)}</span>
+                    <span className="text-xl font-bold">${(order.total || order.totalAmount || 0).toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -836,9 +826,9 @@ export default function OfflineOrders() {
                   <div className="bg-gray-50 p-3 rounded-lg">
                     <div className="text-sm space-y-1">
                       <div><span className="font-medium">Order:</span> {order.orderNumber}</div>
-                      <div><span className="font-medium">Total:</span> ${order.total.toFixed(2)}</div>
+                      <div><span className="font-medium">Total:</span> ${(order.total || order.totalAmount || 0).toFixed(2)}</div>
                       <div><span className="font-medium">Paid:</span> ${(order.paidAmount || 0).toFixed(2)}</div>
-                      <div><span className="font-medium">Due:</span> ${(order.remainingAmount || 0).toFixed(2)}</div>
+                      <div><span className="font-medium">Due:</span> ${(order.remainingAmount || ((order.total || order.totalAmount || 0) - (order.paidAmount || 0))).toFixed(2)}</div>
                     </div>
                   </div>
 
@@ -861,7 +851,7 @@ export default function OfflineOrders() {
                       id="paymentAmount"
                       type="number"
                       min="0"
-                      max={order.total - (order.paidAmount || 0)}
+                      max={(order.total || order.totalAmount || 0) - (order.paidAmount || 0)}
                       step="0.01"
                       value={paidAmount}
                       onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
@@ -871,7 +861,7 @@ export default function OfflineOrders() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => setPaidAmount(order.total - (order.paidAmount || 0))}
+                        onClick={() => setPaidAmount((order.total || order.totalAmount || 0) - (order.paidAmount || 0))}
                       >
                         Pay Full Amount
                       </Button>
@@ -884,7 +874,7 @@ export default function OfflineOrders() {
                     </Button>
                     <Button 
                       onClick={handleMakePayment}
-                      disabled={paidAmount <= 0 || paidAmount > order.remainingAmount}
+                      disabled={paidAmount <= 0 || paidAmount > (order.remainingAmount || ((order.total || order.totalAmount || 0) - (order.paidAmount || 0)))}
                     >
                       Record Payment
                     </Button>
