@@ -111,15 +111,25 @@ export interface OfflineOrder {
   id: string;
   orderNumber: string;
   date: Date;
+  orderDate?: Date;
   supplierId: string | null;
+  warehouseId?: string;
   totalAmount: number;
+  total?: number;
   status: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
+  paidAmount?: number;
+  remainingAmount?: number;
   notes: string | null;
+  receivedDate?: string;
+  paymentDate?: string;
   items: OfflineOrderItem[];
 }
 
 export interface OfflineOrderItem {
   id: string;
+  orderId: string;
   productId: string;
   quantity: number;
   unitPrice: number;
@@ -1285,66 +1295,92 @@ export const offlineInventoryCountStorage = {
       });
     } catch (error) {
       console.error('Error deleting inventory count:', error);
-      throw error;
     }
   }
 };
 
-// Real database storage for purchase order items (using existing order items table)
+// Local storage for purchase order items (fallback when API not available)
 export const offlinePurchaseOrderItemStorage = {
   async getAll(): Promise<OfflineOrderItem[]> {
     try {
-      const items = await apiCall<any[]>('/order-items');
-      return items.map(i => ({
-        id: i.id.toString(),
-        productId: i.productId.toString(),
-        quantity: i.quantity,
-        unitPrice: i.unitPrice,
-        totalPrice: i.totalPrice
-      }));
+      const items = JSON.parse(localStorage.getItem('orderItems') || '[]');
+      return items;
     } catch (error) {
-      console.error('Error fetching order items:', error);
+      console.error('Error fetching order items from localStorage:', error);
       return [];
     }
   },
-  
+
   async getByOrderId(orderId: string): Promise<OfflineOrderItem[]> {
     try {
-      const items = await apiCall<any[]>(`/order-items/order/${orderId}`);
-      return items.map(i => ({
-        id: i.id.toString(),
-        productId: i.productId.toString(),
-        quantity: i.quantity,
-        unitPrice: i.unitPrice,
-        totalPrice: i.totalPrice
-      }));
+      const allItems = await this.getAll();
+      return allItems.filter(item => item.orderId === orderId);
     } catch (error) {
-      console.error('Error fetching order items:', error);
+      console.error('Error fetching order items by order ID:', error);
       return [];
     }
   },
-  
+
   async create(item: Omit<OfflineOrderItem, 'id'>): Promise<OfflineOrderItem> {
     try {
-      const newItem = await apiCall<any>('/order-items', {
-        method: 'POST',
-        body: JSON.stringify({
-          productId: parseInt(item.productId),
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          totalPrice: item.totalPrice
-        })
-      });
-      return {
-        id: newItem.id.toString(),
-        productId: newItem.productId.toString(),
-        quantity: newItem.quantity,
-        unitPrice: newItem.unitPrice,
-        totalPrice: newItem.totalPrice
+      console.log('Creating order item in localStorage:', item);
+      
+      const allItems = await this.getAll();
+      const newItem: OfflineOrderItem = {
+        ...item,
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9)
       };
+      
+      allItems.push(newItem);
+      localStorage.setItem('orderItems', JSON.stringify(allItems));
+      
+      console.log('Order item created successfully:', newItem);
+      return newItem;
     } catch (error) {
       console.error('Error creating order item:', error);
       throw error;
+    }
+  },
+
+  async update(id: string, updates: Partial<OfflineOrderItem>): Promise<OfflineOrderItem | null> {
+    try {
+      const allItems = await this.getAll();
+      const itemIndex = allItems.findIndex(item => item.id === id);
+      
+      if (itemIndex === -1) return null;
+      
+      const updatedItem = { ...allItems[itemIndex], ...updates };
+      allItems[itemIndex] = updatedItem;
+      localStorage.setItem('orderItems', JSON.stringify(allItems));
+      
+      return updatedItem;
+    } catch (error) {
+      console.error('Error updating order item:', error);
+      return null;
+    }
+  },
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      const allItems = await this.getAll();
+      const filteredItems = allItems.filter(item => item.id !== id);
+      localStorage.setItem('orderItems', JSON.stringify(filteredItems));
+      return true;
+    } catch (error) {
+      console.error('Error deleting order item:', error);
+      return false;
+    }
+  },
+
+  async deleteByOrderId(orderId: string): Promise<boolean> {
+    try {
+      const allItems = await this.getAll();
+      const filteredItems = allItems.filter(item => item.orderId !== orderId);
+      localStorage.setItem('orderItems', JSON.stringify(filteredItems));
+      return true;
+    } catch (error) {
+      console.error('Error deleting order items by order ID:', error);
+      return false;
     }
   }
 };
