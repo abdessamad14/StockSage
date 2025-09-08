@@ -39,14 +39,28 @@ export function useOfflinePurchaseOrders() {
 
   const createOrder = async (orderData: Omit<OfflineOrder, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newOrder = await databaseOrderStorage.create(orderData);
-    setOrders(prev => [...prev, newOrder]);
+    console.log('Adding new order to local state:', newOrder);
+    setOrders(prev => {
+      const updated = [...prev, newOrder];
+      console.log('Updated orders state:', updated);
+      return updated;
+    });
     return newOrder;
   };
 
   const updateOrder = async (id: string, updates: Partial<OfflineOrder>) => {
-    // For now, we'll just update the local state since we don't have an update method
-    setOrders(prev => prev.map(order => order.id === id ? { ...order, ...updates } : order));
-    return true;
+    try {
+      // Update in database first
+      const success = await databaseOrderStorage.update(id, updates);
+      if (success) {
+        // Then update local state
+        setOrders(prev => prev.map(order => order.id === id ? { ...order, ...updates } : order));
+      }
+      return success;
+    } catch (error) {
+      console.error('Error updating order:', error);
+      return false;
+    }
   };
 
   const deleteOrder = async (id: string) => {

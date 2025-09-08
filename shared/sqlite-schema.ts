@@ -106,9 +106,16 @@ export const orders = sqliteTable("orders", {
   tenantId: text("tenant_id").notNull(),
   orderNumber: text("order_number").notNull(),
   date: text("date").notNull().default("CURRENT_TIMESTAMP"),
+  orderDate: text("order_date"),
   supplierId: integer("supplier_id").references(() => suppliers.id),
+  warehouseId: integer("warehouse_id"),
   totalAmount: real("total_amount").notNull(),
   status: text("status").notNull().default("pending"), // pending, received, cancelled
+  paymentStatus: text("payment_status").default("unpaid"), // unpaid, partial, paid
+  paymentMethod: text("payment_method"), // cash, credit, bank_check
+  paidAmount: real("paid_amount").default(0),
+  remainingAmount: real("remaining_amount"),
+  paymentDate: text("payment_date"),
   notes: text("notes"),
   createdBy: integer("created_by").references(() => users.id),
 });
