@@ -877,6 +877,7 @@ export interface OfflineCategory {
   id: string;
   name: string;
   description?: string;
+  image?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -909,6 +910,7 @@ export const offlineCategoryStorage = {
         id: c.id.toString(),
         name: c.name,
         description: c.description,
+        image: c.image,
         createdAt: c.createdAt,
         updatedAt: c.updatedAt
       }));
@@ -928,6 +930,7 @@ export const offlineCategoryStorage = {
         id: newCategory.id.toString(),
         name: newCategory.name,
         description: newCategory.description,
+        image: newCategory.image,
         createdAt: newCategory.createdAt,
         updatedAt: newCategory.updatedAt
       };
@@ -947,6 +950,7 @@ export const offlineCategoryStorage = {
         id: updatedCategory.id.toString(),
         name: updatedCategory.name,
         description: updatedCategory.description,
+        image: updatedCategory.image,
         createdAt: updatedCategory.createdAt,
         updatedAt: updatedCategory.updatedAt
       };

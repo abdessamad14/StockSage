@@ -105,6 +105,36 @@ export default function OfflinePOS() {
         setCategories(categoriesData);
         setStockLocations(stockLocationsData);
         
+        // Debug logging
+        console.log('Loaded products:', productsData.length);
+        console.log('Loaded categories:', categoriesData);
+        console.log('Sample product categoryIds:', productsData.slice(0, 3).map(p => ({ name: p.name, categoryId: p.categoryId })));
+        
+        // Fix products without categoryId by assigning them to first available category
+        if (categoriesData.length > 0) {
+          const defaultCategoryId = categoriesData[0].id;
+          const updatedProducts = productsData.map(product => ({
+            ...product,
+            categoryId: product.categoryId || defaultCategoryId
+          }));
+          setProducts(updatedProducts);
+          
+          // Update products in database with category IDs
+          for (const product of productsData) {
+            if (!product.categoryId) {
+              try {
+                await databaseProductStorage.update(product.id, {
+                  categoryId: defaultCategoryId
+                });
+              } catch (error) {
+                console.error('Error updating product category:', error);
+              }
+            }
+          }
+        } else {
+          setProducts(productsData);
+        }
+        
         // Load sales period data
         await loadSalesPeriodData();
         
@@ -154,6 +184,12 @@ export default function OfflinePOS() {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.barcode?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || product.categoryId === selectedCategory;
+    
+    // Debug logging
+    if (selectedCategory !== 'all') {
+      console.log('Filtering - Product:', product.name, 'CategoryId:', product.categoryId, 'Selected:', selectedCategory, 'Matches:', matchesCategory);
+    }
+    
     return matchesSearch && matchesCategory;
   });
 
@@ -822,31 +858,56 @@ export default function OfflinePOS() {
         </div>
         
         {/* Horizontal Categories */}
-        <div className="bg-white border-b p-2">
-          <div className="flex space-x-2 overflow-x-auto">
-            <Button
+        <div className="bg-white border-b p-4">
+          <div className="flex space-x-6 overflow-x-auto pb-2">
+            <div
               onClick={() => setSelectedCategory('all')}
-              className={`px-6 py-3 rounded-lg font-semibold whitespace-nowrap ${
-                selectedCategory === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
+              className="flex flex-col items-center space-y-2 cursor-pointer min-w-[60px]"
             >
-              🍽️ TOUS
-            </Button>
-            {categories.map(category => (
-              <Button
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm ${
+                selectedCategory === 'all' ? 'bg-blue-500' : 'bg-gray-100'
+              }`}>
+                <span className={`text-2xl ${selectedCategory === 'all' ? 'text-white' : 'text-gray-600'}`}>🍽️</span>
+              </div>
+              <span className={`text-xs font-medium ${
+                selectedCategory === 'all' ? 'text-blue-600' : 'text-gray-600'
+              }`}>TOUS</span>
+            </div>
+            {categories.map(category => {
+              console.log('Category:', category.name, 'Has image:', !!category.image, 'Image length:', category.image?.length);
+              return (
+              <div
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
-                className={`px-6 py-3 rounded-lg font-semibold whitespace-nowrap ${
-                  selectedCategory === category.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+                className="flex flex-col items-center space-y-2 cursor-pointer min-w-[60px]"
               >
-                🏷️ {category.name.toUpperCase()}
-              </Button>
-            ))}
+                {category.image && category.image.trim() !== '' ? (
+                  <div className={`w-14 h-14 rounded-full overflow-hidden shadow-sm ${
+                    selectedCategory === category.id ? 'ring-2 ring-blue-500' : ''
+                  }`}>
+                    <img 
+                      src={decodeURIComponent(category.image)} 
+                      alt={category.name}
+                      className="w-full h-full object-cover"
+                      onLoad={() => console.log('Image loaded for', category.name)}
+                      onError={(e) => console.log('Image error for', category.name, e)}
+                    />
+                  </div>
+                ) : (
+                  <div 
+                    className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm ${
+                      selectedCategory === category.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    <span className="text-2xl">🏷️</span>
+                  </div>
+                )}
+                <span className={`text-xs font-medium text-center ${
+                  selectedCategory === category.id ? 'text-blue-600' : 'text-gray-600'
+                }`}>{category.name.toUpperCase()}</span>
+              </div>
+              );
+            })}
           </div>
         </div>
 
@@ -865,10 +926,20 @@ export default function OfflinePOS() {
                 <div
                   key={product.id}
                   onClick={() => addToCart(product)}
-                  className={`${bgColor} text-white rounded-xl p-4 cursor-pointer hover:shadow-lg transform hover:scale-105 transition-all duration-200 active:scale-95`}
+                  className={`${bgColor} text-white rounded-xl p-4 cursor-pointer hover:shadow-lg transform hover:scale-105 transition-all duration-200 active:scale-95 relative overflow-hidden`}
                 >
                   <div className="text-center">
-                    <div className="text-3xl mb-2">🍽️</div>
+                    {product.image ? (
+                      <div className="mb-2 relative">
+                        <img 
+                          src={product.image} 
+                          alt={product.name}
+                          className="w-full h-16 object-cover rounded-lg mx-auto"
+                        />
+                      </div>
+                    ) : (
+                      <div className="text-3xl mb-2">🍽️</div>
+                    )}
                     <h3 className="font-bold text-sm mb-2 line-clamp-2">
                       {product.name}
                     </h3>

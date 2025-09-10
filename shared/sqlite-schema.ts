@@ -23,7 +23,9 @@ export const productCategories = sqliteTable("product_categories", {
   tenantId: text("tenant_id").notNull(),
   name: text("name").notNull(),
   description: text("description"),
-  color: text("color").default("#A7C7E7"),
+  image: text("image"),
+  createdAt: text("created_at"),
+  updatedAt: text("updated_at"),
   parent_id: integer("parent_id"),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
 });
