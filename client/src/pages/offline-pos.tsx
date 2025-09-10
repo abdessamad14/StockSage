@@ -281,8 +281,8 @@ export default function OfflinePOS() {
     ? (subtotal * discountAmount / 100)
     : discountAmount;
   const subtotalAfterDiscount = Math.max(0, subtotal - discountValue);
-  const tax = subtotalAfterDiscount * 0.2; // 20% TVA for Morocco
-  const total = subtotalAfterDiscount + tax;
+  const tax = 0; // No tax
+  const total = subtotalAfterDiscount;
   const change = paidAmount - total;
 
   // Print thermal receipt
@@ -592,10 +592,6 @@ export default function OfflinePOS() {
                       <span>-{discountValue.toFixed(2)} DH</span>
                     </div>
                   )}
-                  <div className="flex justify-between">
-                    <span>TVA (20%):</span>
-                    <span>{tax.toFixed(2)} DH</span>
-                  </div>
                   <div className="flex justify-between font-bold text-lg border-t pt-1">
                     <span>TOTAL:</span>
                     <span>{total.toFixed(2)} DH</span>
