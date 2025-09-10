@@ -512,15 +512,15 @@ export default function OfflinePOS() {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Left Panel - Thermal Printer Receipt */}
-      <div className="w-96 bg-white border-r-2 border-gray-300 flex flex-col">
+      <div className="w-96 bg-white border-r-2 border-gray-300 flex flex-col h-screen">
         {/* Receipt Header */}
-        <div className="bg-blue-600 text-white p-4">
+        <div className="bg-blue-600 text-white p-4 flex-shrink-0">
           <h2 className="text-lg font-bold">TICKET DE CAISSE</h2>
           <div className="text-sm opacity-90">#{new Date().getTime().toString().slice(-6)}</div>
         </div>
 
-        {/* Receipt Content */}
-        <div className="flex-1 p-4 bg-gray-50 font-mono text-sm overflow-y-auto">
+        {/* Receipt Content - Scrollable */}
+        <div className="p-4 bg-gray-50 font-mono text-sm overflow-y-auto" style={{height: 'calc(100vh - 160px - 380px)'}}>
           <div className="bg-white p-4 rounded shadow-sm">
             <div className="text-center border-b pb-2 mb-4">
               <div className="font-bold">STOCKSAGE POS</div>
@@ -565,8 +565,8 @@ export default function OfflinePOS() {
             </div>
             
             {cart.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
-                <Receipt className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <div className="text-center text-gray-400 py-4">
+                <Receipt className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>Aucun article</p>
               </div>
             ) : (
@@ -606,8 +606,8 @@ export default function OfflinePOS() {
           </div>
         </div>
         
-        {/* Action Buttons */}
-        <div className="p-4 bg-white border-t">
+        {/* Action Buttons - Fixed at bottom with specific height */}
+        <div className="bg-white border-t flex-shrink-0" style={{height: '380px', padding: '16px'}}>
           <div className="grid grid-cols-2 gap-2 mb-3">
             <Button
               onClick={() => {
