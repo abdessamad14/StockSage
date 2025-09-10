@@ -37,7 +37,8 @@ const productSchema = z.object({
 
 const categorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
-  description: z.string().optional()
+  description: z.string().optional(),
+  image: z.string().optional()
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -58,6 +59,7 @@ export default function OfflineProducts() {
   const [editingCategory, setEditingCategory] = useState<OfflineCategory | null>(null);
   const [categories, setCategories] = useState<OfflineCategory[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedCategoryImage, setSelectedCategoryImage] = useState<string | null>(null);
   const [barcodeBuffer, setBarcodeBuffer] = useState('');
   const [lastKeyTime, setLastKeyTime] = useState(0);
 
@@ -112,6 +114,44 @@ export default function OfflineProducts() {
     productForm.setValue('image', '');
   };
 
+  const handleCategoryImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "Image size must be less than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error", 
+        description: "Please select a valid image file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      setSelectedCategoryImage(base64);
+      categoryForm.setValue('image', base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeCategoryImage = () => {
+    setSelectedCategoryImage(null);
+    categoryForm.setValue('image', '');
+  };
+
   const productForm = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -133,7 +173,8 @@ export default function OfflineProducts() {
     resolver: zodResolver(categorySchema),
     defaultValues: {
       name: "",
-      description: ""
+      description: "",
+      image: ""
     }
   });
 
@@ -356,7 +397,11 @@ export default function OfflineProducts() {
   const handleUpdateCategory = async (data: CategoryFormData) => {
     if (!editingCategory) return;
     try {
-      await offlineCategoryStorage.update(editingCategory.id, data);
+      await offlineCategoryStorage.update(editingCategory.id, {
+        name: data.name,
+        description: data.description || undefined,
+        image: selectedCategoryImage || undefined
+      });
       const updatedCategories = await offlineCategoryStorage.getAll();
       setCategories(updatedCategories);
       toast({
@@ -366,6 +411,7 @@ export default function OfflineProducts() {
       setIsCategoryDialogOpen(false);
       setEditingCategory(null);
       categoryForm.reset();
+      setSelectedCategoryImage(null);
     } catch (error) {
       toast({
         title: "Error",
@@ -375,23 +421,32 @@ export default function OfflineProducts() {
     }
   };
 
-
   const handleCreateCategory = async (data: CategoryFormData) => {
     try {
-      const newCategory = await offlineCategoryStorage.create(data);
-      const updatedCategories = await offlineCategoryStorage.getAll();
-      setCategories(updatedCategories);
-      toast({
-        title: "Success",
-        description: "Category created successfully"
+      await offlineCategoryStorage.create({
+        name: data.name,
+        description: data.description || undefined,
+        image: selectedCategoryImage || undefined
       });
+      
+      // Reload categories
+      const categoriesData = await offlineCategoryStorage.getAll();
+      setCategories(categoriesData);
+      
       setIsCategoryDialogOpen(false);
       categoryForm.reset();
+      setSelectedCategoryImage(null);
+      
+      toast({
+        title: "Success",
+        description: "Category created successfully",
+      });
     } catch (error) {
+      console.error('Error creating category:', error);
       toast({
         title: "Error",
         description: "Failed to create category",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -426,12 +481,15 @@ export default function OfflineProducts() {
   const openCategoryDialog = (category?: OfflineCategory) => {
     if (category) {
       setEditingCategory(category);
+      setSelectedCategoryImage(category.image || null);
       categoryForm.reset({
         name: category.name,
-        description: category.description || ""
+        description: category.description || "",
+        image: category.image || ""
       });
     } else {
       setEditingCategory(null);
+      setSelectedCategoryImage(null);
       categoryForm.reset();
     }
     setIsCategoryDialogOpen(true);
@@ -561,11 +619,20 @@ export default function OfflineProducts() {
               <Card key={category.id}>
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-4 h-4 rounded-full" 
-                        style={{ backgroundColor: '#3B82F6' }}
-                      />
+                    <div className="flex items-center gap-3">
+                      {category.image ? (
+                        <img 
+                          src={category.image} 
+                          alt={category.name}
+                          className="w-10 h-10 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div 
+                          className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center" 
+                        >
+                          <Tag className="w-5 h-5 text-white" />
+                        </div>
+                      )}
                       <CardTitle className="text-lg">{category.name}</CardTitle>
                     </div>
                     <div className="flex gap-1">
@@ -924,6 +991,70 @@ export default function OfflineProducts() {
                 )}
               />
 
+              {/* Category Image Upload */}
+              <FormField
+                control={categoryForm.control}
+                name="image"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category Image</FormLabel>
+                    <FormControl>
+                      <div className="space-y-4">
+                        {selectedCategoryImage ? (
+                          <div className="relative">
+                            <img 
+                              src={selectedCategoryImage} 
+                              alt="Category preview"
+                              className="w-32 h-32 object-cover rounded-lg border"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-2 right-2"
+                              onClick={removeCategoryImage}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                            <Image className="mx-auto h-12 w-12 text-gray-400" />
+                            <div className="mt-2">
+                              <label htmlFor="category-image-upload" className="cursor-pointer">
+                                <span className="mt-2 block text-sm font-medium text-gray-900">
+                                  Upload category image
+                                </span>
+                                <span className="mt-1 block text-xs text-gray-500">
+                                  PNG, JPG, GIF up to 5MB
+                                </span>
+                              </label>
+                              <input
+                                id="category-image-upload"
+                                type="file"
+                                accept="image/*"
+                                onChange={handleCategoryImageUpload}
+                                className="hidden"
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => document.getElementById('category-image-upload')?.click()}
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              Choose Image
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsCategoryDialogOpen(false)}>

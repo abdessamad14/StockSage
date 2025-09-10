@@ -966,9 +966,14 @@ router.get('/categories', async (req, res) => {
 
 router.post('/categories', async (req, res) => {
   try {
+    const now = new Date().toISOString();
     const newCategory = await db.insert(productCategories).values({
       tenantId: 'default',
-      ...req.body
+      name: req.body.name,
+      description: req.body.description || null,
+      image: req.body.image || null,
+      createdAt: now,
+      updatedAt: now
     }).returning();
     res.json(newCategory[0]);
   } catch (error) {
@@ -981,7 +986,12 @@ router.put('/categories/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const updatedCategory = await db.update(productCategories)
-      .set(req.body)
+      .set({
+        name: req.body.name,
+        description: req.body.description || null,
+        image: req.body.image || null,
+        updatedAt: new Date().toISOString()
+      })
       .where(eq(productCategories.id, parseInt(id)))
       .returning();
     
