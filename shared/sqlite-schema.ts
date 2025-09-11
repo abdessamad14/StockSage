@@ -7,6 +7,7 @@ export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  pin: text("pin"), // 4-digit PIN for POS login
   name: text("name").notNull(),
   businessName: text("business_name").notNull(),
   email: text("email"),

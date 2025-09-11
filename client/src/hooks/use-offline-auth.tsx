@@ -1,13 +1,13 @@
 import { createContext, ReactNode, useContext, useState, useEffect } from "react";
-import { offlineAuthHelpers, OfflineUser } from "@/lib/offline-auth";
+import { databaseUserStorage } from "@/lib/database-user-storage";
+import { OfflineUser } from "@/lib/user-storage";
 import { useToast } from "@/hooks/use-toast";
 
 type OfflineAuthContextType = {
   user: OfflineUser | null;
   isLoading: boolean;
-  login: (username: string, password?: string) => Promise<boolean>;
+  login: (user: OfflineUser) => void;
   logout: () => void;
-  register: (userData: Omit<OfflineUser, 'id'>) => Promise<OfflineUser>;
   canUsePOS: boolean;
   canManageProducts: boolean;
   canManageCustomers: boolean;
@@ -25,65 +25,56 @@ export function OfflineAuthProvider({ children }: { children: ReactNode }) {
 
   // Load user on mount
   useEffect(() => {
-    const currentUser = offlineAuthHelpers.getCurrentUser();
-    setUser(currentUser);
+    console.log('Loading user session...');
+    const session = databaseUserStorage.getCurrentSession();
+    console.log('Current session:', session);
+    if (session) {
+      console.log('Setting user:', session.user);
+      setUser(session.user);
+    } else {
+      console.log('No valid session found');
+    }
     setIsLoading(false);
+    console.log('Auth loading complete');
   }, []);
 
-  const login = async (username: string, password?: string): Promise<boolean> => {
-    try {
-      const loggedInUser = offlineAuthHelpers.login(username, password);
-      if (loggedInUser) {
-        setUser(loggedInUser);
-        toast({
-          title: "Login successful",
-          description: `Welcome back, ${loggedInUser.name}!`,
-        });
-        return true;
-      } else {
-        toast({
-          title: "Login failed",
-          description: "Invalid username. Try: admin, manager, or cashier",
-          variant: "destructive",
-        });
-        return false;
-      }
-    } catch (error) {
-      toast({
-        title: "Login failed",
-        description: "An error occurred during login",
-        variant: "destructive",
-      });
-      return false;
-    }
+  const login = (loggedInUser: OfflineUser) => {
+    setUser(loggedInUser);
+    databaseUserStorage.createSession(loggedInUser);
   };
 
   const logout = () => {
-    offlineAuthHelpers.logout();
+    databaseUserStorage.clearSession();
     setUser(null);
     toast({
-      title: "Logged out",
-      description: "You have been successfully logged out",
+      title: "Déconnexion",
+      description: "Vous avez été déconnecté avec succès",
     });
   };
 
-  const register = async (userData: Omit<OfflineUser, 'id'>): Promise<OfflineUser> => {
-    try {
-      const newUser = offlineAuthHelpers.register(userData);
-      setUser(newUser);
-      toast({
-        title: "Registration successful",
-        description: `Welcome, ${newUser.name}!`,
-      });
-      return newUser;
-    } catch (error) {
-      toast({
-        title: "Registration failed",
-        description: "An error occurred during registration",
-        variant: "destructive",
-      });
-      throw error;
-    }
+  // Permission helpers
+  const canUsePOS = (user: OfflineUser | null): boolean => {
+    return user !== null && user.active;
+  };
+
+  const canManageProducts = (user: OfflineUser | null): boolean => {
+    return user !== null && user.active;
+  };
+
+  const canManageCustomers = (user: OfflineUser | null): boolean => {
+    return user !== null && user.active;
+  };
+
+  const canManageSuppliers = (user: OfflineUser | null): boolean => {
+    return user !== null && user.active;
+  };
+
+  const canViewReports = (user: OfflineUser | null): boolean => {
+    return user !== null && user.active;
+  };
+
+  const canManageUsers = (user: OfflineUser | null): boolean => {
+    return user !== null && user.active && user.role === 'admin';
   };
 
   return (
@@ -93,13 +84,12 @@ export function OfflineAuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         logout,
-        register,
-        canUsePOS: offlineAuthHelpers.canUsePOS(user),
-        canManageProducts: offlineAuthHelpers.canManageProducts(user),
-        canManageCustomers: offlineAuthHelpers.canManageCustomers(user),
-        canManageSuppliers: offlineAuthHelpers.canManageSuppliers(user),
-        canViewReports: offlineAuthHelpers.canViewReports(user),
-        canManageUsers: offlineAuthHelpers.canManageUsers(user),
+        canUsePOS: canUsePOS(user),
+        canManageProducts: canManageProducts(user),
+        canManageCustomers: canManageCustomers(user),
+        canManageSuppliers: canManageSuppliers(user),
+        canViewReports: canViewReports(user),
+        canManageUsers: canManageUsers(user),
       }}
     >
       {children}

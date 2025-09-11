@@ -1,6 +1,7 @@
 import { useI18n } from '@/lib/i18n';
 import { Link, useLocation } from 'wouter';
 import { useOfflineSettings } from '@/hooks/use-offline-settings';
+import { useOfflineAuth } from '@/hooks/use-offline-auth';
 import { 
   LayoutDashboard, 
   Store, 
@@ -13,7 +14,9 @@ import {
   Settings, 
   Receipt,
   Warehouse,
-  ClipboardCheck
+  ClipboardCheck,
+  UserCog,
+  LogOut
 } from 'lucide-react';
 
 interface NavigationDrawerProps {
@@ -23,17 +26,13 @@ interface NavigationDrawerProps {
 export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
   const { t, language, setLanguage } = useI18n();
   const { settings } = useOfflineSettings();
+  const { user, logout, canManageUsers, canUsePOS, canManageProducts, canManageCustomers, canManageSuppliers, canViewReports } = useOfflineAuth();
   const [location] = useLocation();
 
-  // In offline mode, all features are available
-  const canManageProducts = true;
+  // Use auth permissions
   const canManageInventory = true;
-  const canManageCustomers = true;
-  const canManageSuppliers = true;
-  const canViewReports = true;
   const canViewSalesHistory = true;
   const canManageSettings = true;
-  const canUsePOS = true;
 
   const isActive = (path: string) => {
     return location === path;
@@ -133,6 +132,14 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
             </Link>
           )}
           
+          {/* User Management */}
+          {canManageUsers && (
+            <Link href="/users" className={`flex items-center px-4 py-3 ${isActive('/users') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+              <UserCog className="w-6 h-6 mr-3" />
+              <span>User Management</span>
+            </Link>
+          )}
+          
           {/* Settings */}
           {canManageSettings && (
             <Link href="/settings" className={`flex items-center px-4 py-3 ${isActive('/settings') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
@@ -144,7 +151,27 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
       </div>
       
       <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 p-4">
-        <div className="flex items-center mb-4">
+        {/* User Info and Logout */}
+        {user && (
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+              </div>
+              <button
+                onClick={logout}
+                className="flex items-center px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4 mr-1" />
+                Logout
+              </button>
+            </div>
+          </div>
+        )}
+        
+        <div className="flex items-center">
           <button 
             onClick={() => setLanguage('fr')} 
             className={`px-3 py-1 rounded mr-2 text-sm ${language === 'fr' ? 'bg-primary text-white font-medium' : 'bg-gray-200 text-gray-700 font-medium'}`}
