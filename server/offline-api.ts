@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from './db';
-import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems, productCategories } from '@shared/sqlite-schema';
+import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems, productCategories, users } from '@shared/sqlite-schema';
 import { eq } from 'drizzle-orm';
 
 const router = express.Router();
@@ -1021,6 +1021,68 @@ router.delete('/categories/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting category:', error);
     res.status(500).json({ error: 'Failed to delete category' });
+  }
+});
+
+// Users API
+router.get('/users', async (req, res) => {
+  try {
+    const allUsers = await db.select().from(users);
+    res.json(allUsers);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+router.post('/users', async (req, res) => {
+  try {
+    const newUser = await db.insert(users).values({
+      tenantId: 'default',
+      ...req.body
+    }).returning();
+    
+    res.json(newUser[0]);
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
+router.put('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedUser = await db.update(users)
+      .set(req.body)
+      .where(eq(users.id, parseInt(id)))
+      .returning();
+    
+    if (updatedUser.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(updatedUser[0]);
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+router.delete('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedUser = await db.delete(users)
+      .where(eq(users.id, parseInt(id)))
+      .returning();
+    
+    if (deletedUser.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
   }
 });
 

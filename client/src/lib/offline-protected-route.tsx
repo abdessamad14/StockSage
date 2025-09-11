@@ -1,13 +1,13 @@
 import { ReactNode } from "react";
 import { useOfflineAuth } from "@/hooks/use-offline-auth";
-import OfflineAuthPage from "@/pages/offline-auth-page";
+import PinLogin from "@/components/PinLogin";
 
 interface OfflineProtectedRouteProps {
   children: ReactNode;
 }
 
 export function OfflineProtectedRoute({ children }: OfflineProtectedRouteProps) {
-  const { user, isLoading } = useOfflineAuth();
+  const { user, isLoading, login } = useOfflineAuth();
 
   if (isLoading) {
     return (
@@ -21,7 +21,7 @@ export function OfflineProtectedRoute({ children }: OfflineProtectedRouteProps) 
   }
 
   if (!user) {
-    return <OfflineAuthPage />;
+    return <PinLogin onLogin={login} />;
   }
 
   return <>{children}</>;

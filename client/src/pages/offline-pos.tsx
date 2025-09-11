@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { ThermalReceiptPrinter, ReceiptData } from '@/lib/thermal-receipt-printer';
+import { useOfflineAuth } from '@/hooks/use-offline-auth';
 import { 
   ShoppingCart, 
   Plus, 
@@ -19,7 +20,8 @@ import {
   User,
   Package,
   Printer,
-  ScanLine
+  ScanLine,
+  LogOut
 } from 'lucide-react';
 
 // Import offline storage and types
@@ -59,6 +61,7 @@ interface NumericInputState {
 
 export default function OfflinePOS() {
   const { toast } = useToast();
+  const { user, logout } = useOfflineAuth();
   
   // State variables
   const [products, setProducts] = useState<OfflineProduct[]>([]);
@@ -925,9 +928,21 @@ export default function OfflinePOS() {
                 <ScanLine className="h-4 w-4 text-green-600" />
                 <span className="text-sm font-medium text-green-700">Scanner USB Actif</span>
               </div>
-              <div className="text-right">
-                <div className="text-sm text-gray-500">Vendeur: Admin</div>
-                <div className="text-sm font-medium">{new Date().toLocaleDateString('fr-MA')}</div>
+              <div className="flex items-center space-x-3">
+                <div className="text-right">
+                  <div className="text-sm text-gray-500">Vendeur: {user?.name || 'Unknown'}</div>
+                  <div className="text-sm font-medium">{new Date().toLocaleDateString('fr-MA')}</div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={logout}
+                  className="flex items-center space-x-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  title="Se déconnecter"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">Logout</span>
+                </Button>
               </div>
             </div>
           </div>
