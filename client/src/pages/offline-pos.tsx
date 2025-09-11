@@ -18,7 +18,8 @@ import {
   Receipt,
   User,
   Package,
-  Printer
+  Printer,
+  ScanLine
 } from 'lucide-react';
 
 // Import offline storage and types
@@ -88,6 +89,8 @@ export default function OfflinePOS() {
   });
   const [discountAmount, setDiscountAmount] = useState(0);
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('percentage');
+  const [barcodeBuffer, setBarcodeBuffer] = useState('');
+  const [lastKeyTime, setLastKeyTime] = useState(0);
 
   // Load data on component mount
   useEffect(() => {
@@ -152,6 +155,73 @@ export default function OfflinePOS() {
 
     loadData();
   }, []);
+
+  // USB Barcode Scanner Handler
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      const currentTime = Date.now();
+      
+      // If more than 100ms has passed since last key, start new barcode
+      if (currentTime - lastKeyTime > 100) {
+        setBarcodeBuffer('');
+      }
+      
+      setLastKeyTime(currentTime);
+      
+      // Handle Enter key (barcode scan complete)
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        if (barcodeBuffer.length > 0) {
+          handleBarcodeScanned(barcodeBuffer);
+          setBarcodeBuffer('');
+        }
+        return;
+      }
+      
+      // Only capture alphanumeric characters and common barcode characters
+      if (/^[a-zA-Z0-9\-_]$/.test(event.key)) {
+        // Prevent default only if we're not in an input field
+        const target = event.target as HTMLElement;
+        if (!target.matches('input, textarea, select')) {
+          event.preventDefault();
+          setBarcodeBuffer(prev => prev + event.key);
+        }
+      }
+    };
+
+    // Add event listener to document
+    document.addEventListener('keydown', handleKeyPress);
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [barcodeBuffer, lastKeyTime, products]);
+
+  // Handle barcode scan result
+  const handleBarcodeScanned = (barcode: string) => {
+    console.log('Barcode scanned:', barcode);
+    
+    // Find product by barcode
+    const product = products.find(p => 
+      p.barcode === barcode || 
+      p.barcode === barcode.trim() ||
+      p.id === barcode
+    );
+    
+    if (product) {
+      addToCart(product);
+      toast({
+        title: "Produit ajouté",
+        description: `${product.name} ajouté au panier`,
+      });
+    } else {
+      toast({
+        title: "Produit non trouvé",
+        description: `Aucun produit trouvé avec le code-barres: ${barcode}`,
+        variant: "destructive",
+      });
+    }
+  };
 
   // Load sales period data
   const loadSalesPeriodData = async () => {
@@ -844,17 +914,31 @@ export default function OfflinePOS() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <Input
-                placeholder="Rechercher produits..."
+                placeholder="Rechercher produits ou scanner code-barres..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 h-12 text-lg"
               />
             </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-500">Vendeur: Admin</div>
-              <div className="text-sm font-medium">{new Date().toLocaleDateString('fr-MA')}</div>
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                <ScanLine className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium text-green-700">Scanner USB Actif</span>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-gray-500">Vendeur: Admin</div>
+                <div className="text-sm font-medium">{new Date().toLocaleDateString('fr-MA')}</div>
+              </div>
             </div>
           </div>
+          
+          {/* Barcode Buffer Display (for debugging) */}
+          {barcodeBuffer && (
+            <div className="mt-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded text-sm">
+              <span className="text-blue-600 font-medium">Scan en cours: </span>
+              <span className="font-mono">{barcodeBuffer}</span>
+            </div>
+          )}
         </div>
         
         {/* Horizontal Categories */}
