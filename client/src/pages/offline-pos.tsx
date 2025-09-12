@@ -798,25 +798,23 @@ export default function OfflinePOS() {
         </div>
 
         {/* Receipt Content - Scrollable */}
-        <div className="p-4 bg-gray-50 font-mono text-sm overflow-y-auto" style={{height: 'calc(100vh - 160px - 380px)'}}>
-          <div className="bg-white p-4 rounded shadow-sm">
-            <div className="text-center border-b pb-2 mb-4">
-              <div className="font-bold">STOCKSAGE POS</div>
-              <div className="text-xs text-gray-500">Restaurant & Commerce</div>
+        <div className="p-2 bg-gray-50 font-mono text-xs overflow-y-auto" style={{height: 'calc(100vh - 160px - 280px)'}}>
+          <div className="bg-white p-3 rounded shadow-sm">
+            <div className="text-center border-b pb-1 mb-2">
+              <div className="font-bold text-sm">STOCKSAGE POS</div>
               <div className="text-xs text-gray-500">{new Date().toLocaleString('fr-MA')}</div>
             </div>
             
-            {/* Payment Method Display */}
-            <div className="mb-4 p-2 bg-gray-100 rounded">
-              <div className="text-xs font-semibold mb-1">MODE DE PAIEMENT:</div>
-              <div className="flex items-center space-x-1">
-                {paymentMethod === 'cash' && <span className="text-green-600 font-bold">💰 ESPÈCES</span>}
-                {paymentMethod === 'credit' && <span className="text-purple-600 font-bold">📋 CRÉDIT</span>}
+            {/* Payment Method & Customer - Compact */}
+            <div className="mb-2 space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600">Mode:</span>
+                <span className="font-semibold">
+                  {paymentMethod === 'cash' && <span className="text-green-600">💰 ESPÈCES</span>}
+                  {paymentMethod === 'credit' && <span className="text-purple-600">📋 CRÉDIT</span>}
+                </span>
               </div>
-            </div>
-            
-            {/* Customer Selection */}
-            <div className="mb-4">
+              
               <Select
                 value={selectedCustomer?.id || 'walk-in'}
                 onValueChange={(value) => {
@@ -828,7 +826,7 @@ export default function OfflinePOS() {
                   }
                 }}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="h-6 text-xs">
                   <SelectValue placeholder="Client" />
                 </SelectTrigger>
                 <SelectContent>
@@ -843,34 +841,34 @@ export default function OfflinePOS() {
             </div>
             
             {cart.length === 0 ? (
-              <div className="text-center text-gray-400 py-4">
-                <Receipt className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>Aucun article</p>
+              <div className="text-center text-gray-400 py-3">
+                <Receipt className="h-6 w-6 mx-auto mb-1 opacity-50" />
+                <p className="text-xs">Aucun article</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {cart.map((item, index) => (
-                  <div key={item.product.id} className="flex justify-between text-xs">
-                    <div className="flex-1">
-                      <div>{item.product.name}</div>
-                      <div className="text-gray-500">{item.quantity} x {item.unitPrice.toFixed(2)} DH</div>
+                  <div key={item.product.id} className="flex justify-between text-xs border-b border-gray-100 pb-1">
+                    <div className="flex-1 pr-2">
+                      <div className="font-medium truncate">{item.product.name}</div>
+                      <div className="text-gray-500 text-xs">{item.quantity} x {item.unitPrice.toFixed(2)} DH</div>
                     </div>
-                    <div className="font-bold">{item.totalPrice.toFixed(2)} DH</div>
+                    <div className="font-bold text-right">{item.totalPrice.toFixed(2)} DH</div>
                   </div>
                 ))}
                 
-                <div className="border-t pt-2 mt-4">
-                  <div className="flex justify-between">
+                <div className="border-t pt-2 mt-2 space-y-1">
+                  <div className="flex justify-between text-xs">
                     <span>Sous-total:</span>
                     <span>{subtotal.toFixed(2)} DH</span>
                   </div>
                   {discountValue > 0 && (
-                    <div className="flex justify-between text-red-600">
+                    <div className="flex justify-between text-red-600 text-xs">
                       <span>Remise:</span>
                       <span>-{discountValue.toFixed(2)} DH</span>
                     </div>
                   )}
-                  <div className="flex justify-between font-bold text-lg border-t pt-1">
+                  <div className="flex justify-between font-bold text-sm border-t pt-1 bg-blue-50 px-2 py-1 rounded">
                     <span>TOTAL:</span>
                     <span>{total.toFixed(2)} DH</span>
                   </div>
@@ -880,12 +878,12 @@ export default function OfflinePOS() {
           </div>
         </div>
         
-        {/* Action Buttons - Fixed at bottom with specific height */}
-        <div className="bg-white border-t flex-shrink-0" style={{height: '380px', padding: '16px'}}>
+        {/* Action Buttons - Compact Fixed Bottom */}
+        <div className="bg-white border-t flex-shrink-0" style={{height: '280px', padding: '12px'}}>
           {/* Quick Cash Payment Buttons */}
-          <div className="mb-4">
-            <div className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Paiement Espèces Rapide</div>
-            <div className="grid grid-cols-2 gap-2 mb-2">
+          <div className="mb-3">
+            <div className="text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Paiement Rapide</div>
+            <div className="grid grid-cols-2 gap-1 mb-2">
               {[20, 50, 100, 200].map((amount) => {
                 const getBanknoteColor = (value: number) => {
                   switch(value) {
@@ -937,7 +935,7 @@ export default function OfflinePOS() {
                       // Process the sale immediately
                       await processSale('cash', amount);
                     }}
-                    className={`h-20 p-0 border-2 border-gray-300 transition-all relative overflow-hidden rounded-lg ${
+                    className={`h-14 p-0 border-2 border-gray-300 transition-all relative overflow-hidden rounded-lg ${
                       amount < total ? 'opacity-50' : 'hover:scale-105 hover:shadow-lg'
                     }`}
                     disabled={amount < total}
@@ -953,15 +951,15 @@ export default function OfflinePOS() {
                     <div className="absolute inset-0 bg-black/20"></div>
                     
                     {/* Content overlay */}
-                    <div className="relative z-10 flex items-center justify-between w-full h-full p-3">
+                    <div className="relative z-10 flex items-center justify-between w-full h-full p-2">
                       {/* Amount Info */}
                       <div className="text-left">
-                        <div className="text-xl font-bold text-white drop-shadow-lg">{amount} DH</div>
+                        <div className="text-lg font-bold text-white drop-shadow-lg">{amount} DH</div>
                       </div>
                       
                       {/* Payment Icon */}
                       <div className="text-white/80">
-                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
                           <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd"/>
                         </svg>
@@ -973,11 +971,11 @@ export default function OfflinePOS() {
             </div>
             
             {/* Custom Amount Input */}
-            <div className="flex gap-2">
+            <div className="flex gap-1">
               <input
                 type="number"
-                placeholder="Montant personnalisé"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                placeholder="Autre montant"
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
                 value={customCashAmount}
                 onChange={(e) => setCustomCashAmount(e.target.value)}
                 min={total}
@@ -1010,16 +1008,16 @@ export default function OfflinePOS() {
                   await processSale('cash', amount);
                   setCustomCashAmount('');
                 }}
-                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-md"
+                className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded"
                 disabled={!customCashAmount || parseFloat(customCashAmount) < total}
               >
-                Payer
+                OK
               </Button>
             </div>
           </div>
 
           {/* Other Payment Methods */}
-          <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="grid grid-cols-3 gap-1 mb-2">
             <Button
               onClick={async () => {
                 if (cart.length === 0) {
@@ -1042,7 +1040,7 @@ export default function OfflinePOS() {
                   });
                 }
               }}
-              className={`h-12 text-xs font-bold border-2 transition-all ${
+              className={`h-10 text-xs font-bold border-2 transition-all ${
                 paymentMethod === 'credit' 
                   ? 'bg-purple-600 border-purple-800 shadow-lg transform scale-105' 
                   : 'bg-purple-500 border-purple-600 hover:bg-purple-600'
@@ -1051,7 +1049,6 @@ export default function OfflinePOS() {
               }`}
             >
               📋 CRÉDIT
-              {paymentMethod === 'credit' && <div className="text-xs">✓ ACTIF</div>}
             </Button>
             <Button
               onClick={() => {
@@ -1116,7 +1113,7 @@ export default function OfflinePOS() {
                 })();
               }}
               disabled={cart.length === 0}
-              className={`h-12 text-xs font-bold border-2 transition-all ${
+              className={`h-10 text-xs font-bold border-2 transition-all ${
                 cart.length > 0 
                   ? 'bg-blue-500 hover:bg-blue-600 border-blue-600' 
                   : 'bg-gray-400 border-gray-500'
@@ -1132,31 +1129,12 @@ export default function OfflinePOS() {
                   description: "Tous les articles ont été supprimés",
                 });
               }}
-              className="h-12 text-xs font-bold bg-red-500 hover:bg-red-700 text-white border-2 border-red-600 transition-all hover:shadow-lg"
+              className="h-10 text-xs font-bold bg-red-500 hover:bg-red-700 text-white border-2 border-red-600 transition-all hover:shadow-lg"
             >
               🗑️ EFFACER
             </Button>
           </div>
           
-          {/* Cash Amount Input for Cash Payment */}
-          {paymentMethod === 'cash' && cart.length > 0 && (
-            <div className="mb-3 p-3 bg-green-50 border-2 border-green-200 rounded">
-              <label className="block text-xs font-semibold mb-2 text-green-800">MONTANT REÇU:</label>
-              <Input
-                type="number"
-                value={paidAmount}
-                onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-                className="h-10 text-lg font-bold text-center border-2 border-green-300"
-              />
-              {paidAmount >= total && paidAmount > 0 && (
-                <div className="mt-2 p-2 bg-green-100 rounded text-center">
-                  <div className="text-xs font-semibold text-green-800">MONNAIE:</div>
-                  <div className="text-lg font-bold text-green-700">{change.toFixed(2)} DH</div>
-                </div>
-              )}
-            </div>
-          )}
           
         </div>
       </div>
