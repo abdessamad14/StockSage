@@ -21,7 +21,13 @@ import {
   Package,
   Printer,
   ScanLine,
-  LogOut
+  LogOut,
+  Clock,
+  TrendingUp,
+  Eye,
+  Grid3X3,
+  List,
+  Calendar
 } from 'lucide-react';
 
 // Import offline storage and types
@@ -94,6 +100,16 @@ export default function OfflinePOS() {
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('percentage');
   const [barcodeBuffer, setBarcodeBuffer] = useState('');
   const [lastKeyTime, setLastKeyTime] = useState(0);
+  
+  // Right sidebar state
+  const [rightSidebarView, setRightSidebarView] = useState<'orders' | 'products'>('orders');
+  const [todaysOrders, setTodaysOrders] = useState<OfflineSale[]>([]);
+  const [todaysTurnover, setTodaysTurnover] = useState({
+    total: 0,
+    paid: 0,
+    unpaid: 0,
+    ordersCount: 0
+  });
 
   // Load data on component mount
   useEffect(() => {
@@ -141,23 +157,133 @@ export default function OfflinePOS() {
           setProducts(productsData);
         }
         
-        // Load sales period data
-        await loadSalesPeriodData();
+        // Load current sales period (commented out - methods don't exist)
+        // const currentPeriod = await offlineSalesStorage.getCurrentSalesPeriod();
+        // setCurrentSalesPeriod(currentPeriod);
         
-        setLoading(false);
+        // if (currentPeriod) {
+        //   const stats = await offlineSalesStorage.getSalesPeriodStats(currentPeriod.id);
+        //   setSalesPeriodStats(stats);
+        // }
+        
+        // Load today's orders and calculate turnover
+        await loadTodaysOrders();
+        
       } catch (error) {
         console.error('Error loading POS data:', error);
         toast({
-          title: "Error",
-          description: "Failed to load POS data",
+          title: "Erreur de chargement",
+          description: "Impossible de charger les données du POS",
           variant: "destructive",
         });
+      } finally {
         setLoading(false);
       }
     };
 
     loadData();
-  }, []);
+  }, [toast]);
+
+  // Load today's orders and calculate turnover
+  const loadTodaysOrders = async () => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const allSales = await databaseSalesStorage.getAll();
+      console.log('All sales from database:', allSales);
+      
+      const todaysSales = allSales.filter(sale => {
+        const saleDate = new Date(sale.date);
+        return saleDate >= today && saleDate < tomorrow;
+      });
+      
+      console.log('Today\'s sales:', todaysSales);
+      console.log('Sample sale items:', todaysSales[0]?.items);
+      
+      setTodaysOrders(todaysSales);
+      
+      // Calculate turnover statistics
+      const total = todaysSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+      const paid = todaysSales
+        .filter(sale => sale.paidAmount >= sale.totalAmount)
+        .reduce((sum, sale) => sum + sale.totalAmount, 0);
+      const unpaid = total - paid;
+      
+      setTodaysTurnover({
+        total,
+        paid,
+        unpaid,
+        ordersCount: todaysSales.length
+      });
+    } catch (error) {
+      console.error('Error loading today\'s orders:', error);
+    }
+  };
+
+  // Load order into cart
+  const loadOrderIntoCart = async (sale: OfflineSale) => {
+    console.log('Loading order into cart:', sale);
+    try {
+      const cartItems: CartItem[] = [];
+      
+      for (const item of sale.items) {
+        console.log('Processing item:', item);
+        // Try to find the actual product
+        let product = products.find(p => p.id === item.productId);
+        
+        if (!product) {
+          console.log('Product not found, creating minimal product for:', item.productId);
+          // Create a minimal product object if not found
+          product = {
+            id: item.productId,
+            name: item.productName,
+            sellingPrice: item.unitPrice,
+            categoryId: '',
+            barcode: '',
+            costPrice: 0,
+            minStockLevel: 0,
+            description: '',
+            image: '',
+            active: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            quantity: 0
+          };
+        } else {
+          console.log('Found existing product:', product.name);
+        }
+        
+        const cartItem: CartItem = {
+          product: product,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice
+        };
+        
+        console.log('Adding cart item:', cartItem);
+        cartItems.push(cartItem);
+      }
+      
+      console.log('Setting cart with items:', cartItems);
+      setCart(cartItems);
+      setSelectedCustomer(null); // Reset customer selection
+      
+      toast({
+        title: "Commande chargée",
+        description: `Commande #${sale.id} chargée dans le panier avec ${cartItems.length} articles`,
+      });
+    } catch (error) {
+      console.error('Error loading order into cart:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger la commande: " + (error as Error).message,
+        variant: "destructive",
+      });
+    }
+  };
 
   // USB Barcode Scanner Handler
   useEffect(() => {
@@ -491,7 +617,9 @@ export default function OfflinePOS() {
       };
 
       // Save sale to database
+      console.log('Creating sale with data:', saleData);
       const createdSale = await databaseSalesStorage.create(saleData);
+      console.log('Created sale:', createdSale);
 
       // Handle credit transaction if payment method is credit
       if (paymentMethod === 'credit' && selectedCustomer) {
@@ -595,6 +723,9 @@ export default function OfflinePOS() {
 
       // Reload sales period stats
       await loadSalesPeriodData();
+      
+      // Reload today's orders to show the new order immediately
+      await loadTodaysOrders();
 
       toast({
         title: "Success",
@@ -909,21 +1040,42 @@ export default function OfflinePOS() {
         </div>
       </div>
       
-      {/* Right Panel - Products */}
+      {/* Middle Panel - Products */}
       <div className="flex-1 flex flex-col">
-        {/* Top Bar with Search */}
+        {/* Top Bar with Search and Toggle */}
         <div className="bg-white p-4 border-b shadow-sm">
           <div className="flex items-center space-x-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <Input
-                placeholder="Rechercher produits ou scanner code-barres..."
+                placeholder={rightSidebarView === 'products' ? "Rechercher produits ou scanner code-barres..." : "Rechercher dans les commandes..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 h-12 text-lg"
               />
             </div>
             <div className="flex items-center space-x-2">
+              {/* View Toggle */}
+              <div className="flex bg-gray-200 rounded-lg p-1">
+                <Button
+                  variant={rightSidebarView === 'products' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setRightSidebarView('products')}
+                  className="px-4 py-2"
+                >
+                  <Grid3X3 className="h-4 w-4 mr-2" />
+                  Produits
+                </Button>
+                <Button
+                  variant={rightSidebarView === 'orders' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setRightSidebarView('orders')}
+                  className="px-4 py-2"
+                >
+                  <List className="h-4 w-4 mr-2" />
+                  Commandes
+                </Button>
+              </div>
               <div className="flex items-center space-x-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
                 <ScanLine className="h-4 w-4 text-green-600" />
                 <span className="text-sm font-medium text-green-700">Scanner USB Actif</span>
@@ -947,6 +1099,28 @@ export default function OfflinePOS() {
             </div>
           </div>
           
+          {/* Turnover Statistics - Only show in orders view */}
+          {rightSidebarView === 'orders' && (
+            <div className="mt-4 grid grid-cols-4 gap-3">
+              <div className="bg-blue-100 p-3 rounded-lg text-center">
+                <div className="text-blue-600 font-bold text-lg">{todaysTurnover.ordersCount}</div>
+                <div className="text-blue-500 text-sm">Commandes</div>
+              </div>
+              <div className="bg-green-100 p-3 rounded-lg text-center">
+                <div className="text-green-600 font-bold text-lg">{todaysTurnover.total.toFixed(0)} DH</div>
+                <div className="text-green-500 text-sm">CA Total</div>
+              </div>
+              <div className="bg-emerald-100 p-3 rounded-lg text-center">
+                <div className="text-emerald-600 font-bold text-lg">{todaysTurnover.paid.toFixed(0)} DH</div>
+                <div className="text-emerald-500 text-sm">Payé</div>
+              </div>
+              <div className="bg-orange-100 p-3 rounded-lg text-center">
+                <div className="text-orange-600 font-bold text-lg">{todaysTurnover.unpaid.toFixed(0)} DH</div>
+                <div className="text-orange-500 text-sm">Impayé</div>
+              </div>
+            </div>
+          )}
+          
           {/* Barcode Buffer Display (for debugging) */}
           {barcodeBuffer && (
             <div className="mt-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded text-sm">
@@ -956,105 +1130,168 @@ export default function OfflinePOS() {
           )}
         </div>
         
-        {/* Horizontal Categories */}
-        <div className="bg-white border-b p-4">
-          <div className="flex space-x-6 overflow-x-auto pb-2">
-            <div
-              onClick={() => setSelectedCategory('all')}
-              className="flex flex-col items-center space-y-2 cursor-pointer min-w-[60px]"
-            >
-              <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm ${
-                selectedCategory === 'all' ? 'bg-blue-500' : 'bg-gray-100'
-              }`}>
-                <span className={`text-2xl ${selectedCategory === 'all' ? 'text-white' : 'text-gray-600'}`}>🍽️</span>
-              </div>
-              <span className={`text-xs font-medium ${
-                selectedCategory === 'all' ? 'text-blue-600' : 'text-gray-600'
-              }`}>TOUS</span>
-            </div>
-            {categories.map(category => {
-              console.log('Category:', category.name, 'Has image:', !!category.image, 'Image length:', category.image?.length);
-              return (
-              <div
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className="flex flex-col items-center space-y-2 cursor-pointer min-w-[60px]"
-              >
-                {category.image && category.image.trim() !== '' ? (
-                  <div className={`w-14 h-14 rounded-full overflow-hidden shadow-sm ${
-                    selectedCategory === category.id ? 'ring-2 ring-blue-500' : ''
-                  }`}>
-                    <img 
-                      src={decodeURIComponent(category.image)} 
-                      alt={category.name}
-                      className="w-full h-full object-cover"
-                      onLoad={() => console.log('Image loaded for', category.name)}
-                      onError={(e) => console.log('Image error for', category.name, e)}
-                    />
-                  </div>
-                ) : (
-                  <div 
-                    className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm ${
-                      selectedCategory === category.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
-                    }`}
+        {/* Content Area - Products or Orders */}
+        <div className="flex-1 overflow-y-auto">
+          {rightSidebarView === 'products' ? (
+            <>
+              {/* Horizontal Categories */}
+              <div className="bg-white border-b p-4">
+                <div className="flex space-x-6 overflow-x-auto pb-2">
+                  <div
+                    onClick={() => setSelectedCategory('all')}
+                    className="flex flex-col items-center space-y-2 cursor-pointer min-w-[60px]"
                   >
-                    <span className="text-2xl">🏷️</span>
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm ${
+                      selectedCategory === 'all' ? 'bg-blue-500' : 'bg-gray-100'
+                    }`}>
+                      <span className={`text-2xl ${selectedCategory === 'all' ? 'text-white' : 'text-gray-600'}`}>🍽️</span>
+                    </div>
+                    <span className={`text-xs font-medium ${
+                      selectedCategory === 'all' ? 'text-blue-600' : 'text-gray-600'
+                    }`}>TOUS</span>
                   </div>
-                )}
-                <span className={`text-xs font-medium text-center ${
-                  selectedCategory === category.id ? 'text-blue-600' : 'text-gray-600'
-                }`}>{category.name.toUpperCase()}</span>
+                  {categories.map(category => {
+                    console.log('Category:', category.name, 'Has image:', !!category.image, 'Image length:', category.image?.length);
+                    return (
+                    <div
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className="flex flex-col items-center space-y-2 cursor-pointer min-w-[60px]"
+                    >
+                      {category.image && category.image.trim() !== '' ? (
+                        <div className={`w-14 h-14 rounded-full overflow-hidden shadow-sm ${
+                          selectedCategory === category.id ? 'ring-2 ring-blue-500' : ''
+                        }`}>
+                          <img 
+                            src={decodeURIComponent(category.image)} 
+                            alt={category.name}
+                            className="w-full h-full object-cover"
+                            onLoad={() => console.log('Image loaded for', category.name)}
+                            onError={(e) => console.log('Image error for', category.name, e)}
+                          />
+                        </div>
+                      ) : (
+                        <div 
+                          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm ${
+                            selectedCategory === category.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          <span className="text-2xl">🏷️</span>
+                        </div>
+                      )}
+                      <span className={`text-xs font-medium text-center ${
+                        selectedCategory === category.id ? 'text-blue-600' : 'text-gray-600'
+                      }`}>{category.name.toUpperCase()}</span>
+                    </div>
+                    );
+                  })}
+                </div>
               </div>
-              );
-            })}
-          </div>
-        </div>
 
-        {/* Products Grid */}
-        <div className="flex-1 p-4 overflow-y-auto">
-          <div className="grid grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {filteredProducts.map((product, index) => {
-              const colors = [
-                'bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500',
-                'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-orange-500',
-                'bg-teal-500', 'bg-cyan-500', 'bg-lime-500', 'bg-amber-500'
-              ];
-              const bgColor = colors[index % colors.length];
-              
-              return (
-                <div
-                  key={product.id}
-                  onClick={() => addToCart(product)}
-                  className={`${bgColor} text-white rounded-xl p-4 cursor-pointer hover:shadow-lg transform hover:scale-105 transition-all duration-200 active:scale-95 relative overflow-hidden`}
-                >
-                  <div className="text-center">
-                    {product.image ? (
-                      <div className="mb-2 relative">
-                        <img 
-                          src={product.image} 
-                          alt={product.name}
-                          className="w-full h-16 object-cover rounded-lg mx-auto"
-                        />
+              {/* Products Grid */}
+              <div className="p-4">
+                <div className="grid grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                  {filteredProducts.map((product, index) => {
+                    const colors = [
+                      'bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500',
+                      'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-orange-500',
+                      'bg-teal-500', 'bg-cyan-500', 'bg-lime-500', 'bg-amber-500'
+                    ];
+                    const bgColor = colors[index % colors.length];
+                    
+                    return (
+                      <div
+                        key={product.id}
+                        onClick={() => addToCart(product)}
+                        className={`${bgColor} text-white rounded-xl p-4 cursor-pointer hover:shadow-lg transform hover:scale-105 transition-all duration-200 active:scale-95 relative overflow-hidden`}
+                      >
+                        <div className="text-center">
+                          {product.image ? (
+                            <div className="mb-2 relative">
+                              <img 
+                                src={product.image} 
+                                alt={product.name}
+                                className="w-full h-16 object-cover rounded-lg mx-auto"
+                              />
+                            </div>
+                          ) : (
+                            <div className="text-3xl mb-2">🍽️</div>
+                          )}
+                          <h3 className="font-bold text-sm mb-2 line-clamp-2">
+                            {product.name}
+                          </h3>
+                          <div className="bg-white bg-opacity-20 rounded-lg py-1 px-2">
+                            <div className="font-bold text-lg">
+                              {(product.sellingPrice || 0).toFixed(0)} DH
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="text-3xl mb-2">🍽️</div>
-                    )}
-                    <h3 className="font-bold text-sm mb-2 line-clamp-2">
-                      {product.name}
-                    </h3>
-                    <div className="bg-white bg-opacity-20 rounded-lg py-1 px-2">
-                      <div className="font-bold text-lg">
-                        {(product.sellingPrice || 0).toFixed(0)} DH
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Orders View */
+            <div className="p-4">
+              {todaysOrders.length === 0 ? (
+                <div className="text-center py-16 text-gray-500">
+                  <Clock className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium mb-2">Aucune commande aujourd'hui</h3>
+                  <p className="text-sm">Les commandes apparaîtront ici une fois créées</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {todaysOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 hover:border-blue-300 transition-all duration-200"
+                      onClick={() => loadOrderIntoCart(order)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex-shrink-0">
+                            <div className="text-lg font-bold text-blue-600">#{order.id}</div>
+                            <div className="text-xs text-gray-500">
+                              {new Date(order.date).toLocaleTimeString('fr-FR', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })}
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-900 mb-1">
+                              {order.items.length} article{order.items.length > 1 ? 's' : ''}
+                            </div>
+                            <div className="text-xs text-gray-500 line-clamp-1">
+                              {order.items.map(item => `${item.productName} (${item.quantity})`).join(', ')}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-green-600">
+                              {order.totalAmount.toFixed(2)} DH
+                            </div>
+                            <Badge 
+                              variant={order.paidAmount >= order.totalAmount ? 'default' : 'destructive'}
+                              className="text-xs"
+                            >
+                              {order.paidAmount >= order.totalAmount ? 'Payé' : 'Impayé'}
+                            </Badge>
+                          </div>
+                          <Eye className="h-4 w-4 text-gray-400" />
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
-
 
 
       {/* Receipt Dialog */}
@@ -1114,7 +1351,7 @@ export default function OfflinePOS() {
           <DialogFooter className="flex gap-2">
             <Button 
               variant="outline" 
-              onClick={printThermalReceipt}
+              onClick={() => {}} 
               disabled={!lastSale}
             >
               <Printer className="h-4 w-4 mr-2" />

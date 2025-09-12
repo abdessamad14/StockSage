@@ -211,7 +211,32 @@ router.post('/suppliers', async (req, res) => {
 router.get('/sales', async (req, res) => {
   try {
     const allSales = await db.select().from(sales);
-    res.json(allSales);
+    
+    // For each sale, fetch its items with product names
+    const salesWithItems = await Promise.all(
+      allSales.map(async (sale) => {
+        const items = await db.select({
+          id: saleItems.id,
+          saleId: saleItems.saleId,
+          productId: saleItems.productId,
+          quantity: saleItems.quantity,
+          unitPrice: saleItems.unitPrice,
+          totalPrice: saleItems.totalPrice,
+          discount: saleItems.discount,
+          productName: products.name
+        })
+        .from(saleItems)
+        .leftJoin(products, eq(saleItems.productId, products.id))
+        .where(eq(saleItems.saleId, sale.id));
+        
+        return {
+          ...sale,
+          items: items
+        };
+      })
+    );
+    
+    res.json(salesWithItems);
   } catch (error) {
     console.error('Error fetching sales:', error);
     res.status(500).json({ error: 'Failed to fetch sales' });
@@ -221,6 +246,7 @@ router.get('/sales', async (req, res) => {
 router.post('/sales', async (req, res) => {
   try {
     const { items, ...saleData } = req.body;
+    console.log('Creating sale with items:', items);
     
     // Create sale
     const newSale = await db.insert(sales).values({
@@ -228,7 +254,10 @@ router.post('/sales', async (req, res) => {
       ...saleData
     }).returning();
     
+    console.log('Created sale:', newSale[0]);
+    
     // Create sale items
+    let createdItems: any[] = [];
     if (items && items.length > 0) {
       const saleItemsData = items.map((item: any) => ({
         tenantId: 'default',
@@ -236,10 +265,19 @@ router.post('/sales', async (req, res) => {
         ...item
       }));
       
-      await db.insert(saleItems).values(saleItemsData);
+      console.log('Creating sale items:', saleItemsData);
+      createdItems = await db.insert(saleItems).values(saleItemsData).returning();
+      console.log('Created sale items:', createdItems);
     }
     
-    res.json(newSale[0]);
+    // Return sale with items
+    const saleWithItems = {
+      ...newSale[0],
+      items: createdItems
+    };
+    
+    console.log('Returning sale with items:', saleWithItems);
+    res.json(saleWithItems);
   } catch (error) {
     console.error('Error creating sale:', error);
     res.status(500).json({ error: 'Failed to create sale' });
