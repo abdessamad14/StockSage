@@ -23,7 +23,7 @@ router.post('/products', async (req, res) => {
     // Map categoryId to category for database schema
     const productData = {
       ...req.body,
-      category: req.body.categoryId === undefined ? null : req.body.categoryId,
+      category: req.body.categoryId || null,
       categoryId: undefined // Remove categoryId as it doesn't exist in DB schema
     };
     
@@ -78,16 +78,16 @@ router.put('/products/:id', async (req, res) => {
     const updateData = {
       ...req.body,
       // Map categoryId to category for database schema
-      category: req.body.categoryId === undefined ? null : req.body.categoryId,
+      category: req.body.categoryId || null,
       categoryId: undefined, // Remove categoryId as it doesn't exist in DB schema
       // Ensure other optional fields are handled properly
-      barcode: req.body.barcode === undefined ? null : req.body.barcode,
-      description: req.body.description === undefined ? null : req.body.description,
-      minStockLevel: req.body.minStockLevel === undefined ? null : req.body.minStockLevel,
-      unit: req.body.unit === undefined ? null : req.body.unit,
-      semiWholesalePrice: req.body.semiWholesalePrice === undefined ? null : req.body.semiWholesalePrice,
-      wholesalePrice: req.body.wholesalePrice === undefined ? null : req.body.wholesalePrice,
-      image: req.body.image === undefined ? null : req.body.image,
+      barcode: req.body.barcode || null,
+      description: req.body.description || null,
+      minStockLevel: req.body.minStockLevel || null,
+      unit: req.body.unit || null,
+      semiWholesalePrice: req.body.semiWholesalePrice || null,
+      wholesalePrice: req.body.wholesalePrice || null,
+      image: req.body.image || null,
       updatedAt: new Date().toISOString()
     };
     
