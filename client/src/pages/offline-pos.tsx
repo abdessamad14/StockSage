@@ -108,6 +108,7 @@ export default function OfflinePOS() {
     total: 0,
     paid: 0,
     unpaid: 0,
+    credit: 0,
     ordersCount: 0
   });
 
@@ -208,14 +209,18 @@ export default function OfflinePOS() {
       // Calculate turnover statistics
       const total = todaysSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
       const paid = todaysSales
-        .filter(sale => sale.paidAmount >= sale.totalAmount)
+        .filter(sale => sale.paymentMethod !== 'credit' && sale.paidAmount >= sale.totalAmount)
         .reduce((sum, sale) => sum + sale.totalAmount, 0);
-      const unpaid = total - paid;
+      const credit = todaysSales
+        .filter(sale => sale.paymentMethod === 'credit')
+        .reduce((sum, sale) => sum + sale.totalAmount, 0);
+      const unpaid = total - paid - credit;
       
       setTodaysTurnover({
         total,
         paid,
         unpaid,
+        credit,
         ordersCount: todaysSales.length
       });
     } catch (error) {
@@ -752,7 +757,7 @@ export default function OfflinePOS() {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Left Panel - Thermal Printer Receipt */}
-      <div className="w-96 bg-white border-r-2 border-gray-300 flex flex-col h-screen">
+      <div className="w-[450px] bg-white border-r-2 border-gray-300 flex flex-col h-screen">
         {/* Receipt Header */}
         <div className="bg-blue-600 text-white p-4 flex-shrink-0">
           <h2 className="text-lg font-bold">TICKET DE CAISSE</h2>
@@ -1114,9 +1119,9 @@ export default function OfflinePOS() {
                 <div className="text-emerald-600 font-bold text-lg">{todaysTurnover.paid.toFixed(0)} DH</div>
                 <div className="text-emerald-500 text-sm">Payé</div>
               </div>
-              <div className="bg-orange-100 p-3 rounded-lg text-center">
-                <div className="text-orange-600 font-bold text-lg">{todaysTurnover.unpaid.toFixed(0)} DH</div>
-                <div className="text-orange-500 text-sm">Impayé</div>
+              <div className="bg-purple-100 p-3 rounded-lg text-center">
+                <div className="text-purple-600 font-bold text-lg">{todaysTurnover.credit.toFixed(0)} DH</div>
+                <div className="text-purple-500 text-sm">Crédit</div>
               </div>
             </div>
           )}
@@ -1242,50 +1247,62 @@ export default function OfflinePOS() {
                   <p className="text-sm">Les commandes apparaîtront ici une fois créées</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {todaysOrders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 hover:border-blue-300 transition-all duration-200"
-                      onClick={() => loadOrderIntoCart(order)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className="flex-shrink-0">
-                            <div className="text-lg font-bold text-blue-600">#{order.id}</div>
-                            <div className="text-xs text-gray-500">
-                              {new Date(order.date).toLocaleTimeString('fr-FR', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}
-                            </div>
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-sm font-medium text-gray-900 mb-1">
-                              {order.items.length} article{order.items.length > 1 ? 's' : ''}
-                            </div>
-                            <div className="text-xs text-gray-500 line-clamp-1">
-                              {order.items.map(item => `${item.productName} (${item.quantity})`).join(', ')}
-                            </div>
-                          </div>
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  {/* Table Header */}
+                  <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+                    <div className="grid grid-cols-6 gap-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                      <div>N° Commande</div>
+                      <div>Heure</div>
+                      <div>Articles</div>
+                      <div>Montant</div>
+                      <div>Paiement</div>
+                      <div>Statut</div>
+                    </div>
+                  </div>
+                  
+                  {/* Table Body */}
+                  <div className="divide-y divide-gray-200">
+                    {todaysOrders.map((order) => (
+                      <div
+                        key={order.id}
+                        className="grid grid-cols-6 gap-4 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                        onClick={() => loadOrderIntoCart(order)}
+                      >
+                        <div className="text-sm font-medium text-blue-600">
+                          #{order.id}
                         </div>
-                        <div className="flex items-center space-x-3">
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-green-600">
-                              {order.totalAmount.toFixed(2)} DH
-                            </div>
-                            <Badge 
-                              variant={order.paidAmount >= order.totalAmount ? 'default' : 'destructive'}
-                              className="text-xs"
-                            >
-                              {order.paidAmount >= order.totalAmount ? 'Payé' : 'Impayé'}
-                            </Badge>
-                          </div>
-                          <Eye className="h-4 w-4 text-gray-400" />
+                        <div className="text-sm text-gray-900">
+                          {new Date(order.date).toLocaleTimeString('fr-FR', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </div>
+                        <div className="text-sm text-gray-900">
+                          {order.items.length} article{order.items.length > 1 ? 's' : ''}
+                        </div>
+                        <div className="text-sm font-semibold text-green-600">
+                          {order.totalAmount.toFixed(0)} DH
+                        </div>
+                        <div className="text-sm text-gray-900 capitalize">
+                          {order.paymentMethod === 'cash' ? 'Espèces' : 
+                           order.paymentMethod === 'credit' ? 'Crédit' : 
+                           order.paymentMethod === 'card' ? 'Carte' : order.paymentMethod}
+                        </div>
+                        <div>
+                          <Badge 
+                            variant={
+                              order.paymentMethod === 'credit' ? 'secondary' :
+                              order.paidAmount >= order.totalAmount ? 'default' : 'destructive'
+                            }
+                            className="text-xs"
+                          >
+                            {order.paymentMethod === 'credit' ? 'Crédit' :
+                             order.paidAmount >= order.totalAmount ? 'Payé' : 'Impayé'}
+                          </Badge>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
