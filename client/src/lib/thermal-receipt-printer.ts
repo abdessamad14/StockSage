@@ -37,14 +37,27 @@ export class ThermalReceiptPrinter {
     }
   }
 
-  // Print receipt using the same logic as the test print
+  // Print receipt with fallback options
   static async printReceipt(receiptData: ReceiptData): Promise<void> {
-    const settings = JSON.parse(localStorage.getItem('stocksage_settings') || '[]');
-    const currentSettings = settings.length > 0 ? settings[0] : null;
+    const settings = JSON.parse(localStorage.getItem('stocksage_settings') || '{}');
+    const currentSettings = settings;
     
-    if (!currentSettings?.printerConnected || !currentSettings?.printerVendorId) {
-      throw new Error('Printer not connected');
+    // First try thermal printer if configured
+    if (currentSettings?.printerConnected && currentSettings?.printerVendorId && 'usb' in navigator) {
+      try {
+        await this.printToThermalPrinter(receiptData, currentSettings);
+        return;
+      } catch (error) {
+        console.warn('Thermal printer failed, falling back to browser print:', error);
+      }
     }
+    
+    // Fallback to browser print dialog
+    await this.printToBrowser(receiptData, currentSettings);
+  }
+
+  // Print to thermal printer
+  private static async printToThermalPrinter(receiptData: ReceiptData, currentSettings: any): Promise<void> {
 
     try {
       console.log('Printing receipt to USB thermal printer...');
@@ -102,6 +115,171 @@ export class ThermalReceiptPrinter {
       console.error('Receipt print error:', error);
       throw new Error(`Receipt print failed: ${error.message}`);
     }
+  }
+
+  // Fallback browser print method
+  private static async printToBrowser(receiptData: ReceiptData, currentSettings: any): Promise<void> {
+    return new Promise((resolve) => {
+      // Create a new window for printing
+      const printWindow = window.open('', '_blank', 'width=300,height=600');
+      
+      if (!printWindow) {
+        throw new Error('Could not open print window. Please allow popups.');
+      }
+
+      // Generate HTML receipt
+      const receiptHtml = this.generateReceiptHtml(receiptData, currentSettings);
+      
+      printWindow.document.write(receiptHtml);
+      printWindow.document.close();
+      
+      // Wait for content to load then print
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+          resolve();
+        }, 100);
+      };
+    });
+  }
+
+  // Generate HTML receipt for browser printing
+  private static generateReceiptHtml(receiptData: ReceiptData, settings: any): string {
+    const header = settings?.receiptHeader || 'REÇU DE VENTE';
+    const footer = settings?.receiptFooter || 'Merci pour votre visite!';
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Reçu</title>
+        <style>
+          body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.2;
+            margin: 0;
+            padding: 10px;
+            width: 280px;
+          }
+          .header {
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 10px;
+          }
+          .info {
+            margin-bottom: 10px;
+          }
+          .separator {
+            border-top: 1px dashed #000;
+            margin: 10px 0;
+          }
+          .item {
+            margin-bottom: 8px;
+          }
+          .item-name {
+            font-weight: bold;
+          }
+          .item-details {
+            display: flex;
+            justify-content: space-between;
+          }
+          .totals {
+            margin-top: 10px;
+          }
+          .total-line {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+          }
+          .total-final {
+            font-weight: bold;
+            font-size: 14px;
+            border-top: 1px solid #000;
+            padding-top: 5px;
+            margin-top: 5px;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 15px;
+            font-style: italic;
+          }
+          .timestamp {
+            text-align: center;
+            font-size: 10px;
+            margin-top: 10px;
+          }
+          @media print {
+            body { margin: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">${header}</div>
+        
+        <div class="info">
+          <div>Facture: ${receiptData.invoiceNumber}</div>
+          <div>Date: ${receiptData.date.toLocaleDateString()}</div>
+          <div>Heure: ${receiptData.date.toLocaleTimeString()}</div>
+          <div>Client: ${receiptData.customerName || 'Client de passage'}</div>
+        </div>
+        
+        <div class="separator"></div>
+        
+        <div class="items">
+          ${receiptData.items.map(item => `
+            <div class="item">
+              <div class="item-name">${item.name}</div>
+              <div class="item-details">
+                <span>${item.quantity} x ${item.unitPrice.toFixed(2)} DH</span>
+                <span>${item.totalPrice.toFixed(2)} DH</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        
+        <div class="separator"></div>
+        
+        <div class="totals">
+          <div class="total-line">
+            <span>Sous-total:</span>
+            <span>${receiptData.subtotal.toFixed(2)} DH</span>
+          </div>
+          ${receiptData.discountAmount ? `
+            <div class="total-line">
+              <span>Remise:</span>
+              <span>-${receiptData.discountAmount.toFixed(2)} DH</span>
+            </div>
+          ` : ''}
+          ${receiptData.taxAmount ? `
+            <div class="total-line">
+              <span>TVA:</span>
+              <span>${receiptData.taxAmount.toFixed(2)} DH</span>
+            </div>
+          ` : ''}
+          <div class="total-line total-final">
+            <span>TOTAL:</span>
+            <span>${receiptData.total.toFixed(2)} DH</span>
+          </div>
+          <div class="total-line">
+            <span>Paiement (${receiptData.paymentMethod}):</span>
+            <span>${(receiptData.paymentMethod === 'credit' ? receiptData.total : receiptData.paidAmount).toFixed(2)} DH</span>
+          </div>
+          ${receiptData.changeAmount ? `
+            <div class="total-line">
+              <span>Monnaie:</span>
+              <span>${receiptData.changeAmount.toFixed(2)} DH</span>
+            </div>
+          ` : ''}
+        </div>
+        
+        <div class="footer">${footer}</div>
+        <div class="timestamp">Imprimé: ${new Date().toLocaleString()}</div>
+      </body>
+      </html>
+    `;
   }
 
   // Generate ESC/POS commands for receipt

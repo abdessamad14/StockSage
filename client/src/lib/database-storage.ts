@@ -103,6 +103,12 @@ export interface OfflineSettings {
   taxRate?: number;
   currency: string;
   receiptFooter?: string;
+  receiptHeader?: string;
+  printerConnected?: boolean;
+  printerVendorId?: number | null;
+  printerProductId?: number | null;
+  printerCashDrawer?: boolean;
+  printerBuzzer?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -789,49 +795,59 @@ export const databaseOrderStorage = {
   }
 };
 
-// Database Settings Storage
-export const databaseSettingsStorage = {
+// Offline Settings Storage (localStorage-based)
+export const offlineSettingsStorage = {
   async get(): Promise<OfflineSettings | null> {
     try {
-      const settings = await apiCall<any[]>('/settings');
-      if (!settings || settings.length === 0) return null;
+      const stored = localStorage.getItem('stocksage_settings');
+      if (!stored) {
+        // Return default settings if none exist
+        const defaultSettings: OfflineSettings = {
+          id: '1',
+          businessName: 'Mon Commerce',
+          businessAddress: '123 Rue Principale, Casablanca, Maroc',
+          businessPhone: '+212 5 22 XX XX XX',
+          businessEmail: 'contact@moncommerce.ma',
+          taxRate: 20,
+          currency: 'DH',
+          receiptFooter: 'Merci pour votre visite!',
+          receiptHeader: 'REÇU DE VENTE',
+          printerConnected: false,
+          printerVendorId: null,
+          printerProductId: null,
+          printerCashDrawer: false,
+          printerBuzzer: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        // Save default settings
+        localStorage.setItem('stocksage_settings', JSON.stringify(defaultSettings));
+        return defaultSettings;
+      }
       
-      const s = settings[0];
-      return {
-        id: s.id.toString(),
-        businessName: s.businessName,
-        businessAddress: s.businessAddress,
-        businessPhone: s.businessPhone,
-        businessEmail: s.businessEmail,
-        taxRate: s.taxRate,
-        currency: s.currency,
-        receiptFooter: s.receiptFooter,
-        createdAt: s.createdAt,
-        updatedAt: s.updatedAt
-      };
+      return JSON.parse(stored);
     } catch (error) {
+      console.error('Error loading settings from localStorage:', error);
       return null;
     }
   },
 
-  async update(settings: Partial<OfflineSettings>): Promise<OfflineSettings> {
-    const updated = await apiCall<any>('/settings', {
-      method: 'PUT',
-      body: JSON.stringify(settings)
-    });
-
-    return {
-      id: updated.id.toString(),
-      businessName: updated.businessName,
-      businessAddress: updated.businessAddress,
-      businessPhone: updated.businessPhone,
-      businessEmail: updated.businessEmail,
-      taxRate: updated.taxRate,
-      currency: updated.currency,
-      receiptFooter: updated.receiptFooter,
-      createdAt: updated.createdAt,
-      updatedAt: updated.updatedAt
-    };
+  async update(updates: Partial<OfflineSettings>): Promise<OfflineSettings> {
+    try {
+      const current = await this.get();
+      const updated: OfflineSettings = {
+        ...current,
+        ...updates,
+        updatedAt: new Date().toISOString()
+      } as OfflineSettings;
+      
+      localStorage.setItem('stocksage_settings', JSON.stringify(updated));
+      return updated;
+    } catch (error) {
+      console.error('Error updating settings in localStorage:', error);
+      throw error;
+    }
   }
 };
 
@@ -1844,7 +1860,6 @@ export {
   databaseSupplierStorage as offlineSupplierStorage,
   databaseSalesStorage as offlineSalesStorage,
   databaseOrderStorage as offlineOrderStorage,
-  databaseSettingsStorage as offlineSettingsStorage,
   databaseSaleItemsStorage as offlineSaleItemsStorage,
   databaseProductStockStorage as offlineProductStockStorage
 };
