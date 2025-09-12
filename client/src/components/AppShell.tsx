@@ -83,12 +83,12 @@ export default function AppShell({ children }: AppShellProps) {
       <AppHeader title={title} onMenuToggle={() => setDrawerOpen(!drawerOpen)} />
       
       {/* Main Content Area */}
-      <main className="flex-1 pt-14 pb-16">
+      <main className={`flex-1 pt-14 ${location === '/pos' ? 'pb-0' : 'pb-16'}`}>
         {children}
       </main>
       
-      {/* Bottom Action Bar */}
-      <BottomBar onScanClick={() => setScannerOpen(true)} />
+      {/* Bottom Action Bar - Hidden on POS page */}
+      {location !== '/pos' && <BottomBar onScanClick={() => setScannerOpen(true)} />}
       
       {/* Barcode Scanner Modal */}
       <BarcodeScannerModal isOpen={scannerOpen} onClose={handleCloseScanner} />

@@ -98,6 +98,7 @@ export default function OfflinePOS() {
   });
   const [discountAmount, setDiscountAmount] = useState(0);
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('percentage');
+  const [customCashAmount, setCustomCashAmount] = useState('');
   const [barcodeBuffer, setBarcodeBuffer] = useState('');
   const [lastKeyTime, setLastKeyTime] = useState(0);
   
@@ -566,7 +567,9 @@ export default function OfflinePOS() {
   };
 
   // Process sale
-  const processSale = async () => {
+  const processSale = async (paymentMethodOverride?: 'cash' | 'credit', paidAmountOverride?: number) => {
+    const effectivePaymentMethod = paymentMethodOverride || paymentMethod;
+    const effectivePaidAmount = paidAmountOverride || paidAmount;
     if (cart.length === 0) {
       toast({
         title: "Error",
@@ -576,7 +579,7 @@ export default function OfflinePOS() {
       return;
     }
 
-    if (paymentMethod === 'cash' && paidAmount < total) {
+    if (effectivePaymentMethod === 'cash' && effectivePaidAmount < total) {
       toast({
         title: "Error",
         description: "Insufficient payment amount",
@@ -607,9 +610,9 @@ export default function OfflinePOS() {
         totalAmount: total,
         discountAmount: discountValue,
         taxAmount: tax,
-        paidAmount: paymentMethod === 'cash' ? paidAmount : total,
-        changeAmount: paymentMethod === 'cash' ? change : 0,
-        paymentMethod,
+        paidAmount: effectivePaymentMethod === 'cash' ? effectivePaidAmount : total,
+        changeAmount: effectivePaymentMethod === 'cash' ? (effectivePaidAmount - total) : 0,
+        paymentMethod: effectivePaymentMethod,
         status: 'completed',
         items: saleItems.map(item => ({
           productId: parseInt(item.productId),
@@ -627,7 +630,7 @@ export default function OfflinePOS() {
       console.log('Created sale:', createdSale);
 
       // Handle credit transaction if payment method is credit
-      if (paymentMethod === 'credit' && selectedCustomer) {
+      if (effectivePaymentMethod === 'credit' && selectedCustomer) {
         try {
           console.log('Processing credit sale for customer:', selectedCustomer.id, 'Amount:', total);
           
@@ -732,10 +735,40 @@ export default function OfflinePOS() {
       // Reload today's orders to show the new order immediately
       await loadTodaysOrders();
 
-      toast({
-        title: "Success",
-        description: "Sale completed successfully",
-      });
+      // Auto-print thermal receipt after successful payment
+      try {
+        const receiptData = {
+          invoiceNumber: createdSale.invoiceNumber,
+          date: new Date(createdSale.date),
+          customerName: selectedCustomer?.name,
+          items: cart.map(item => ({
+            name: item.product.name,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.totalPrice
+          })),
+          subtotal: subtotal,
+          discountAmount: discountValue,
+          taxAmount: tax,
+          total: total,
+          paidAmount: effectivePaymentMethod === 'cash' ? effectivePaidAmount : total,
+          changeAmount: effectivePaymentMethod === 'cash' ? (effectivePaidAmount - total) : 0,
+          paymentMethod: effectivePaymentMethod
+        };
+        
+        await ThermalReceiptPrinter.printReceipt(receiptData);
+        
+        toast({
+          title: "Paiement réussi",
+          description: "Reçu imprimé automatiquement",
+        });
+      } catch (printError) {
+        console.error('Auto-print error:', printError);
+        toast({
+          title: "Paiement réussi",
+          description: "Vente terminée (erreur d'impression)",
+        });
+      }
     } catch (error) {
       console.error('Error processing sale:', error);
       toast({
@@ -849,32 +882,158 @@ export default function OfflinePOS() {
         
         {/* Action Buttons - Fixed at bottom with specific height */}
         <div className="bg-white border-t flex-shrink-0" style={{height: '380px', padding: '16px'}}>
+          {/* Quick Cash Payment Buttons */}
+          <div className="mb-4">
+            <div className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Paiement Espèces Rapide</div>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              {[20, 50, 100, 200].map((amount) => {
+                const getBanknoteColor = (value: number) => {
+                  switch(value) {
+                    case 20: return 'from-green-500 to-green-600 border-green-700';
+                    case 50: return 'from-blue-500 to-blue-600 border-blue-700';
+                    case 100: return 'from-red-500 to-red-600 border-red-700';
+                    case 200: return 'from-purple-500 to-purple-600 border-purple-700';
+                    default: return 'from-gray-500 to-gray-600 border-gray-700';
+                  }
+                };
+
+                return (
+                  <Button
+                    key={amount}
+                    onClick={async () => {
+                      if (cart.length === 0) {
+                        toast({
+                          title: "Panier vide",
+                          description: "Ajoutez des articles avant de procéder au paiement",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      
+                      if (amount < total) {
+                        toast({
+                          title: "Montant insuffisant",
+                          description: `${amount} DH < ${total.toFixed(2)} DH requis`,
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      
+                      // Set cash payment with this amount
+                      setPaymentMethod('cash');
+                      setPaidAmount(amount);
+                      
+                      const changeAmount = amount - total;
+                      
+                      // Show change notification
+                      if (changeAmount > 0) {
+                        toast({
+                          title: "Monnaie à rendre",
+                          description: `${changeAmount.toFixed(2)} DH`,
+                          duration: 5000,
+                        });
+                      }
+                      
+                      // Process the sale immediately
+                      await processSale('cash', amount);
+                    }}
+                    className={`h-20 p-0 border-2 border-gray-300 transition-all relative overflow-hidden rounded-lg ${
+                      amount < total ? 'opacity-50' : 'hover:scale-105 hover:shadow-lg'
+                    }`}
+                    disabled={amount < total}
+                  >
+                    {/* Full Banknote Background */}
+                    <img 
+                      src={`/images/banknotes/${amount}-dh.jpg`} 
+                      alt={`${amount} DH`}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    
+                    {/* Dark overlay for text readability */}
+                    <div className="absolute inset-0 bg-black/20"></div>
+                    
+                    {/* Content overlay */}
+                    <div className="relative z-10 flex items-center justify-between w-full h-full p-3">
+                      {/* Amount Info */}
+                      <div className="text-left">
+                        <div className="text-xl font-bold text-white drop-shadow-lg">{amount} DH</div>
+                      </div>
+                      
+                      {/* Payment Icon */}
+                      <div className="text-white/80">
+                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                          <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </Button>
+                );
+              })}
+            </div>
+            
+            {/* Custom Amount Input */}
+            <div className="flex gap-2">
+              <input
+                type="number"
+                placeholder="Montant personnalisé"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                value={customCashAmount}
+                onChange={(e) => setCustomCashAmount(e.target.value)}
+                min={total}
+                step="0.01"
+              />
+              <Button
+                onClick={async () => {
+                  const amount = parseFloat(customCashAmount);
+                  if (!amount || amount < total) {
+                    toast({
+                      title: "Montant invalide",
+                      description: `Minimum ${total.toFixed(2)} DH requis`,
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  
+                  setPaymentMethod('cash');
+                  setPaidAmount(amount);
+                  
+                  const changeAmount = amount - total;
+                  if (changeAmount > 0) {
+                    toast({
+                      title: "Monnaie à rendre",
+                      description: `${changeAmount.toFixed(2)} DH`,
+                      duration: 5000,
+                    });
+                  }
+                  
+                  await processSale('cash', amount);
+                  setCustomCashAmount('');
+                }}
+                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-md"
+                disabled={!customCashAmount || parseFloat(customCashAmount) < total}
+              >
+                Payer
+              </Button>
+            </div>
+          </div>
+
+          {/* Other Payment Methods */}
           <div className="grid grid-cols-2 gap-2 mb-3">
             <Button
-              onClick={() => {
-                setPaymentMethod('cash');
-                toast({
-                  title: "Mode de paiement",
-                  description: "Espèces sélectionné",
-                });
-              }}
-              className={`h-12 text-xs font-bold border-2 transition-all ${
-                paymentMethod === 'cash' 
-                  ? 'bg-green-600 border-green-800 shadow-lg transform scale-105' 
-                  : 'bg-green-500 border-green-600 hover:bg-green-600'
-              } text-white`}
-            >
-              💰 ESPÈCES
-              {paymentMethod === 'cash' && <div className="text-xs">✓ ACTIF</div>}
-            </Button>
-            <Button
-              onClick={() => {
-                if (selectedCustomer) {
-                  setPaymentMethod('credit');
+              onClick={async () => {
+                if (cart.length === 0) {
                   toast({
-                    title: "Mode de paiement",
-                    description: `Crédit pour ${selectedCustomer.name}`,
+                    title: "Panier vide",
+                    description: "Ajoutez des articles avant de procéder au paiement",
+                    variant: "destructive",
                   });
+                  return;
+                }
+                
+                if (selectedCustomer) {
+                  // Process credit sale immediately
+                  await processSale('credit');
                 } else {
                   toast({
                     title: "Erreur",
@@ -999,49 +1158,6 @@ export default function OfflinePOS() {
             </div>
           )}
           
-          <Button
-            onClick={() => {
-              if (cart.length === 0) {
-                toast({
-                  title: "Panier vide",
-                  description: "Ajoutez des articles avant d'encaisser",
-                  variant: "destructive",
-                });
-                return;
-              }
-              if (paymentMethod === 'credit' && !selectedCustomer) {
-                toast({
-                  title: "Client requis",
-                  description: "Sélectionnez un client pour le paiement à crédit",
-                  variant: "destructive",
-                });
-                return;
-              }
-              if (paymentMethod === 'cash' && paidAmount < total) {
-                toast({
-                  title: "Montant insuffisant",
-                  description: `Veuillez saisir au moins ${total.toFixed(2)} DH`,
-                  variant: "destructive",
-                });
-                return;
-              }
-              // Process sale directly
-              processSale();
-            }}
-            disabled={cart.length === 0}
-            className={`w-full h-14 text-lg font-bold transition-all ${
-              cart.length > 0 
-                ? 'bg-orange-500 hover:bg-orange-600 shadow-lg hover:shadow-xl transform hover:scale-105' 
-                : 'bg-gray-400 cursor-not-allowed'
-            } text-white border-2 border-orange-600`}
-          >
-            🛒 ENCAISSER ({cart.length})
-            {cart.length > 0 && (
-              <div className="ml-2 text-sm">
-                {total.toFixed(2)} DH
-              </div>
-            )}
-          </Button>
         </div>
       </div>
       
