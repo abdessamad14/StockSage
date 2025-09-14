@@ -95,6 +95,7 @@ export default function OfflinePOS() {
     targetItemId: string | null;
   }>({ value: '', mode: null, targetItemId: null });
   const [quantityInputs, setQuantityInputs] = useState<{[key: string]: string}>({});
+  const [priceInputs, setPriceInputs] = useState<{[key: string]: string}>({});
   const [paidAmount, setPaidAmount] = useState(0);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
@@ -863,7 +864,19 @@ export default function OfflinePOS() {
                 {cart.map((item, index) => (
                   <div key={item.product.id} className="flex justify-between text-xs border-b border-gray-100 pb-1">
                     <div className="flex-1 pr-2">
-                      <div className="font-medium truncate">{item.product.name}</div>
+                      <div className="font-medium truncate flex items-center gap-1">
+                        {item.product.name}
+                        {item.unitPrice < item.product.costPrice && (
+                          <span className="text-red-500 text-xs" title={`Prix de vente (${item.unitPrice} DH) inférieur au coût (${item.product.costPrice} DH)`}>
+                            ⚠️
+                          </span>
+                        )}
+                      </div>
+                      {item.unitPrice < item.product.costPrice && (
+                        <div className="text-red-500 text-xs mt-0.5">
+                          Perte: {(item.product.costPrice - item.unitPrice).toFixed(2)} DH/unité
+                        </div>
+                      )}
                       <div className="text-gray-500 text-xs flex items-center gap-1">
                         <input
                           type="text"
@@ -918,15 +931,41 @@ export default function OfflinePOS() {
                         />
                         x 
                         <input
-                          type="number"
-                          value={item.unitPrice}
+                          type="text"
+                          value={priceInputs[item.product.id] ?? item.unitPrice.toString()}
                           onChange={(e) => {
-                            const newPrice = parseFloat(e.target.value) || 0;
-                            updateCartItemPrice(item.product.id, newPrice);
+                            const value = e.target.value;
+                            // Update local input state immediately
+                            setPriceInputs(prev => ({
+                              ...prev,
+                              [item.product.id]: value
+                            }));
                           }}
-                          className="w-12 px-1 py-0 text-xs border border-gray-300 rounded bg-white text-center"
-                          step="0.01"
-                          min="0"
+                          onBlur={(e) => {
+                            const value = e.target.value;
+                            // Process the value when user finishes editing
+                            const newPrice = parseFloat(value) || 0;
+                            if (newPrice >= 0) {
+                              updateCartItemPrice(item.product.id, newPrice);
+                              // Clear the local input state
+                              setPriceInputs(prev => {
+                                const newState = { ...prev };
+                                delete newState[item.product.id];
+                                return newState;
+                              });
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          className={`w-12 px-1 py-0 text-xs border rounded bg-white text-center ${
+                            item.unitPrice < item.product.costPrice 
+                              ? 'border-red-500 bg-red-50 text-red-700' 
+                              : 'border-gray-300'
+                          }`}
+                          placeholder="prix"
                         />
                         DH
                       </div>
