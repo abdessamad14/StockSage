@@ -3,21 +3,41 @@
 
 const API_BASE = 'http://localhost:5003/api/offline';
 
-// Generic API helper
+// Generic API helper with retry logic
 async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
-  });
+  const maxRetries = 3;
+  let lastError: Error;
 
-  if (!response.ok) {
-    throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`API call attempt ${attempt} to ${API_BASE}${endpoint}`);
+      
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        ...options,
+      });
+
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+      }
+
+      console.log(`API call successful on attempt ${attempt}`);
+      return response.json();
+    } catch (error) {
+      console.error(`API call attempt ${attempt} failed:`, error);
+      lastError = error as Error;
+      
+      if (attempt < maxRetries) {
+        console.log(`Retrying in ${attempt * 1000}ms...`);
+        await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+      }
+    }
   }
 
-  return response.json();
+  throw lastError!;
 }
 
 // Type definitions for database entities
@@ -300,6 +320,108 @@ export const databaseProductStorage = {
       createdAt: created.createdAt,
       updatedAt: created.updatedAt
     };
+  },
+
+  async updateQuantity(id: string, quantity: number): Promise<OfflineProduct> {
+    // Use direct fetch with PATCH endpoint to update only quantity
+    console.log(`Direct PATCH request to update product ${id} quantity to ${quantity}`);
+    
+    try {
+      const response = await fetch(`${API_BASE}/products/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quantity: quantity
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`PATCH request failed: ${response.status} ${response.statusText}`);
+      }
+
+      const updated = await response.json();
+      console.log('Direct PATCH request successful:', updated);
+      
+      return {
+        id: updated.id.toString(),
+        name: updated.name,
+        description: updated.description || undefined,
+        barcode: updated.barcode || undefined,
+        categoryId: updated.categoryId || undefined,
+        costPrice: updated.costPrice,
+        sellingPrice: updated.sellingPrice,
+        semiWholesalePrice: updated.semiWholesalePrice || undefined,
+        wholesalePrice: updated.wholesalePrice || undefined,
+        quantity: updated.quantity,
+        minStockLevel: updated.minStockLevel || undefined,
+        unit: updated.unit || undefined,
+        image: updated.image || undefined,
+        active: updated.active !== false,
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt
+      };
+    } catch (error) {
+      console.error('Direct PATCH request failed:', error);
+      
+      // Fallback: try PUT method with full product data
+      console.log('Attempting fallback with PUT method');
+      const allProducts = await this.getAll();
+      const currentProduct = allProducts.find(p => p.id === id);
+      
+      if (!currentProduct) {
+        throw new Error('Product not found for fallback update');
+      }
+
+      const response = await fetch(`${API_BASE}/products/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: currentProduct.name,
+          description: currentProduct.description,
+          barcode: currentProduct.barcode,
+          categoryId: currentProduct.categoryId,
+          costPrice: currentProduct.costPrice,
+          sellingPrice: currentProduct.sellingPrice,
+          semiWholesalePrice: currentProduct.semiWholesalePrice,
+          wholesalePrice: currentProduct.wholesalePrice,
+          quantity: quantity, // Only this field changes
+          minStockLevel: currentProduct.minStockLevel,
+          unit: currentProduct.unit,
+          image: currentProduct.image,
+          active: currentProduct.active
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`PUT fallback failed: ${response.status} ${response.statusText}`);
+      }
+
+      const updated = await response.json();
+      console.log('PUT fallback successful:', updated);
+
+      return {
+        id: updated.id.toString(),
+        name: updated.name,
+        description: updated.description || undefined,
+        barcode: updated.barcode || undefined,
+        categoryId: updated.categoryId || undefined,
+        costPrice: updated.costPrice,
+        sellingPrice: updated.sellingPrice,
+        semiWholesalePrice: updated.semiWholesalePrice || undefined,
+        wholesalePrice: updated.wholesalePrice || undefined,
+        quantity: updated.quantity,
+        minStockLevel: updated.minStockLevel || undefined,
+        unit: updated.unit || undefined,
+        image: updated.image || undefined,
+        active: updated.active !== false,
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt
+      };
+    }
   },
 
   async update(id: string, updates: Partial<OfflineProduct>): Promise<OfflineProduct> {

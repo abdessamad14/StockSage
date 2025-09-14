@@ -681,62 +681,79 @@ export default function OfflinePOS() {
       }
 
       // Update product stock quantities and create stock history entries
+      console.log('Starting inventory updates for cart items:', cart);
       for (const item of cart) {
-        const currentProduct = products.find(p => p.id === item.product.id);
-        if (currentProduct) {
-          const previousQuantity = currentProduct.quantity;
-          const newQuantity = previousQuantity - item.quantity;
-          
-          // Update product quantity
-          await databaseProductStorage.update(item.product.id, {
-            quantity: newQuantity,
-            updatedAt: new Date().toISOString()
-          });
+        try {
+          console.log('Processing inventory update for item:', item);
+          const currentProduct = products.find(p => p.id === item.product.id);
+          if (currentProduct) {
+            const previousQuantity = currentProduct.quantity;
+            const newQuantity = previousQuantity - item.quantity;
+            
+            console.log(`Updating product ${item.product.id} quantity from ${previousQuantity} to ${newQuantity}`);
+            
+            // Update only product quantity, not all fields
+            await databaseProductStorage.updateQuantity(item.product.id, newQuantity);
+            console.log('Product quantity updated successfully');
 
-          // Update primary warehouse stock to keep in sync
-          if (primaryWarehouse) {
-            await offlineProductStockStorage.upsert({
-              productId: item.product.id,
-              locationId: primaryWarehouse.id,
-              quantity: newQuantity,
-              minStockLevel: 0
-            });
-          }
-
-          // Create stock transaction entry for sale
-          try {
-            const response = await fetch('http://localhost:5003/api/offline/stock-transactions', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                tenantId: 'offline',
-                productId: parseInt(item.product.id),
-                warehouseId: primaryWarehouse?.id || 'main',
-                type: 'sale',
-                quantity: -item.quantity, // Negative for stock decrease
-                previousQuantity: previousQuantity,
-                newQuantity: newQuantity,
-                reason: 'POS Sale',
-                reference: createdSale.invoiceNumber,
-                relatedId: createdSale.id?.toString(),
-                createdAt: new Date().toISOString()
-              }),
-            });
-
-            if (!response.ok) {
-              console.error('Failed to create stock transaction for product:', item.product.id);
+            // Update primary warehouse stock to keep in sync
+            if (primaryWarehouse) {
+              console.log('Updating warehouse stock for primary warehouse:', primaryWarehouse.id);
+              await offlineProductStockStorage.upsert({
+                productId: item.product.id,
+                locationId: primaryWarehouse.id,
+                quantity: newQuantity,
+                minStockLevel: 0
+              });
+              console.log('Warehouse stock updated successfully');
             }
-          } catch (stockError) {
-            console.error('Error creating stock transaction:', stockError);
+
+            // Create stock transaction entry for sale
+            try {
+              console.log('Creating stock transaction entry');
+              const response = await fetch('http://localhost:5003/api/offline/stock-transactions', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  tenantId: 'offline',
+                  productId: parseInt(item.product.id),
+                  warehouseId: primaryWarehouse?.id || 'main',
+                  type: 'sale',
+                  quantity: -item.quantity, // Negative for stock decrease
+                  previousQuantity: previousQuantity,
+                  newQuantity: newQuantity,
+                  reason: 'POS Sale',
+                  reference: createdSale.invoiceNumber,
+                  relatedId: createdSale.id?.toString(),
+                  createdAt: new Date().toISOString()
+                }),
+              });
+
+              if (!response.ok) {
+                console.error('Failed to create stock transaction for product:', item.product.id);
+              } else {
+                console.log('Stock transaction created successfully');
+              }
+            } catch (stockError) {
+              console.error('Error creating stock transaction:', stockError);
+            }
+          } else {
+            console.warn('Product not found in products list:', item.product.id);
           }
+        } catch (itemError) {
+          console.error('Error processing inventory update for item:', item, itemError);
+          throw itemError; // Re-throw to catch in main error handler
         }
       }
+      console.log('Completed inventory updates');
 
       // Reload products to reflect updated quantities
+      console.log('Reloading products to reflect updated quantities');
       const updatedProducts = await databaseProductStorage.getAll();
       setProducts(updatedProducts);
+      console.log('Products reloaded successfully');
 
       setLastSale(createdSale);
       setIsCheckoutOpen(false);
@@ -744,10 +761,14 @@ export default function OfflinePOS() {
       clearCart();
 
       // Reload sales period stats
+      console.log('Reloading sales period data');
       await loadSalesPeriodData();
+      console.log('Sales period data reloaded successfully');
       
       // Reload today's orders to show the new order immediately
+      console.log('Reloading todays orders');
       await loadTodaysOrders();
+      console.log('Todays orders reloaded successfully');
 
       // Auto-print thermal receipt after successful payment
       try {
@@ -785,9 +806,14 @@ export default function OfflinePOS() {
       }
     } catch (error) {
       console.error('Error processing sale:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        type: typeof error
+      });
       toast({
         title: "Error",
-        description: "Failed to process sale",
+        description: `Failed to process sale: ${error instanceof Error ? error.message : String(error)}`,
         variant: "destructive",
       });
     }
@@ -1524,7 +1550,7 @@ export default function OfflinePOS() {
 
       {/* Receipt Dialog */}
       <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Sale Receipt</DialogTitle>
           </DialogHeader>
@@ -1579,7 +1605,34 @@ export default function OfflinePOS() {
           <DialogFooter className="flex gap-2">
             <Button 
               variant="outline" 
-              onClick={() => {}} 
+              onClick={async () => {
+                if (lastSale) {
+                  try {
+                    await ThermalReceiptPrinter.printReceipt({
+                      invoiceNumber: lastSale.id,
+                      date: new Date(lastSale.date),
+                      items: lastSale.items,
+                      subtotal: lastSale.totalAmount - (lastSale.taxAmount || 0),
+                      taxAmount: lastSale.taxAmount || 0,
+                      total: lastSale.totalAmount,
+                      paidAmount: lastSale.paidAmount,
+                      changeAmount: lastSale.changeAmount || 0,
+                      paymentMethod: lastSale.paymentMethod
+                    });
+                    toast({
+                      title: "Succès",
+                      description: "Reçu imprimé avec succès",
+                    });
+                  } catch (error) {
+                    console.error('Print failed:', error);
+                    toast({
+                      title: "Erreur d'impression",
+                      description: error instanceof Error ? error.message : 'Erreur d\'impression',
+                      variant: "destructive",
+                    });
+                  }
+                }
+              }}
               disabled={!lastSale}
             >
               <Printer className="h-4 w-4 mr-2" />

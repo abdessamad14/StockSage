@@ -70,6 +70,35 @@ router.post('/products', async (req, res) => {
   }
 });
 
+// PATCH endpoint for quantity-only updates
+router.patch('/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Only update the fields provided in the request body
+    const updateData = {
+      ...req.body,
+      updatedAt: new Date().toISOString()
+    };
+    
+    console.log('Updating product quantity with data:', updateData);
+    
+    const updatedProduct = await db.update(products)
+      .set(updateData)
+      .where(eq(products.id, parseInt(id)))
+      .returning();
+    
+    if (updatedProduct.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    res.json(updatedProduct[0]);
+  } catch (error) {
+    console.error('Error updating product quantity:', error);
+    res.status(500).json({ error: 'Failed to update product quantity' });
+  }
+});
+
 router.put('/products/:id', async (req, res) => {
   try {
     const { id } = req.params;

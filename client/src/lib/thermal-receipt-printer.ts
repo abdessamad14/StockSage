@@ -48,12 +48,13 @@ export class ThermalReceiptPrinter {
         await this.printToThermalPrinter(receiptData, currentSettings);
         return;
       } catch (error) {
-        console.warn('Thermal printer failed, falling back to browser print:', error);
+        console.warn('Thermal printer failed:', error);
+        throw new Error('Imprimante thermique non connectée');
       }
     }
     
-    // Fallback to browser print dialog
-    await this.printToBrowser(receiptData, currentSettings);
+    // If no thermal printer configured, show message instead of opening print dialog
+    throw new Error('Imprimante thermique non configurée');
   }
 
   // Print to thermal printer
