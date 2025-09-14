@@ -83,22 +83,25 @@ export default function OfflinePOS() {
   
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<OfflineCustomer | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit'>('cash');
+  const [selectedSupplier, setSelectedSupplier] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit' | 'card'>('cash');
+  const [customCashAmount, setCustomCashAmount] = useState<string>('');
+  const [numericInput, setNumericInput] = useState<{
+    value: string;
+    mode: 'price' | 'quantity' | null;
+    targetItemId: string | null;
+  }>({ value: '', mode: null, targetItemId: null });
+  const [quantityInputs, setQuantityInputs] = useState<{[key: string]: string}>({});
   const [paidAmount, setPaidAmount] = useState(0);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [lastSale, setLastSale] = useState<OfflineSale | null>(null);
   const [loading, setLoading] = useState(true);
-  const [numericInput, setNumericInput] = useState<NumericInputState>({
-    value: '',
-    mode: null,
-    targetItemId: null
-  });
   const [discountAmount, setDiscountAmount] = useState(0);
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('percentage');
-  const [customCashAmount, setCustomCashAmount] = useState('');
   const [barcodeBuffer, setBarcodeBuffer] = useState('');
   const [lastKeyTime, setLastKeyTime] = useState(0);
   
@@ -427,7 +430,7 @@ export default function OfflinePOS() {
     
     setCart(cart.map(item =>
       item.product.id === productId
-        ? { ...item, quantity, totalPrice: quantity * item.unitPrice }
+        ? { ...item, quantity, totalPrice: item.unitPrice * quantity }
         : item
     ));
   };
@@ -452,6 +455,7 @@ export default function OfflinePOS() {
       )
     );
   };
+
 
   // Numeric keypad functions
   const handleNumericInput = (digit: string) => {
@@ -861,7 +865,58 @@ export default function OfflinePOS() {
                     <div className="flex-1 pr-2">
                       <div className="font-medium truncate">{item.product.name}</div>
                       <div className="text-gray-500 text-xs flex items-center gap-1">
-                        {item.quantity} x 
+                        <input
+                          type="text"
+                          value={quantityInputs[item.product.id] ?? item.quantity.toString()}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            // Update local input state immediately
+                            setQuantityInputs(prev => ({
+                              ...prev,
+                              [item.product.id]: value
+                            }));
+                          }}
+                          onBlur={(e) => {
+                            const value = e.target.value;
+                            // Process the value when user finishes editing
+                            if (value.includes('*')) {
+                              const parts = value.split('*');
+                              if (parts.length === 2) {
+                                const num1 = parseFloat(parts[0]) || 0;
+                                const num2 = parseFloat(parts[1]) || 0;
+                                const calculatedQty = num1 * num2;
+                                if (calculatedQty > 0) {
+                                  updateCartItemQuantity(item.product.id, calculatedQty);
+                                  // Clear the local input state
+                                  setQuantityInputs(prev => {
+                                    const newState = { ...prev };
+                                    delete newState[item.product.id];
+                                    return newState;
+                                  });
+                                }
+                              }
+                            } else {
+                              const newQty = parseFloat(value) || 0;
+                              if (newQty > 0) {
+                                updateCartItemQuantity(item.product.id, newQty);
+                                // Clear the local input state
+                                setQuantityInputs(prev => {
+                                  const newState = { ...prev };
+                                  delete newState[item.product.id];
+                                  return newState;
+                                });
+                              }
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          className="w-16 px-1 py-0 text-xs border border-gray-300 rounded bg-white text-center"
+                          placeholder="qty"
+                        />
+                        x 
                         <input
                           type="number"
                           value={item.unitPrice}
