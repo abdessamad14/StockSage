@@ -439,9 +439,18 @@ export default function OfflinePOS() {
   const clearCart = () => {
     setCart([]);
     setSelectedCustomer(null);
-    setPaidAmount(0);
     setDiscountAmount(0);
-    setNumericInput({ value: '', mode: null, targetItemId: null });
+    setPaidAmount(0);
+  };
+
+  const updateCartItemPrice = (productId: string, newPrice: number) => {
+    setCart(prevCart => 
+      prevCart.map(item => 
+        item.product.id === productId 
+          ? { ...item, unitPrice: newPrice, totalPrice: newPrice * item.quantity }
+          : item
+      )
+    );
   };
 
   // Numeric keypad functions
@@ -851,7 +860,21 @@ export default function OfflinePOS() {
                   <div key={item.product.id} className="flex justify-between text-xs border-b border-gray-100 pb-1">
                     <div className="flex-1 pr-2">
                       <div className="font-medium truncate">{item.product.name}</div>
-                      <div className="text-gray-500 text-xs">{item.quantity} x {item.unitPrice.toFixed(2)} DH</div>
+                      <div className="text-gray-500 text-xs flex items-center gap-1">
+                        {item.quantity} x 
+                        <input
+                          type="number"
+                          value={item.unitPrice}
+                          onChange={(e) => {
+                            const newPrice = parseFloat(e.target.value) || 0;
+                            updateCartItemPrice(item.product.id, newPrice);
+                          }}
+                          className="w-12 px-1 py-0 text-xs border border-gray-300 rounded bg-white text-center"
+                          step="0.01"
+                          min="0"
+                        />
+                        DH
+                      </div>
                     </div>
                     <div className="font-bold text-right">{item.totalPrice.toFixed(2)} DH</div>
                   </div>
