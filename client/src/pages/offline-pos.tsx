@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { ThermalReceiptPrinter, ReceiptData } from '@/lib/thermal-receipt-printer';
 import { useOfflineAuth } from '@/hooks/use-offline-auth';
@@ -27,7 +29,9 @@ import {
   Eye,
   Grid3X3,
   List,
-  Calendar
+  Calendar,
+  CreditCard,
+  Settings
 } from 'lucide-react';
 
 // Import offline storage and types
@@ -91,7 +95,7 @@ export default function OfflinePOS() {
   const [customCashAmount, setCustomCashAmount] = useState<string>('');
   const [numericInput, setNumericInput] = useState<{
     value: string;
-    mode: 'price' | 'quantity' | null;
+    mode: 'price' | 'quantity' | 'discount' | null;
     targetItemId: string | null;
   }>({ value: '', mode: null, targetItemId: null });
   const [quantityInputs, setQuantityInputs] = useState<{[key: string]: string}>({});
@@ -116,6 +120,13 @@ export default function OfflinePOS() {
     credit: 0,
     ordersCount: 0
   });
+
+  // Credit management state
+  const [isCreditDialogOpen, setIsCreditDialogOpen] = useState(false);
+  const [creditInfo, setCreditInfo] = useState<any>(null);
+  const [loadingCreditInfo, setLoadingCreditInfo] = useState(false);
+  const [creditAmount, setCreditAmount] = useState(0);
+  const [creditNote, setCreditNote] = useState('');
 
   // Load data on component mount
   useEffect(() => {
@@ -189,6 +200,70 @@ export default function OfflinePOS() {
 
     loadData();
   }, [toast]);
+
+  // Load credit info when customer is selected
+  useEffect(() => {
+    if (selectedCustomer) {
+      loadCustomerCreditInfo(selectedCustomer.id);
+    } else {
+      setCreditInfo(null);
+    }
+  }, [selectedCustomer]);
+
+  // Load customer credit info
+  const loadCustomerCreditInfo = async (customerId: string) => {
+    try {
+      setLoadingCreditInfo(true);
+      const creditData = await creditHelpers.getCustomerCreditInfo(customerId);
+      console.log('Credit info loaded:', creditData);
+      setCreditInfo(creditData);
+    } catch (error) {
+      console.error('Error loading credit info:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Erreur lors du chargement des informations de crédit',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingCreditInfo(false);
+    }
+  };
+
+  // Handle credit payment
+  const handleCreditPayment = async () => {
+    if (!selectedCustomer || creditAmount <= 0) return;
+    
+    try {
+      await creditHelpers.addCreditPayment(selectedCustomer.id, creditAmount, creditNote);
+      
+      // Update customer balance in local state
+      const updatedCustomer = await databaseCustomerStorage.getById(selectedCustomer.id);
+      if (updatedCustomer) {
+        setSelectedCustomer(updatedCustomer);
+        setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? updatedCustomer : c));
+      }
+      
+      // Reload credit info
+      await loadCustomerCreditInfo(selectedCustomer.id);
+      
+      // Reset form
+      setCreditAmount(0);
+      setCreditNote('');
+      
+      toast({
+        title: 'Succès',
+        description: `Paiement de ${creditAmount.toFixed(2)} DH enregistré`,
+        variant: 'default'
+      });
+    } catch (error) {
+      console.error('Error recording credit payment:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Erreur lors de l\'enregistrement du paiement',
+        variant: 'destructive'
+      });
+    }
+  };
 
   // Load today's orders and calculate turnover
   const loadTodaysOrders = async () => {
@@ -878,6 +953,41 @@ export default function OfflinePOS() {
                   ))}
                 </SelectContent>
               </Select>
+              
+              {/* Customer Credit Display */}
+              {selectedCustomer && (
+                <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1">
+                      <CreditCard className="h-3 w-3 text-blue-600" />
+                      <span className="text-xs font-medium text-blue-800">Crédit Client</span>
+                    </div>
+                    <Button
+                      onClick={() => setIsCreditDialogOpen(true)}
+                      size="sm"
+                      variant="outline"
+                      className="h-5 px-2 text-xs bg-blue-100 border-blue-300 hover:bg-blue-200 text-blue-700"
+                    >
+                      <Settings className="h-3 w-3 mr-1" />
+                      Régler
+                    </Button>
+                  </div>
+                  {loadingCreditInfo ? (
+                    <div className="text-xs text-gray-500">Chargement...</div>
+                  ) : creditInfo ? (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-600">Solde actuel:</span>
+                        <span className={`font-medium ${creditInfo.currentBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {creditInfo.currentBalance?.toFixed(2) || '0.00'} DH
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500">Aucune information de crédit</div>
+                  )}
+                </div>
+              )}
             </div>
             
             {cart.length === 0 ? (
@@ -1643,6 +1753,165 @@ export default function OfflinePOS() {
               Close
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Credit Management Dialog */}
+      <Dialog open={isCreditDialogOpen} onOpenChange={setIsCreditDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Gestion de Crédit - {selectedCustomer?.name}</DialogTitle>
+            <div className="text-sm text-gray-600">
+              Gérer le solde de crédit, les paiements et voir l'historique des transactions
+            </div>
+          </DialogHeader>
+          
+          {selectedCustomer && (
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="overview">Aperçu</TabsTrigger>
+                <TabsTrigger value="payment">Enregistrer Paiement</TabsTrigger>
+                <TabsTrigger value="history">Historique</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="overview" className="space-y-4">
+                {loadingCreditInfo ? (
+                  <div className="text-center py-8">
+                    <div className="text-lg">Chargement des informations de crédit...</div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-5 h-5 text-red-500" />
+                        <h3 className="font-semibold">Solde Actuel</h3>
+                      </div>
+                      <p className="text-2xl font-bold text-red-600">
+                        {(creditInfo?.currentBalance || 0).toFixed(2)} DH
+                      </p>
+                    </Card>
+                    
+                    <Card className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CreditCard className="w-5 h-5 text-blue-500" />
+                        <h3 className="font-semibold">Limite de Crédit</h3>
+                      </div>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {(creditInfo?.creditLimit || 0).toFixed(2)} DH
+                      </p>
+                    </Card>
+                    
+                    <Card className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-5 h-5 text-green-500" />
+                        <h3 className="font-semibold">Crédit Disponible</h3>
+                      </div>
+                      <p className="text-2xl font-bold text-green-600">
+                        {Math.max(0, (creditInfo?.creditLimit || 0) - (creditInfo?.currentBalance || 0)).toFixed(2)} DH
+                      </p>
+                    </Card>
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="payment" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">Montant du Paiement</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={creditAmount}
+                        onChange={(e) => setCreditAmount(parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium">Note</label>
+                      <Textarea
+                        value={creditNote}
+                        onChange={(e) => setCreditNote(e.target.value)}
+                        placeholder="Note optionnelle..."
+                        className="mt-1"
+                        rows={3}
+                      />
+                    </div>
+                    
+                    <Button 
+                      onClick={handleCreditPayment}
+                      disabled={creditAmount <= 0}
+                      className="w-full"
+                    >
+                      Enregistrer le Paiement
+                    </Button>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded">
+                    <h3 className="font-semibold mb-2">Statut Actuel</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span>Solde Actuel:</span>
+                        <span className="font-medium text-red-600">
+                          {(creditInfo?.currentBalance || 0).toFixed(2)} DH
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Limite de Crédit:</span>
+                        <span className="font-medium text-blue-600">
+                          {(creditInfo?.creditLimit || 0).toFixed(2)} DH
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Après Paiement:</span>
+                        <span className="font-medium text-green-600">
+                          {Math.max(0, (creditInfo?.currentBalance || 0) - creditAmount).toFixed(2)} DH
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="history" className="space-y-4">
+                <div className="max-h-96 overflow-y-auto">
+                  {creditInfo?.transactions && creditInfo.transactions.length > 0 ? (
+                    <div className="space-y-2">
+                      {creditInfo.transactions.map((transaction: any, index: number) => (
+                        <div key={index} className="border rounded p-3 bg-gray-50">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-medium">
+                                {transaction.type === 'credit_sale' ? '🛒 Vente à crédit' : '💰 Paiement'}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {new Date(transaction.date).toLocaleString('fr-MA')}
+                              </div>
+                              {transaction.note && (
+                                <div className="text-sm text-gray-500 mt-1">{transaction.note}</div>
+                              )}
+                            </div>
+                            <div className={`font-bold ${
+                              transaction.type === 'credit_sale' ? 'text-red-600' : 'text-green-600'
+                            }`}>
+                              {transaction.type === 'credit_sale' ? '+' : '-'}{transaction.amount.toFixed(2)} DH
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>Aucune transaction de crédit trouvée</p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          )}
         </DialogContent>
       </Dialog>
     </div>
