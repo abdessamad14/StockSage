@@ -31,7 +31,14 @@ import {
   List,
   Calendar,
   CreditCard,
-  Settings
+  Settings,
+  Home,
+  Users,
+  Truck,
+  BarChart3,
+  FileText,
+  Warehouse,
+  ShoppingBag
 } from 'lucide-react';
 
 // Import offline storage and types
@@ -95,9 +102,9 @@ export default function OfflinePOS() {
   const [customCashAmount, setCustomCashAmount] = useState<string>('');
   const [numericInput, setNumericInput] = useState<{
     value: string;
-    mode: 'price' | 'quantity' | 'discount' | null;
+    mode: 'price' | 'quantity' | 'discount' | 'payment' | 'barcode' | null;
     targetItemId: string | null;
-  }>({ value: '', mode: null, targetItemId: null });
+  }>({ value: '', mode: 'barcode', targetItemId: null });
   const [quantityInputs, setQuantityInputs] = useState<{[key: string]: string}>({});
   const [priceInputs, setPriceInputs] = useState<{[key: string]: string}>({});
   const [paidAmount, setPaidAmount] = useState(0);
@@ -108,9 +115,7 @@ export default function OfflinePOS() {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('percentage');
   const [barcodeBuffer, setBarcodeBuffer] = useState('');
-  const [lastKeyTime, setLastKeyTime] = useState(0);
-  
-  // Right sidebar state
+  const [lastKeyTime, setLastKeyTime] = useState(Date.now());
   const [rightSidebarView, setRightSidebarView] = useState<'orders' | 'products'>('orders');
   const [todaysOrders, setTodaysOrders] = useState<OfflineSale[]>([]);
   const [todaysTurnover, setTodaysTurnover] = useState({
@@ -533,76 +538,103 @@ export default function OfflinePOS() {
   };
 
 
-  // Numeric keypad functions
-  const handleNumericInput = (digit: string) => {
-    if (digit === 'clear') {
-      setNumericInput({ value: '', mode: null, targetItemId: null });
-      return;
-    }
-    
-    if (digit === 'backspace') {
-      setNumericInput(prev => ({ ...prev, value: prev.value.slice(0, -1) }));
-      return;
-    }
-    
-    if (digit === 'enter') {
-      applyNumericInput();
-      return;
-    }
-    
-    setNumericInput(prev => ({ ...prev, value: prev.value + digit }));
-  };
-
-  const applyNumericInput = () => {
-    const value = parseFloat(numericInput.value);
-    if (isNaN(value)) return;
-
-    switch (numericInput.mode) {
-      case 'quantity':
-        if (numericInput.targetItemId) {
-          updateCartItemQuantity(numericInput.targetItemId, value);
-        }
-        break;
-      case 'price':
-        if (numericInput.targetItemId) {
-          setCart(cart.map(item => 
-            item.product.id === numericInput.targetItemId
-              ? { ...item, unitPrice: value, totalPrice: value * item.quantity }
-              : item
-          ));
-        }
-        break;
-      case 'discount':
-        setDiscountAmount(value);
-        break;
-    }
-    
-    setNumericInput({ value: '', mode: null, targetItemId: null });
-  };
-
-  // Function button handlers
-  const handleVoidLastItem = () => {
-    if (cart.length > 0) {
-      const newCart = [...cart];
-      newCart.pop();
-      setCart(newCart);
-    }
-  };
-
-  const handleDiscountMode = () => {
-    setNumericInput({ value: '', mode: 'discount', targetItemId: null });
-  };
-
-  const handleQuantityMode = (itemId?: string) => {
-    if (itemId) {
-      setNumericInput({ value: '', mode: 'quantity', targetItemId: itemId });
-    }
-  };
 
   const handlePriceMode = (itemId?: string) => {
     if (itemId) {
       setNumericInput({ value: '', mode: 'price', targetItemId: itemId });
     }
+  };
+
+  const handleVoidLastItem = () => {
+    if (cart.length > 0) {
+      setCart(cart.slice(0, -1));
+      toast({ title: 'Dernier article annulé' });
+    }
+  };
+
+  const handleNumericInput = (input: string) => {
+    if (input === 'clear') {
+      setNumericInput(prev => ({ ...prev, value: '' }));
+      return;
+    }
+    
+    if (input === 'enter') {
+      const value = parseFloat(numericInput.value) || 0;
+      
+      switch (numericInput.mode) {
+        case 'barcode':
+          // Search for product by barcode
+          const product = products.find(p => p.barcode === numericInput.value);
+          if (product) {
+            addToCart(product);
+            toast({ title: `${product.name} ajouté` });
+          } else {
+            toast({ title: 'Produit non trouvé', variant: 'destructive' });
+          }
+          setNumericInput({ value: '', mode: 'barcode', targetItemId: null });
+          break;
+          
+        case 'quantity':
+          if (numericInput.targetItemId) {
+            setCart(cart.map(item => 
+              item.product.id === numericInput.targetItemId
+                ? { ...item, quantity: value, totalPrice: value * item.unitPrice }
+                : item
+            ));
+          } else if (cart.length > 0) {
+            // Apply to last item if no target
+            const lastItem = cart[cart.length - 1];
+            setCart(cart.map(item => 
+              item.product.id === lastItem.product.id
+                ? { ...item, quantity: value, totalPrice: value * item.unitPrice }
+                : item
+            ));
+          }
+          setNumericInput({ value: '', mode: 'barcode', targetItemId: null });
+          break;
+          
+        case 'price':
+          if (numericInput.targetItemId) {
+            setCart(cart.map(item => 
+              item.product.id === numericInput.targetItemId
+                ? { ...item, unitPrice: value, totalPrice: item.quantity * value }
+                : item
+            ));
+          } else if (cart.length > 0) {
+            // Apply to last item if no target
+            const lastItem = cart[cart.length - 1];
+            setCart(cart.map(item => 
+              item.product.id === lastItem.product.id
+                ? { ...item, unitPrice: value, totalPrice: item.quantity * value }
+                : item
+            ));
+          }
+          setNumericInput({ value: '', mode: 'barcode', targetItemId: null });
+          break;
+          
+        case 'discount':
+          setDiscountAmount(value);
+          setDiscountType('amount');
+          setNumericInput({ value: '', mode: 'barcode', targetItemId: null });
+          break;
+          
+        case 'payment':
+          setPaidAmount(value);
+          setNumericInput({ value: '', mode: 'barcode', targetItemId: null });
+          break;
+      }
+      return;
+    }
+    
+    // Add digit or decimal point
+    if (input === '.' && numericInput.value.includes('.')) {
+      return; // Don't allow multiple decimal points
+    }
+    
+    setNumericInput(prev => ({
+      ...prev,
+      value: prev.value + input
+    }));
   };
 
   // Calculate totals
@@ -903,9 +935,10 @@ export default function OfflinePOS() {
   }
 
   return (
+    <>
     <div className="flex h-screen bg-gray-100">
       {/* Left Panel - Thermal Printer Receipt */}
-      <div className="w-[450px] bg-white border-r-2 border-gray-300 flex flex-col h-screen">
+      <div className="w-[450px] bg-white border-r-2 border-gray-300 flex flex-col h-full">
         {/* Receipt Header */}
         <div className="bg-blue-600 text-white p-4 flex-shrink-0">
           <h2 className="text-lg font-bold">TICKET DE CAISSE</h2>
@@ -1481,10 +1514,78 @@ export default function OfflinePOS() {
             </div>
           )}
         </div>
-        
-        {/* Content Area - Products or Orders */}
-        <div className="flex-1 overflow-y-auto">
-          {rightSidebarView === 'products' ? (
+
+        {/* Colorful Function Buttons (Classic POS Style) - Moved to Top */}
+        <div className="bg-gray-100 border-b border-gray-300 p-2">
+          <div className="flex items-center gap-2 mb-2">
+            <ShoppingCart className="h-4 w-4 text-blue-600" />
+            <span className="font-bold text-sm">FONCTIONS SYSTÈME</span>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            <Button
+              onClick={() => window.location.href = '/dashboard'}
+              className="h-10 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+            >
+              <Home className="h-4 w-4" />
+              ACCUEIL
+            </Button>
+            <Button
+              onClick={() => window.location.href = '/products'}
+              className="h-10 bg-green-500 hover:bg-green-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+            >
+              <Package className="h-4 w-4" />
+              ARTICLES
+            </Button>
+            <Button
+              onClick={() => window.location.href = '/customers'}
+              className="h-10 bg-purple-500 hover:bg-purple-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+            >
+              <Users className="h-4 w-4" />
+              CLIENTS
+            </Button>
+            <Button
+              onClick={() => window.location.href = '/suppliers'}
+              className="h-10 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+            >
+              <Truck className="h-4 w-4" />
+              FOURNISSEURS
+            </Button>
+            <Button
+              onClick={() => window.location.href = '/inventory'}
+              className="h-10 bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+            >
+              <Warehouse className="h-4 w-4" />
+              STOCK
+            </Button>
+            <Button
+              onClick={() => window.location.href = '/sales-history'}
+              className="h-10 bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+            >
+              <FileText className="h-4 w-4" />
+              VENTES
+            </Button>
+            <Button
+              onClick={() => window.location.href = '/reports'}
+              className="h-10 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+            >
+              <BarChart3 className="h-4 w-4" />
+              RAPPORTS
+            </Button>
+            <Button
+              onClick={() => window.location.href = '/settings'}
+              className="h-10 bg-gray-500 hover:bg-gray-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+            >
+              <Settings className="h-4 w-4" />
+              CONFIG
+            </Button>
+          </div>
+        </div>
+
+        {/* Content Area - Products or Orders with Numeric Keypad */}
+        <div className="flex-1 flex">
+          {/* Products/Orders Section */}
+          <div className="flex-1 overflow-y-auto">
+            {rightSidebarView === 'products' ? (
             <>
               {/* Horizontal Categories */}
               <div className="bg-white border-b p-4">
@@ -1654,12 +1755,128 @@ export default function OfflinePOS() {
               )}
             </div>
           )}
+          </div>
+
+          {/* Numeric Keypad Section - Legacy POS Style */}
+          <div className="w-80 bg-gray-100 border-l border-gray-300 p-3">
+            <div className="bg-white rounded-lg shadow-lg p-3">
+              <div className="text-center font-bold text-sm mb-3">PAVÉ NUMÉRIQUE</div>
+              
+              {/* Display */}
+              <div className="bg-gray-900 text-green-400 p-3 rounded mb-3 font-mono">
+                <div className="text-xs text-green-300 mb-1">
+                  MODE: {numericInput.mode ? numericInput.mode.toUpperCase() : 'BARCODE'}
+                </div>
+                <div className="text-xl text-right">
+                  {numericInput.value || '0.00'}
+                </div>
+              </div>
+              
+              {/* Numeric Buttons */}
+              <div className="grid grid-cols-3 gap-2">
+                {['7', '8', '9', '4', '5', '6', '1', '2', '3'].map((num) => (
+                  <Button
+                    key={num}
+                    onClick={() => handleNumericInput(num)}
+                    className="h-12 bg-gray-200 hover:bg-gray-300 text-black font-bold text-lg border-2 border-gray-400"
+                  >
+                    {num}
+                  </Button>
+                ))}
+                <Button
+                  onClick={() => handleNumericInput('0')}
+                  className="h-12 bg-gray-200 hover:bg-gray-300 text-black font-bold text-lg border-2 border-gray-400 col-span-2"
+                >
+                  0
+                </Button>
+                <Button
+                  onClick={() => handleNumericInput('.')}
+                  className="h-12 bg-gray-200 hover:bg-gray-300 text-black font-bold text-lg border-2 border-gray-400"
+                >
+                  .
+                </Button>
+              </div>
+              
+              {/* Function Keys */}
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <Button
+                  onClick={() => handleNumericInput('clear')}
+                  className="h-10 bg-red-500 hover:bg-red-600 text-white font-bold"
+                >
+                  EFFACER
+                </Button>
+                <Button
+                  onClick={() => handleNumericInput('enter')}
+                  className="h-10 bg-green-500 hover:bg-green-600 text-white font-bold"
+                >
+                  ENTRER
+                </Button>
+              </div>
+              
+              {/* Quick Action Buttons */}
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <Button
+                  onClick={() => {
+                    setNumericInput({ value: '', mode: 'quantity', targetItemId: null });
+                    toast({ title: 'Mode Quantité - Entrez la quantité' });
+                  }}
+                  className={`h-10 ${numericInput.mode === 'quantity' ? 'bg-blue-700' : 'bg-blue-500'} hover:bg-blue-600 text-white font-bold text-xs`}
+                >
+                  QTÉ
+                </Button>
+                <Button
+                  onClick={() => {
+                    setNumericInput({ value: '', mode: 'price', targetItemId: null });
+                    toast({ title: 'Mode Prix - Entrez le prix' });
+                  }}
+                  className={`h-10 ${numericInput.mode === 'price' ? 'bg-purple-700' : 'bg-purple-500'} hover:bg-purple-600 text-white font-bold text-xs`}
+                >
+                  PRIX
+                </Button>
+                <Button
+                  onClick={() => {
+                    setNumericInput({ value: '', mode: 'discount', targetItemId: null });
+                    toast({ title: 'Mode Remise - Entrez le montant' });
+                  }}
+                  className={`h-10 ${numericInput.mode === 'discount' ? 'bg-orange-700' : 'bg-orange-500'} hover:bg-orange-600 text-white font-bold text-xs`}
+                >
+                  REMISE
+                </Button>
+                <Button
+                  onClick={handleVoidLastItem}
+                  className="h-10 bg-red-500 hover:bg-red-600 text-white font-bold text-xs"
+                >
+                  ANNULER
+                </Button>
+              </div>
+              
+              {/* Mode Instructions */}
+              <div className="mt-3 p-2 bg-blue-50 rounded text-xs">
+                <div className="font-semibold mb-1">Instructions:</div>
+                {numericInput.mode === 'barcode' && (
+                  <p>Entrez le code-barres puis ENTRER pour ajouter un produit</p>
+                )}
+                {numericInput.mode === 'quantity' && (
+                  <p>Entrez la quantité puis ENTRER pour modifier le dernier article</p>
+                )}
+                {numericInput.mode === 'price' && (
+                  <p>Entrez le prix puis ENTRER pour modifier le dernier article</p>
+                )}
+                {numericInput.mode === 'discount' && (
+                  <p>Entrez le montant de remise puis ENTRER</p>
+                )}
+                {numericInput.mode === 'payment' && (
+                  <p>Entrez le montant payé puis ENTRER</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+    </div>
 
-
-      {/* Receipt Dialog */}
-      <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
+    {/* Receipt Dialog */}
+    <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
         <DialogContent className="max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Sale Receipt</DialogTitle>
@@ -1913,7 +2130,7 @@ export default function OfflinePOS() {
             </Tabs>
           )}
         </DialogContent>
-      </Dialog>
-    </div>
+    </Dialog>
+    </>
   );
 }
