@@ -649,16 +649,16 @@ export default function OfflineInventory() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Inventory Management</h1>
+        <h1 className="text-3xl font-bold">{t('inventory_management')}</h1>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Warehouse className="w-5 h-5" />
             <Select value={selectedLocation} onValueChange={setSelectedLocation}>
               <SelectTrigger className="w-48">
-                <SelectValue placeholder="Select location" />
+                <SelectValue placeholder={t('select_location')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
+                <SelectItem value="all">{t('all_locations')}</SelectItem>
                 {stockLocations.map((location) => (
                   <SelectItem key={location.id} value={location.id}>
                     <div className="flex items-center gap-2">
@@ -677,7 +677,7 @@ export default function OfflineInventory() {
             className="flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            Add Location
+            {t('add_location')}
           </Button>
           {selectedLocation !== "all" && (
             <Button
@@ -698,39 +698,39 @@ export default function OfflineInventory() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('total_products')}</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalProducts}</div>
             <p className="text-xs text-muted-foreground">
-              Active products in inventory
+              {t('active_products_in_inventory')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inventory Value</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('inventory_value')}</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${totalValue.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
-              Total cost value of stock
+              {t('total_cost_value_of_stock')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('low_stock_items')}</CardTitle>
             <AlertTriangle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{lowStockCount}</div>
             <p className="text-xs text-muted-foreground">
-              Items below minimum level
+              {t('items_below_minimum_level')}
             </p>
           </CardContent>
         </Card>
@@ -742,7 +742,7 @@ export default function OfflineInventory() {
           <CardHeader>
             <CardTitle className="text-red-800 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5" />
-              Low Stock Alert
+              {t('low_stock_alert')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -772,7 +772,7 @@ export default function OfflineInventory() {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
         <Input
-          placeholder="Search products..."
+          placeholder={t('search_products')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10"
@@ -785,15 +785,15 @@ export default function OfflineInventory() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Barcode</TableHead>
-                <TableHead className="text-center">Current Stock</TableHead>
-                <TableHead className="text-center">Min Level</TableHead>
-                <TableHead className="text-right">Cost Price</TableHead>
-                <TableHead className="text-right">Stock Value</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-20">Actions</TableHead>
+                <TableHead>{t('product')}</TableHead>
+                <TableHead>{t('category')}</TableHead>
+                <TableHead>{t('barcode')}</TableHead>
+                <TableHead className="text-center">{t('current_stock')}</TableHead>
+                <TableHead className="text-center">{t('min_level')}</TableHead>
+                <TableHead className="text-right">{t('cost_price')}</TableHead>
+                <TableHead className="text-right">{t('stock_value')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
+                <TableHead className="w-20">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -811,7 +811,7 @@ export default function OfflineInventory() {
                     </TableCell>
                     <TableCell>
                       {product.categoryId && (
-                        <Badge variant="outline">Category</Badge>
+                        <Badge variant="outline">{t('category')}</Badge>
                       )}
                     </TableCell>
                     <TableCell className="font-mono text-sm">
@@ -837,7 +837,7 @@ export default function OfflineInventory() {
                         className="flex items-center gap-1"
                       >
                         {isLowStock && <TrendingDown className="w-3 h-3" />}
-                        {isLowStock ? "Low Stock" : "In Stock"}
+                        {isLowStock ? t('low_stock') : t('in_stock')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -911,7 +911,7 @@ export default function OfflineInventory() {
       <Dialog open={isAdjustmentOpen} onOpenChange={setIsAdjustmentOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adjust Stock</DialogTitle>
+            <DialogTitle>{t('adjust_stock')}</DialogTitle>
           </DialogHeader>
           
           {selectedProduct && (
@@ -919,7 +919,7 @@ export default function OfflineInventory() {
               <div>
                 <h3 className="font-semibold">{selectedProduct.name}</h3>
                 <p className="text-sm text-gray-600">
-                  Current stock: {selectedLocation === "all" 
+                  {t('current_stock')}: {selectedLocation === "all" 
                     ? `${selectedProduct.quantity} units (Primary)` 
                     : `${getProductStockInLocation(selectedProduct.id, selectedLocation)} units (${stockLocations.find(l => l.id === selectedLocation)?.name})`
                   }
@@ -927,7 +927,7 @@ export default function OfflineInventory() {
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-medium">Adjustment Quantity</label>
+                <label className="text-sm font-medium">{t('adjustment_quantity')}</label>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -951,7 +951,7 @@ export default function OfflineInventory() {
                   </Button>
                 </div>
                 <p className="text-xs text-gray-500">
-                  New stock level: {selectedLocation === "all" 
+                  {t('new_stock_level')}: {selectedLocation === "all" 
                     ? selectedProduct.quantity + adjustmentQuantity 
                     : getProductStockInLocation(selectedProduct.id, selectedLocation) + adjustmentQuantity
                   } units
@@ -959,11 +959,11 @@ export default function OfflineInventory() {
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-medium">Reason (Optional)</label>
+                <label className="text-sm font-medium">{t('reason_optional')}</label>
                 <Input
                   value={adjustmentReason}
                   onChange={(e) => setAdjustmentReason(e.target.value)}
-                  placeholder="e.g., Stock count correction, Damaged goods, etc."
+                  placeholder={t('adjustment_reason_placeholder')}
                 />
               </div>
             </div>
@@ -971,13 +971,13 @@ export default function OfflineInventory() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAdjustmentOpen(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button 
               onClick={applyStockAdjustment}
               disabled={adjustmentQuantity === 0}
             >
-              Apply Adjustment
+              {t('apply_adjustment')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1004,7 +1004,7 @@ export default function OfflineInventory() {
                   <label className="text-sm font-medium">From Location *</label>
                   <Select value={fromLocation} onValueChange={setFromLocation}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select source location" />
+                      <SelectValue placeholder={t('select_source_location')} />
                     </SelectTrigger>
                     <SelectContent>
                       {stockLocations.map((location) => {
@@ -1037,7 +1037,7 @@ export default function OfflineInventory() {
                   <label className="text-sm font-medium">To Location *</label>
                   <Select value={toLocation} onValueChange={setToLocation}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select destination location" />
+                      <SelectValue placeholder={t('select_destination_location')} />
                     </SelectTrigger>
                     <SelectContent>
                       {stockLocations.map((location) => (
@@ -1201,7 +1201,7 @@ export default function OfflineInventory() {
                 <label className="text-sm font-medium">Reason</label>
                 <Select value={entryReason} onValueChange={setEntryReason}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select reason (optional)" />
+                    <SelectValue placeholder={t('select_reason_optional')} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="purchase">New Purchase</SelectItem>
@@ -1509,32 +1509,32 @@ export default function OfflineInventory() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingLocation ? 'Edit Stock Location' : 'Add New Stock Location'}
+              {editingLocation ? t('edit_stock_location') : t('add_new_stock_location')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Location Name *</label>
+              <label className="text-sm font-medium">{t('location_name')} *</label>
               <Input
                 value={locationForm.name}
                 onChange={(e) => setLocationForm(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="e.g., Main Store, Warehouse A"
+                placeholder={t('location_name_placeholder')}
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Description</label>
+              <label className="text-sm font-medium">{t('description')}</label>
               <Input
                 value={locationForm.description}
                 onChange={(e) => setLocationForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Brief description of this location"
+                placeholder={t('location_description_placeholder')}
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Address</label>
+              <label className="text-sm font-medium">{t('address')}</label>
               <Input
                 value={locationForm.address}
                 onChange={(e) => setLocationForm(prev => ({ ...prev, address: e.target.value }))}
-                placeholder="Physical address"
+                placeholder={t('physical_address_placeholder')}
               />
             </div>
             <div className="flex items-center gap-2">
@@ -1545,7 +1545,7 @@ export default function OfflineInventory() {
                 onChange={(e) => setLocationForm(prev => ({ ...prev, isPrimary: e.target.checked }))}
               />
               <label htmlFor="isPrimary" className="text-sm font-medium">
-                Set as Primary Location
+                {t('set_as_primary_location')}
               </label>
             </div>
             {locationForm.isPrimary && (
@@ -1559,8 +1559,8 @@ export default function OfflineInventory() {
               <div className="border-t pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-medium">Location Actions</h4>
-                    <p className="text-sm text-gray-600">Manage this stock location</p>
+                    <h4 className="font-medium">{t('location_actions')}</h4>
+                    <p className="text-sm text-gray-600">{t('manage_this_stock_location')}</p>
                   </div>
                   {!editingLocation.isPrimary && (
                     <Button
