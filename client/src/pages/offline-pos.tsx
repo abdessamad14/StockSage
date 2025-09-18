@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { ThermalReceiptPrinter, ReceiptData } from '@/lib/thermal-receipt-printer';
 import { useOfflineAuth } from '@/hooks/use-offline-auth';
+import { useI18n } from '@/lib/i18n';
 import { 
   ShoppingCart, 
   Plus, 
@@ -79,6 +80,7 @@ interface NumericInputState {
 export default function OfflinePOS() {
   const { toast } = useToast();
   const { user, logout } = useOfflineAuth();
+  const { t } = useI18n();
   
   // State variables
   const [products, setProducts] = useState<OfflineProduct[]>([]);
@@ -194,8 +196,8 @@ export default function OfflinePOS() {
       } catch (error) {
         console.error('Error loading POS data:', error);
         toast({
-          title: "Erreur de chargement",
-          description: "Impossible de charger les données du POS",
+          title: t('error'),
+          description: t('pos_data_load_error'),
           variant: "destructive",
         });
       } finally {
@@ -225,8 +227,8 @@ export default function OfflinePOS() {
     } catch (error) {
       console.error('Error loading credit info:', error);
       toast({
-        title: 'Erreur',
-        description: 'Erreur lors du chargement des informations de crédit',
+        title: t('error'),
+        description: t('credit_info_load_error'),
         variant: 'destructive'
       });
     } finally {
@@ -256,15 +258,15 @@ export default function OfflinePOS() {
       setCreditNote('');
       
       toast({
-        title: 'Succès',
-        description: `Paiement de ${creditAmount.toFixed(2)} DH enregistré`,
+        title: t('success'),
+        description: t('credit_payment_recorded', { amount: creditAmount.toFixed(2) }),
         variant: 'default'
       });
     } catch (error) {
       console.error('Error recording credit payment:', error);
       toast({
-        title: 'Erreur',
-        description: 'Erreur lors de l\'enregistrement du paiement',
+        title: t('error'),
+        description: t('credit_payment_error'),
         variant: 'destructive'
       });
     }
@@ -362,14 +364,14 @@ export default function OfflinePOS() {
       setSelectedCustomer(null); // Reset customer selection
       
       toast({
-        title: "Commande chargée",
-        description: `Commande #${sale.id} chargée dans le panier avec ${cartItems.length} articles`,
+        title: t('order_loaded'),
+        description: t('order_loaded_description', { id: sale.id, count: cartItems.length }),
       });
     } catch (error) {
       console.error('Error loading order into cart:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de charger la commande: " + (error as Error).message,
+        title: t('error'),
+        description: t('order_load_error') + ": " + (error as Error).message,
         variant: "destructive",
       });
     }
@@ -430,13 +432,13 @@ export default function OfflinePOS() {
     if (product) {
       addToCart(product);
       toast({
-        title: "Produit ajouté",
-        description: `${product.name} ajouté au panier`,
+        title: t('product_added'),
+        description: t('product_added_to_cart', { name: product.name }),
       });
     } else {
       toast({
-        title: "Produit non trouvé",
-        description: `Aucun produit trouvé avec le code-barres: ${barcode}`,
+        title: t('product_not_found'),
+        description: t('barcode_not_found', { barcode }),
         variant: "destructive",
       });
     }
@@ -548,7 +550,7 @@ export default function OfflinePOS() {
   const handleVoidLastItem = () => {
     if (cart.length > 0) {
       setCart(cart.slice(0, -1));
-      toast({ title: 'Dernier article annulé' });
+      toast({ title: t('last_item_voided') });
     }
   };
 
@@ -567,9 +569,9 @@ export default function OfflinePOS() {
           const product = products.find(p => p.barcode === numericInput.value);
           if (product) {
             addToCart(product);
-            toast({ title: `${product.name} ajouté` });
+            toast({ title: t('product_added_short', { name: product.name }) });
           } else {
-            toast({ title: 'Produit non trouvé', variant: 'destructive' });
+            toast({ title: t('product_not_found'), variant: 'destructive' });
           }
           setNumericInput({ value: '', mode: 'barcode', targetItemId: null });
           break;
@@ -1006,11 +1008,11 @@ export default function OfflinePOS() {
                     </Button>
                   </div>
                   {loadingCreditInfo ? (
-                    <div className="text-xs text-gray-500">Chargement...</div>
+                    <div className="text-xs text-gray-500">{t('loading')}</div>
                   ) : creditInfo ? (
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
-                        <span className="text-gray-600">Solde actuel:</span>
+                        <span className="text-gray-600">{t('current_balance')}:</span>
                         <span className={`font-medium ${creditInfo.currentBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
                           {creditInfo.currentBalance?.toFixed(2) || '0.00'} DH
                         </span>
@@ -1196,8 +1198,8 @@ export default function OfflinePOS() {
                       
                       if (amount < total) {
                         toast({
-                          title: "Montant insuffisant",
-                          description: `${amount} DH < ${total.toFixed(2)} DH requis`,
+                          title: t('insufficient_amount'),
+                          description: t('insufficient_amount_desc', { amount, required: total.toFixed(2) }),
                           variant: "destructive",
                         });
                         return;
@@ -1272,8 +1274,8 @@ export default function OfflinePOS() {
                   const amount = parseFloat(customCashAmount);
                   if (!amount || amount < total) {
                     toast({
-                      title: "Montant invalide",
-                      description: `Minimum ${total.toFixed(2)} DH requis`,
+                      title: t('invalid_amount'),
+                      description: t('minimum_required', { amount: total.toFixed(2) }),
                       variant: "destructive",
                     });
                     return;
@@ -1699,12 +1701,12 @@ export default function OfflinePOS() {
                   {/* Table Header */}
                   <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
                     <div className="grid grid-cols-6 gap-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                      <div>N° Commande</div>
-                      <div>Heure</div>
-                      <div>Articles</div>
-                      <div>Montant</div>
-                      <div>Paiement</div>
-                      <div>Statut</div>
+                      <div>{t('pos_order_number')}</div>
+                      <div>{t('time')}</div>
+                      <div>{t('items')}</div>
+                      <div>{t('amount')}</div>
+                      <div>{t('payment')}</div>
+                      <div>{t('status')}</div>
                     </div>
                   </div>
                   
@@ -1977,31 +1979,31 @@ export default function OfflinePOS() {
       <Dialog open={isCreditDialogOpen} onOpenChange={setIsCreditDialogOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Gestion de Crédit - {selectedCustomer?.name}</DialogTitle>
+            <DialogTitle>{t('credit_management')} - {selectedCustomer?.name}</DialogTitle>
             <div className="text-sm text-gray-600">
-              Gérer le solde de crédit, les paiements et voir l'historique des transactions
+              {t('credit_management_desc')}
             </div>
           </DialogHeader>
           
           {selectedCustomer && (
             <Tabs defaultValue="overview" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="overview">Aperçu</TabsTrigger>
-                <TabsTrigger value="payment">Enregistrer Paiement</TabsTrigger>
-                <TabsTrigger value="history">Historique</TabsTrigger>
+                <TabsTrigger value="overview">{t('overview')}</TabsTrigger>
+                <TabsTrigger value="payment">{t('record_payment')}</TabsTrigger>
+                <TabsTrigger value="history">{t('history')}</TabsTrigger>
               </TabsList>
               
               <TabsContent value="overview" className="space-y-4">
                 {loadingCreditInfo ? (
                   <div className="text-center py-8">
-                    <div className="text-lg">Chargement des informations de crédit...</div>
+                    <div className="text-lg">{t('loading_credit_info')}</div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card className="p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <DollarSign className="w-5 h-5 text-red-500" />
-                        <h3 className="font-semibold">Solde Actuel</h3>
+                        <h3 className="font-semibold">{t('current_balance')}</h3>
                       </div>
                       <p className="text-2xl font-bold text-red-600">
                         {(creditInfo?.currentBalance || 0).toFixed(2)} DH
@@ -2035,7 +2037,7 @@ export default function OfflinePOS() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium">Montant du Paiement</label>
+                      <label className="text-sm font-medium">{t('payment_amount')}</label>
                       <Input
                         type="number"
                         step="0.01"
@@ -2062,15 +2064,15 @@ export default function OfflinePOS() {
                       disabled={creditAmount <= 0}
                       className="w-full"
                     >
-                      Enregistrer le Paiement
+                      {t('record_payment')}
                     </Button>
                   </div>
                   
                   <div className="bg-gray-50 p-4 rounded">
-                    <h3 className="font-semibold mb-2">Statut Actuel</h3>
+                    <h3 className="font-semibold mb-2">{t('current_status')}</h3>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span>Solde Actuel:</span>
+                        <span>{t('current_balance')}:</span>
                         <span className="font-medium text-red-600">
                           {(creditInfo?.currentBalance || 0).toFixed(2)} DH
                         </span>

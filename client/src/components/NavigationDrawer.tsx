@@ -49,7 +49,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
         </div>
         <div>
           <p className="text-white font-bold text-lg">{settings?.businessName || 'StockSage'}</p>
-          <p className="text-white text-sm opacity-80">Offline Mode</p>
+          <p className="text-white text-sm opacity-80">{t('offline_mode')}</p>
         </div>
       </div>
       
@@ -89,7 +89,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           {canManageInventory && (
             <Link href="/inventory-count" className={`flex items-center px-4 py-3 ${isActive('/inventory-count') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
               <ClipboardCheck className="w-6 h-6 mr-3" />
-              <span>Inventory Count</span>
+              <span>{t('inventory_count')}</span>
             </Link>
           )}
           
@@ -136,7 +136,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           {canManageUsers && (
             <Link href="/users" className={`flex items-center px-4 py-3 ${isActive('/users') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
               <UserCog className="w-6 h-6 mr-3" />
-              <span>User Management</span>
+              <span>{t('user_management')}</span>
             </Link>
           )}
           
@@ -162,10 +162,10 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
               <button
                 onClick={logout}
                 className="flex items-center px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                title="Logout"
+                title={t('logout')}
               >
                 <LogOut className="w-4 h-4 mr-1" />
-                Logout
+                {t('logout')}
               </button>
             </div>
           </div>
