@@ -2,6 +2,7 @@ import { useOfflineProducts } from '@/hooks/use-offline-products';
 import { useOfflineCustomers } from '@/hooks/use-offline-customers';
 import { useOfflineSales } from '@/hooks/use-offline-sales';
 import { useOfflineSettings } from '@/hooks/use-offline-settings';
+import { useI18n } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package, Users, Receipt, TrendingUp, AlertTriangle } from 'lucide-react';
 
@@ -10,6 +11,7 @@ export default function OfflineDashboard() {
   const { customers, loading: customersLoading } = useOfflineCustomers();
   const { sales, loading: salesLoading } = useOfflineSales();
   const { settings } = useOfflineSettings();
+  const { t } = useI18n();
 
   if (productsLoading || customersLoading || salesLoading) {
     return (
@@ -38,10 +40,10 @@ export default function OfflineDashboard() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold">{t('dashboard')}</h1>
         <div className="flex items-center space-x-2 text-sm text-gray-600">
           <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-          <span>Offline Mode</span>
+          <span>{t('offline_mode')}</span>
         </div>
       </div>
 
@@ -49,46 +51,46 @@ export default function OfflineDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('total_products')}</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalProducts}</div>
             <p className="text-xs text-muted-foreground">
-              Active inventory items
+              {t('active_inventory_items')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Customers</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('customers')}</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalCustomers}</div>
             <p className="text-xs text-muted-foreground">
-              Registered customers
+              {t('registered_customers')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('total_sales')}</CardTitle>
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalSales}</div>
             <p className="text-xs text-muted-foreground">
-              Completed transactions
+              {t('completed_transactions')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('revenue')}</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -96,7 +98,7 @@ export default function OfflineDashboard() {
               {settings?.currency || '$'}{totalRevenue.toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Total sales revenue
+              {t('total_sales_revenue')}
             </p>
           </CardContent>
         </Card>
@@ -108,13 +110,13 @@ export default function OfflineDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center text-orange-800">
               <AlertTriangle className="h-5 w-5 mr-2" />
-              Low Stock Alert
+              {t('dashboard_low_stock_alert')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-orange-700">
-              {lowStockProducts} product{lowStockProducts > 1 ? 's' : ''} running low on stock. 
-              Check your inventory to reorder.
+              {t('low_stock_message', { count: lowStockProducts })} 
+              {t('check_inventory_reorder')}
             </p>
           </CardContent>
         </Card>
@@ -124,11 +126,11 @@ export default function OfflineDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Sales</CardTitle>
+            <CardTitle>{t('recent_sales')}</CardTitle>
           </CardHeader>
           <CardContent>
             {sales.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">No sales recorded yet</p>
+              <p className="text-gray-500 text-center py-4">{t('no_sales_recorded')}</p>
             ) : (
               <div className="space-y-3">
                 {sales.slice(-5).reverse().map((sale) => (
@@ -154,11 +156,11 @@ export default function OfflineDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Low Stock Products</CardTitle>
+            <CardTitle>{t('low_stock_products')}</CardTitle>
           </CardHeader>
           <CardContent>
             {lowStockProducts === 0 ? (
-              <p className="text-gray-500 text-center py-4">All products are well stocked</p>
+              <p className="text-gray-500 text-center py-4">{t('all_products_well_stocked')}</p>
             ) : (
               <div className="space-y-3">
                 {products
@@ -168,11 +170,11 @@ export default function OfflineDashboard() {
                     <div key={product.id} className="flex justify-between items-center p-3 bg-red-50 rounded">
                       <div>
                         <p className="font-medium">{product.name}</p>
-                        <p className="text-sm text-gray-600">{product.categoryId ? 'Categorized' : 'Uncategorized'}</p>
+                        <p className="text-sm text-gray-600">{product.categoryId ? t('categorized') : t('uncategorized')}</p>
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-red-600">{product.quantity}</p>
-                        <p className="text-sm text-gray-600">Min: {product.minStockLevel}</p>
+                        <p className="text-sm text-gray-600">{t('min')}: {product.minStockLevel}</p>
                       </div>
                     </div>
                   ))}

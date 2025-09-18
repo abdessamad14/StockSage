@@ -51,7 +51,7 @@ export default function AppShell({ children }: AppShellProps) {
         setTitle(t('settings'));
         break;
       case '/users':
-        setTitle('Gestion des Utilisateurs');
+        setTitle(t('user_management'));
         break;
       default:
         setTitle('iGoodar Stock');

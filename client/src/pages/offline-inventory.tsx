@@ -193,8 +193,8 @@ export default function OfflineInventory() {
   const handleCreateLocation = async () => {
     if (!locationForm.name.trim()) {
       toast({
-        title: "Error",
-        description: "Location name is required",
+        title: t('error'),
+        description: t('location_name_required'),
         variant: "destructive",
       });
       return;
@@ -204,8 +204,8 @@ export default function OfflineInventory() {
       if (editingLocation) {
         await offlineStockLocationStorage.update(editingLocation.id, locationForm);
         toast({
-          title: "Success",
-          description: "Stock location updated successfully",
+          title: t('success'),
+          description: t('stock_location_updated'),
         });
       } else {
         await offlineStockLocationStorage.create({
@@ -214,8 +214,8 @@ export default function OfflineInventory() {
           isPrimary: locationForm.isPrimary
         });
         toast({
-          title: "Success",
-          description: "Stock location created successfully",
+          title: t('success'),
+          description: t('stock_location_created'),
         });
       }
       
@@ -224,8 +224,8 @@ export default function OfflineInventory() {
       resetLocationForm();
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to save stock location",
+        title: t('error'),
+        description: t('failed_to_save_location'),
         variant: "destructive",
       });
     }

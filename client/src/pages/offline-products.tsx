@@ -82,8 +82,8 @@ export default function OfflineProducts() {
       // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast({
-          title: "Error",
-          description: "Image size must be less than 5MB",
+          title: t('error'),
+          description: t('image_size_limit'),
           variant: "destructive"
         });
         return;
@@ -92,8 +92,8 @@ export default function OfflineProducts() {
       // Check file type
       if (!file.type.startsWith('image/')) {
         toast({
-          title: "Error", 
-          description: "Please select a valid image file",
+          title: t('error'), 
+          description: t('select_valid_image'),
           variant: "destructive"
         });
         return;
@@ -261,9 +261,9 @@ export default function OfflineProducts() {
 
   // Get category name by ID
   const getCategoryName = (categoryId: string | null | undefined) => {
-    if (!categoryId) return "Uncategorized";
+    if (!categoryId) return t('uncategorized');
     const category = categories.find(c => c.id === categoryId);
-    return category?.name || "Unknown Category";
+    return category?.name || t('unknown_category');
   };
 
   // Product handlers
@@ -283,16 +283,16 @@ export default function OfflineProducts() {
         updatedAt: new Date().toISOString()
       });
       toast({
-        title: "Success",
-        description: "Product created successfully"
+        title: t('success'),
+        description: t('product_created_successfully')
       });
       setIsProductDialogOpen(false);
       productForm.reset();
       setSelectedImage(null);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to create product",
+        title: t('error'),
+        description: t('failed_to_create_product'),
         variant: "destructive"
       });
     }
@@ -325,8 +325,8 @@ export default function OfflineProducts() {
       });
 
       toast({
-        title: "Success",
-        description: "Product updated successfully"
+        title: t('success'),
+        description: t('product_updated_successfully')
       });
       setIsProductDialogOpen(false);
       setEditingProduct(null);
@@ -334,8 +334,8 @@ export default function OfflineProducts() {
       setSelectedImage(null);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to update product",
+        title: t('error'),
+        description: t('failed_to_update_product'),
         variant: "destructive"
       });
     }
@@ -345,13 +345,13 @@ export default function OfflineProducts() {
     try {
       deleteProduct(productId);
       toast({
-        title: "Success",
-        description: "Product deleted successfully"
+        title: t('success'),
+        description: t('product_deleted_successfully')
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to delete product",
+        title: t('error'),
+        description: t('failed_to_delete_product'),
         variant: "destructive"
       });
     }
@@ -382,13 +382,13 @@ export default function OfflineProducts() {
       const updatedCategories = await offlineCategoryStorage.getAll();
       setCategories(updatedCategories);
       toast({
-        title: "Success",
-        description: "Category deleted successfully"
+        title: t('success'),
+        description: t('category_deleted_successfully')
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to delete category",
+        title: t('error'),
+        description: t('failed_to_delete_category'),
         variant: "destructive"
       });
     }
@@ -405,8 +405,8 @@ export default function OfflineProducts() {
       const updatedCategories = await offlineCategoryStorage.getAll();
       setCategories(updatedCategories);
       toast({
-        title: "Success",
-        description: "Category updated successfully"
+        title: t('success'),
+        description: t('category_updated_successfully')
       });
       setIsCategoryDialogOpen(false);
       setEditingCategory(null);
@@ -414,8 +414,8 @@ export default function OfflineProducts() {
       setSelectedCategoryImage(null);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to update category",
+        title: t('error'),
+        description: t('failed_to_update_category'),
         variant: "destructive"
       });
     }
@@ -438,14 +438,14 @@ export default function OfflineProducts() {
       setSelectedCategoryImage(null);
       
       toast({
-        title: "Success",
-        description: "Category created successfully",
+        title: t('success'),
+        description: t('category_created_successfully'),
       });
     } catch (error) {
       console.error('Error creating category:', error);
       toast({
-        title: "Error",
-        description: "Failed to create category",
+        title: t('error'),
+        description: t('failed_to_create_category'),
         variant: "destructive",
       });
     }
@@ -498,23 +498,23 @@ export default function OfflineProducts() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Products & Categories</h1>
+        <h1 className="text-3xl font-bold">{t('products_and_categories')}</h1>
         <div className="flex gap-2">
           <Button onClick={() => openCategoryDialog()} variant="outline">
             <Tag className="w-4 h-4 mr-2" />
-            Manage Categories
+            {t('manage_categories')}
           </Button>
           <Button onClick={() => openProductDialog()}>
             <Plus className="w-4 h-4 mr-2" />
-            Add Product
+            {t('add_product')}
           </Button>
         </div>
       </div>
 
       <Tabs defaultValue="products" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="products">Products</TabsTrigger>
-          <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsTrigger value="products">{t('products')}</TabsTrigger>
+          <TabsTrigger value="categories">{t('categories')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="products" className="space-y-4">
@@ -523,7 +523,7 @@ export default function OfflineProducts() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
-                placeholder="Search products..."
+                placeholder={t('search_products')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -532,11 +532,11 @@ export default function OfflineProducts() {
             <Select value={selectedCategoryFilter} onValueChange={setSelectedCategoryFilter}>
               <SelectTrigger className="w-48">
                 <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Filter by category" />
+                <SelectValue placeholder={t('filter_by_category')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="uncategorized">Uncategorized</SelectItem>
+                <SelectItem value="all">{t('all_categories')}</SelectItem>
+                <SelectItem value="uncategorized">{t('uncategorized')}</SelectItem>
                 {(categories || []).map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
@@ -585,18 +585,18 @@ export default function OfflineProducts() {
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Price:</span>
+                    <span className="text-sm text-gray-600">{t('price')}:</span>
                     <span className="font-medium">${product.sellingPrice.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Stock:</span>
+                    <span className="text-sm text-gray-600">{t('stock')}:</span>
                     <span className={`font-medium ${getWarehouseStock(product.id) <= (product.minStockLevel || 0) ? 'text-red-600' : ''}`}>
                       {getWarehouseStock(product.id)} {product.unit}
                     </span>
                   </div>
                   {product.barcode && (
                     <div className="text-xs text-gray-500">
-                      Barcode: {product.barcode}
+                      {t('barcode')}: {product.barcode}
                     </div>
                   )}
                 </CardContent>
@@ -607,10 +607,10 @@ export default function OfflineProducts() {
 
         <TabsContent value="categories" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Categories</h2>
+            <h2 className="text-xl font-semibold">{t('categories')}</h2>
             <Button onClick={() => openCategoryDialog()}>
               <Plus className="w-4 h-4 mr-2" />
-              Add Category
+              {t('add_category')}
             </Button>
           </div>
 
@@ -672,7 +672,7 @@ export default function OfflineProducts() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingProduct ? "Edit Product" : "Add Product"}
+              {editingProduct ? t('edit_product') : t('add_product')}
             </DialogTitle>
           </DialogHeader>
           <Form {...productForm}>
@@ -683,7 +683,7 @@ export default function OfflineProducts() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Product Name</FormLabel>
+                      <FormLabel>{t('product_name')}</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -696,7 +696,7 @@ export default function OfflineProducts() {
                   name="barcode"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Barcode</FormLabel>
+                      <FormLabel>{t('barcode')}</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -725,15 +725,15 @@ export default function OfflineProducts() {
                 name="categoryId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Category</FormLabel>
+                    <FormLabel>{t('category')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
+                          <SelectValue placeholder={t('select_category')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">No Category</SelectItem>
+                        <SelectItem value="none">{t('no_category')}</SelectItem>
                         {categories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             {category.name}
@@ -752,7 +752,7 @@ export default function OfflineProducts() {
                   name="costPrice"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Cost Price</FormLabel>
+                      <FormLabel>{t('cost_price')}</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
@@ -770,7 +770,7 @@ export default function OfflineProducts() {
                   name="sellingPrice"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Retail Price</FormLabel>
+                      <FormLabel>{t('selling_price')}</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
@@ -792,7 +792,7 @@ export default function OfflineProducts() {
                   name="semiWholesalePrice"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Semi-Wholesale Price (Optional)</FormLabel>
+                      <FormLabel>{t('semi_wholesale_price_optional')}</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
@@ -810,7 +810,7 @@ export default function OfflineProducts() {
                   name="wholesalePrice"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Wholesale Price (Optional)</FormLabel>
+                      <FormLabel>{t('wholesale_price_optional')}</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
@@ -831,7 +831,7 @@ export default function OfflineProducts() {
                   name="quantity"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Quantity</FormLabel>
+                      <FormLabel>{t('quantity')}</FormLabel>
                       <FormControl>
                         <Input 
                           type="number"
@@ -848,7 +848,7 @@ export default function OfflineProducts() {
                   name="minStockLevel"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Min Stock Level</FormLabel>
+                      <FormLabel>{t('min_stock_level')}</FormLabel>
                       <FormControl>
                         <Input 
                           type="number"
@@ -865,7 +865,7 @@ export default function OfflineProducts() {
                   name="unit"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Unit</FormLabel>
+                      <FormLabel>{t('unit')}</FormLabel>
                       <FormControl>
                         <Input {...field} placeholder="pcs, kg, etc." />
                       </FormControl>
@@ -881,7 +881,7 @@ export default function OfflineProducts() {
                 name="image"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Product Image</FormLabel>
+                    <FormLabel>{t('product_image')}</FormLabel>
                     <FormControl>
                       <div className="space-y-4">
                         {selectedImage ? (
@@ -907,7 +907,7 @@ export default function OfflineProducts() {
                             <div className="mt-2">
                               <label htmlFor="image-upload" className="cursor-pointer">
                                 <span className="mt-2 block text-sm font-medium text-gray-900">
-                                  Upload product image
+                                  {t('upload_product_image')}
                                 </span>
                                 <span className="mt-1 block text-xs text-gray-500">
                                   PNG, JPG, GIF up to 5MB
@@ -942,10 +942,10 @@ export default function OfflineProducts() {
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsProductDialogOpen(false)}>
-                  Cancel
+                  {t('cancel')}
                 </Button>
                 <Button type="submit">
-                  {editingProduct ? "Update" : "Create"} Product
+                  {editingProduct ? t('update') : t('create')} {t('product')}
                 </Button>
               </DialogFooter>
             </form>
@@ -958,7 +958,7 @@ export default function OfflineProducts() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingCategory ? "Edit Category" : "Add Category"}
+              {editingCategory ? t('edit_category') : t('add_category')}
             </DialogTitle>
           </DialogHeader>
           <Form {...categoryForm}>
@@ -968,7 +968,7 @@ export default function OfflineProducts() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Category Name</FormLabel>
+                    <FormLabel>{t('category_name')}</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -997,7 +997,7 @@ export default function OfflineProducts() {
                 name="image"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Category Image</FormLabel>
+                    <FormLabel>{t('category_image')}</FormLabel>
                     <FormControl>
                       <div className="space-y-4">
                         {selectedCategoryImage ? (
@@ -1023,7 +1023,7 @@ export default function OfflineProducts() {
                             <div className="mt-2">
                               <label htmlFor="category-image-upload" className="cursor-pointer">
                                 <span className="mt-2 block text-sm font-medium text-gray-900">
-                                  Upload category image
+                                  {t('upload_category_image')}
                                 </span>
                                 <span className="mt-1 block text-xs text-gray-500">
                                   PNG, JPG, GIF up to 5MB
@@ -1045,7 +1045,7 @@ export default function OfflineProducts() {
                               onClick={() => document.getElementById('category-image-upload')?.click()}
                             >
                               <Upload className="h-4 w-4 mr-2" />
-                              Choose Image
+                              {t('choose_image')}
                             </Button>
                           </div>
                         )}
@@ -1058,10 +1058,10 @@ export default function OfflineProducts() {
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsCategoryDialogOpen(false)}>
-                  Cancel
+                  {t('cancel')}
                 </Button>
                 <Button type="submit">
-                  {editingCategory ? "Update" : "Create"} Category
+                  {editingCategory ? t('update') : t('create')} {t('category')}
                 </Button>
               </DialogFooter>
             </form>
