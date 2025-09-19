@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/hooks/use-toast';
+import { useI18n } from '@/lib/i18n';
 import { 
   Plus, 
   CheckCircle, 
@@ -15,20 +17,12 @@ import {
   Package, 
   X,
   Play,
-  RefreshCw,
   Trash2,
-  Scan,
   Search,
   Eye,
   BarChart3,
-  AlertTriangle,
   ScanLine
 } from 'lucide-react';
-
-const toast = {
-  success: (message: string) => console.log('Success:', message),
-  error: (message: string) => console.error('Error:', message)
-};
 
 import {
   offlineInventoryCountStorage,
@@ -38,7 +32,6 @@ import {
   offlineProductStockStorage,
   offlineStockTransactionStorage
 } from '@/lib/offline-storage';
-import VarianceReconciliation from '@/components/VarianceReconciliation';
 import type { 
   OfflineInventoryCount, 
   OfflineInventoryCountItem, 
@@ -65,8 +58,23 @@ const getStatusIcon = (status: string) => {
   }
 };
 
+type Translator = (key: string, params?: { [key: string]: string | number }) => string;
+
+const STATUS_TRANSLATION_KEYS: Record<string, string> = {
+  completed: 'inventory_count_status_completed',
+  in_progress: 'inventory_count_status_in_progress',
+  draft: 'inventory_count_status_draft'
+};
+
+const getStatusLabel = (status: string, t: Translator) => {
+  const key = STATUS_TRANSLATION_KEYS[status];
+  return key ? t(key) : status;
+};
+
 // Create Count Form Component
 function CreateCountForm({ onSubmit, locations }: { onSubmit: (data: any) => void; locations: OfflineStockLocation[] }) {
+  const { toast } = useToast();
+  const { t } = useI18n();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -76,7 +84,11 @@ function CreateCountForm({ onSubmit, locations }: { onSubmit: (data: any) => voi
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.locationId) {
-      toast.error('Please fill in all required fields');
+      toast({
+        title: t('error'),
+        description: t('inventory_count_required_fields'),
+        variant: 'destructive'
+      });
       return;
     }
     onSubmit({
@@ -88,20 +100,20 @@ function CreateCountForm({ onSubmit, locations }: { onSubmit: (data: any) => voi
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="name">Count Name *</Label>
+        <Label htmlFor="name">{t('inventory_count_name_label')}</Label>
         <Input
           id="name"
           value={formData.name}
           onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-          placeholder="e.g., Monthly Count - Main Store"
+          placeholder={t('inventory_count_name_placeholder')}
         />
       </div>
       
       <div>
-        <Label htmlFor="location">Location *</Label>
+        <Label htmlFor="location">{t('inventory_count_location_label')}</Label>
         <Select value={formData.locationId} onValueChange={(value) => setFormData(prev => ({ ...prev, locationId: value }))}>
           <SelectTrigger>
-            <SelectValue placeholder="Select location" />
+            <SelectValue placeholder={t('inventory_count_location_placeholder')} />
           </SelectTrigger>
           <SelectContent>
             {locations.map(location => (
@@ -114,17 +126,17 @@ function CreateCountForm({ onSubmit, locations }: { onSubmit: (data: any) => voi
       </div>
 
       <div>
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="description">{t('description')}</Label>
         <Textarea
           id="description"
           value={formData.description}
           onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-          placeholder="Optional description"
+          placeholder={t('inventory_count_description_placeholder')}
         />
       </div>
 
       <Button type="submit" className="w-full">
-        Create Count
+        {t('inventory_count_create_button')}
       </Button>
     </form>
   );
@@ -146,7 +158,10 @@ function CountCard({
   onDelete: () => void; 
   onReopen: () => void; 
 }) {
+  const { t } = useI18n();
   const location = locations.find(l => l.id === count.locationId);
+  const locationName = location?.name || t('inventory_count_unknown_location');
+  const statusLabel = getStatusLabel(count.status, t);
   
   return (
     <Card>
@@ -157,11 +172,11 @@ function CountCard({
               <span>{count.name}</span>
               <Badge className={getStatusColor(count.status)}>
                 {getStatusIcon(count.status)}
-                <span className="ml-1">{count.status}</span>
+                <span className="ml-1">{statusLabel}</span>
               </Badge>
             </CardTitle>
             <CardDescription>
-              Location: {location?.name} • Progress: {progress}%
+              {t('inventory_count_card_description', { location: locationName, progress: progress.toString() })}
             </CardDescription>
           </div>
           {count.status !== 'completed' && (
@@ -189,21 +204,21 @@ function CountCard({
             {count.status === 'draft' && (
               <Button onClick={onStart} size="sm" className="flex-1">
                 <Play className="w-4 h-4 mr-2" />
-                Start Count
+                {t('inventory_count_start_button')}
               </Button>
             )}
             
             {count.status === 'in_progress' && (
               <Button onClick={onReopen} size="sm" className="flex-1">
                 <Eye className="w-4 h-4 mr-2" />
-                Continue Count
+                {t('inventory_count_continue_button')}
               </Button>
             )}
             
             {count.status === 'completed' && (
               <Button onClick={onReopen} variant="outline" size="sm" className="flex-1">
                 <BarChart3 className="w-4 h-4 mr-2" />
-                View Results
+                {t('inventory_count_view_results')}
               </Button>
             )}
           </div>
@@ -215,6 +230,8 @@ function CountCard({
 
 // Main Component
 export default function InventoryCountPage() {
+  const { t } = useI18n();
+  const { toast } = useToast();
   const [counts, setCounts] = useState<OfflineInventoryCount[]>([]);
   const [countItems, setCountItems] = useState<OfflineInventoryCountItem[]>([]);
   const [products, setProducts] = useState<OfflineProduct[]>([]);
@@ -277,7 +294,11 @@ export default function InventoryCountPage() {
       );
       
       if (unCountedItems.length > 0) {
-        toast.error(`Please count all items first. ${unCountedItems.length} items remaining.`);
+        toast({
+          title: t('error'),
+          description: t('inventory_count_remaining_items', { count: unCountedItems.length.toString() }),
+          variant: 'destructive'
+        });
         return;
       }
       
@@ -340,10 +361,17 @@ export default function InventoryCountPage() {
       setCounts(prev => prev.map(c => c.id === activeCount.id ? updatedCount : c));
       setActiveCount(updatedCount);
       
-      toast.success('Inventory count completed! Stock quantities have been updated.');
+      toast({
+        title: t('success'),
+        description: t('inventory_count_complete_success')
+      });
     } catch (error) {
       console.error('Error completing count:', error);
-      toast.error('Failed to complete inventory count');
+      toast({
+        title: t('error'),
+        description: t('inventory_count_complete_error'),
+        variant: 'destructive'
+      });
     }
   };
 
@@ -391,11 +419,18 @@ export default function InventoryCountPage() {
 
         setCounts(prev => [...prev, createdCount]);
         setShowCreateDialog(false);
-        toast.success('Inventory count created successfully');
+        toast({
+          title: t('success'),
+          description: t('inventory_count_create_success')
+        });
       }
     } catch (error) {
       console.error('Error creating inventory count:', error);
-      toast.error('Failed to create inventory count');
+      toast({
+        title: t('error'),
+        description: t('inventory_count_create_error'),
+        variant: 'destructive'
+      });
     }
   };
 
@@ -423,10 +458,17 @@ export default function InventoryCountPage() {
       if (activeCount?.id === count.id) {
         setActiveCount(null);
       }
-      toast.success('Count deleted successfully');
+      toast({
+        title: t('success'),
+        description: t('inventory_count_delete_success')
+      });
     } catch (error) {
       console.error('Error deleting count:', error);
-      toast.error('Failed to delete inventory count');
+      toast({
+        title: t('error'),
+        description: t('inventory_count_delete_error'),
+        variant: 'destructive'
+      });
     }
   };
 
@@ -446,7 +488,11 @@ export default function InventoryCountPage() {
       }
     } catch (error) {
       console.error('Error updating count item:', error);
-      toast.error('Failed to update count item');
+      toast({
+        title: t('error'),
+        description: t('inventory_count_update_error'),
+        variant: 'destructive'
+      });
     }
   };
 
@@ -480,10 +526,18 @@ export default function InventoryCountPage() {
       if (countItem) {
         handleStartEdit(countItem.id, countItem.actualQuantity);
       } else {
-        toast.error('Product not found in this count');
+        toast({
+          title: t('error'),
+          description: t('inventory_count_product_missing'),
+          variant: 'destructive'
+        });
       }
     } else {
-      toast.error('Product with this barcode not found');
+      toast({
+        title: t('error'),
+        description: t('inventory_count_product_barcode_missing'),
+        variant: 'destructive'
+      });
     }
     setBarcodeInput('');
   };
@@ -508,19 +562,19 @@ export default function InventoryCountPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Inventory Counts</h1>
+          <h1 className="text-3xl font-bold">{t('inventory_counts_title')}</h1>
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="w-4 h-4 mr-2" />
-                Create New Count
+                {t('inventory_count_create_new')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create New Inventory Count</DialogTitle>
+                <DialogTitle>{t('inventory_count_dialog_title')}</DialogTitle>
                 <DialogDescription>
-                  Set up a new inventory count for accurate stock tracking.
+                  {t('inventory_count_dialog_description')}
                 </DialogDescription>
               </DialogHeader>
               <CreateCountForm onSubmit={createNewCount} locations={locations} />
@@ -549,14 +603,14 @@ export default function InventoryCountPage() {
         <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Delete Inventory Count</DialogTitle>
+              <DialogTitle>{t('inventory_count_delete_title')}</DialogTitle>
               <DialogDescription>
-                Are you sure you want to delete "{countToDelete?.name}"? This action cannot be undone.
+                {t('inventory_count_delete_description', { name: countToDelete?.name ?? '' })}
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button variant="destructive" onClick={() => {
                 if (countToDelete) {
@@ -565,7 +619,7 @@ export default function InventoryCountPage() {
                   setCountToDelete(null);
                 }
               }}>
-                Delete
+                {t('delete')}
               </Button>
             </div>
           </DialogContent>
@@ -575,31 +629,35 @@ export default function InventoryCountPage() {
   }
 
   // Active count view
+  const activeLocationName = locations.find(l => l.id === activeCount.locationId)?.name || t('inventory_count_unknown_location');
+  const activeStatusLabel = getStatusLabel(activeCount.status, t);
+  const activeProgress = getCountProgress(activeCount.id);
+
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
           <Button variant="ghost" onClick={() => setActiveCount(null)} className="mb-2">
-            ← Back to Counts
+            {t('inventory_count_back')}
           </Button>
           <h1 className="text-3xl font-bold">{activeCount.name}</h1>
           <p className="text-gray-600">
-            Location: {locations.find(l => l.id === activeCount.locationId)?.name}
+            {t('inventory_count_location_display', { location: activeLocationName })}
           </p>
         </div>
         <div className="flex items-center space-x-2">
           <Badge className={getStatusColor(activeCount.status)}>
             {getStatusIcon(activeCount.status)}
-            <span className="ml-1">{activeCount.status}</span>
+            <span className="ml-1">{activeStatusLabel}</span>
           </Badge>
           {activeCount.status === 'in_progress' && (
             <Button 
               onClick={handleCompleteCount}
               className="bg-green-600 hover:bg-green-700"
-              disabled={getCountProgress(activeCount.id) < 100}
+              disabled={activeProgress < 100}
             >
               <CheckCircle className="w-4 h-4 mr-2" />
-              Complete Count ({getCountProgress(activeCount.id)}%)
+              {t('inventory_count_complete_button', { progress: activeProgress.toString() })}
             </Button>
           )}
         </div>
@@ -610,7 +668,7 @@ export default function InventoryCountPage() {
         <div className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search products..."
+            placeholder={t('inventory_count_search_placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -620,7 +678,7 @@ export default function InventoryCountPage() {
           <ScanLine className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input
             ref={barcodeInputRef}
-            placeholder="Scan or enter barcode..."
+            placeholder={t('inventory_count_barcode_placeholder')}
             value={barcodeInput}
             onChange={(e) => setBarcodeInput(e.target.value)}
             onKeyPress={(e) => {
@@ -642,6 +700,8 @@ export default function InventoryCountPage() {
           const isEditing = editingItemId === item.id;
           const variance = item.variance || 0;
           const hasVariance = Math.abs(variance) > 0;
+          const isCounted = item.actualQuantity !== undefined && item.actualQuantity !== null;
+          const actualDisplay = isCounted ? item.actualQuantity : t('inventory_count_not_counted');
 
           return (
             <Card key={item.id} className={hasVariance ? 'border-orange-200 bg-orange-50' : ''}>
@@ -650,8 +710,8 @@ export default function InventoryCountPage() {
                   <div className="flex-1">
                     <h3 className="font-medium">{product.name}</h3>
                     <p className="text-sm text-gray-600">
-                      Expected: {item.expectedQuantity} | 
-                      Actual: {item.actualQuantity !== undefined && item.actualQuantity !== null ? item.actualQuantity : 'Not counted'}
+                      {t('inventory_count_expected')}: {item.expectedQuantity} |
+                      {' '}{t('inventory_count_actual')}: {actualDisplay}
                       {hasVariance && (
                         <span className={`ml-2 font-medium ${variance > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           ({variance > 0 ? '+' : ''}{variance})
@@ -683,12 +743,12 @@ export default function InventoryCountPage() {
                         variant="outline"
                         onClick={() => handleStartEdit(item.id, item.actualQuantity)}
                       >
-                        {item.actualQuantity !== undefined ? 'Edit' : 'Count'}
+                        {isCounted ? t('edit') : t('inventory_count_count_action')}
                       </Button>
                     )}
                     
-                    <Badge variant={item.actualQuantity !== undefined && item.actualQuantity !== null ? 'default' : 'secondary'}>
-                      {item.actualQuantity !== undefined && item.actualQuantity !== null ? 'Counted' : 'Not counted'}
+                    <Badge variant={isCounted ? 'default' : 'secondary'}>
+                      {isCounted ? t('inventory_count_counted') : t('inventory_count_not_counted')}
                     </Badge>
                   </div>
                 </div>
