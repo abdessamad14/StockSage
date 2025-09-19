@@ -646,7 +646,7 @@ export default function OfflineOrders() {
                         </div>
                         <div className="flex justify-between text-orange-600">
                           <span>{t('due')}:</span>
-                          <span>{formatCurrency(orderProductsTotal - paidAmount)}</span>
+                          <span>{formatCurrency(Math.max(0, orderProductsTotal - paidAmount))}</span>
                         </div>
                       </div>
                     )}
