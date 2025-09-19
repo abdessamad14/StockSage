@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useOfflineSuppliers } from "@/hooks/use-offline-suppliers";
 import { useOfflinePurchaseOrders } from "@/hooks/use-offline-purchase-orders";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { OfflineSupplier, offlineSupplierPaymentStorage } from "@/lib/offline-storage";
+import { OfflineSupplier } from "@/lib/offline-storage";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -17,22 +17,30 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Skeleton } from "@/components/ui/skeleton";
 import { Truck, Search, Plus, Edit, Trash2, Phone, Mail, MapPin, User, CreditCard, DollarSign, Receipt } from "lucide-react";
 
-const supplierSchema = z.object({
-  name: z.string().min(1, "Supplier name is required"),
-  contactPerson: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  address: z.string().optional(),
-  notes: z.string().optional()
-});
+type Translator = (key: string, params?: { [key: string]: string | number }) => string;
 
-type SupplierFormData = z.infer<typeof supplierSchema>;
+type SupplierFormData = z.infer<
+  ReturnType<typeof buildSupplierSchema>
+>;
+
+function buildSupplierSchema(t: Translator) {
+  return z.object({
+    name: z.string().min(1, t('supplier_name_required')),
+    contactPerson: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().email(t('invalid_email')).optional().or(z.literal("")),
+    address: z.string().optional(),
+    notes: z.string().optional()
+  });
+}
 
 export default function OfflineSuppliers() {
   const { suppliers, loading, createSupplier, updateSupplier, deleteSupplier } = useOfflineSuppliers();
   const { orders } = useOfflinePurchaseOrders();
   const { t } = useI18n();
   const { toast } = useToast();
+  const supplierSchema = useMemo(() => buildSupplierSchema(t), [t]);
+  const formatCurrency = (value?: number) => `${(value ?? 0).toFixed(2)} ${t('currency')}`;
   
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -86,7 +94,7 @@ export default function OfflineSuppliers() {
         });
         toast({
           title: t('success'),
-          description: "Supplier updated successfully"
+          description: t('supplier_updated_successfully')
         });
       } else {
         createSupplier({
@@ -99,7 +107,7 @@ export default function OfflineSuppliers() {
         });
         toast({
           title: t('success'),
-          description: "Supplier created successfully"
+          description: t('supplier_created_successfully')
         });
       }
       
@@ -109,7 +117,7 @@ export default function OfflineSuppliers() {
     } catch (error) {
       toast({
         title: t('error'),
-        description: "Failed to save supplier",
+        description: t('supplier_save_error'),
         variant: "destructive"
       });
     }
@@ -129,11 +137,11 @@ export default function OfflineSuppliers() {
   };
 
   const handleDelete = (supplier: OfflineSupplier) => {
-    if (confirm(`Are you sure you want to delete "${supplier.name}"?`)) {
+    if (confirm(t('supplier_delete_confirm', { name: supplier.name }))) {
       deleteSupplier(supplier.id);
       toast({
         title: t('success'),
-        description: "Supplier deleted successfully"
+        description: t('supplier_deleted_successfully')
       });
     }
   };
@@ -157,7 +165,7 @@ export default function OfflineSuppliers() {
         <h1 className="text-3xl font-bold">{t('suppliers')}</h1>
         <Button onClick={() => setIsDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
-          Add Supplier
+          {t('add_supplier')}
         </Button>
       </div>
 
@@ -167,12 +175,14 @@ export default function OfflineSuppliers() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <DollarSign className="w-4 h-4" />
-              Total Outstanding
+              {t('total_outstanding')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              ${suppliers.reduce((sum, supplier) => sum + getSupplierBalance(supplier.id).totalOwed, 0).toFixed(2)}
+              {formatCurrency(
+                suppliers.reduce((sum, supplier) => sum + getSupplierBalance(supplier.id).totalOwed, 0)
+              )}
             </div>
           </CardContent>
         </Card>
@@ -181,12 +191,14 @@ export default function OfflineSuppliers() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <CreditCard className="w-4 h-4" />
-              Total Paid
+              {t('total_paid')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              ${suppliers.reduce((sum, supplier) => sum + getSupplierBalance(supplier.id).totalPaid, 0).toFixed(2)}
+              {formatCurrency(
+                suppliers.reduce((sum, supplier) => sum + getSupplierBalance(supplier.id).totalPaid, 0)
+              )}
             </div>
           </CardContent>
         </Card>
@@ -195,7 +207,7 @@ export default function OfflineSuppliers() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Receipt className="w-4 h-4" />
-              Total Orders
+              {t('total_orders_count')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -210,7 +222,7 @@ export default function OfflineSuppliers() {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
         <Input
-          placeholder="Search suppliers..."
+          placeholder={t('search_suppliers')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10"
@@ -258,26 +270,26 @@ export default function OfflineSuppliers() {
                 <div className="mt-3 pt-3 border-t">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Total Orders:</span>
+                      <span className="text-gray-600">{t('total_orders')}:</span>
                       <span className="font-medium">{balance.orderCount}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Total Value:</span>
-                      <span className="font-medium">${balance.totalOrders.toFixed(2)}</span>
+                      <span className="text-gray-600">{t('total_value')}:</span>
+                      <span className="font-medium">{formatCurrency(balance.totalOrders)}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Paid:</span>
-                      <span className="font-medium text-green-600">${balance.totalPaid.toFixed(2)}</span>
+                      <span className="text-gray-600">{t('paid_amount')}:</span>
+                      <span className="font-medium text-green-600">{formatCurrency(balance.totalPaid)}</span>
                     </div>
                     {balance.totalOwed > 0 && (
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Outstanding:</span>
-                        <span className="font-medium text-red-600">${balance.totalOwed.toFixed(2)}</span>
+                        <span className="text-gray-600">{t('outstanding')}:</span>
+                        <span className="font-medium text-red-600">{formatCurrency(balance.totalOwed)}</span>
                       </div>
                     )}
                     {balance.totalOwed > 0 && (
                       <Badge variant="destructive" className="text-xs">
-                        Credit: ${balance.totalOwed.toFixed(2)}
+                        {t('credit_badge_owed', { amount: formatCurrency(balance.totalOwed) })}
                       </Badge>
                     )}
                   </div>
@@ -312,9 +324,9 @@ export default function OfflineSuppliers() {
       {filteredSuppliers.length === 0 && (
         <div className="text-center py-12">
           <Truck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No suppliers found</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">{t('no_suppliers_found')}</h3>
           <p className="text-gray-600">
-            {searchQuery ? "Try adjusting your search" : "Add your first supplier to get started"}
+            {searchQuery ? t('adjust_search_suppliers') : t('add_first_supplier_prompt')}
           </p>
         </div>
       )}
@@ -324,10 +336,10 @@ export default function OfflineSuppliers() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}
+              {editingSupplier ? t('edit_supplier') : t('add_new_supplier')}
             </DialogTitle>
             <DialogDescription>
-              {editingSupplier ? 'Update supplier information' : 'Enter the details for the new supplier'}
+              {editingSupplier ? t('update_supplier_description') : t('create_supplier_description')}
             </DialogDescription>
           </DialogHeader>
           
@@ -339,7 +351,7 @@ export default function OfflineSuppliers() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Supplier Name</FormLabel>
+                      <FormLabel>{t('supplier_name')}</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -353,7 +365,7 @@ export default function OfflineSuppliers() {
                   name="contactPerson"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contact Person</FormLabel>
+                      <FormLabel>{t('contact_person')}</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -367,7 +379,7 @@ export default function OfflineSuppliers() {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Phone</FormLabel>
+                      <FormLabel>{t('phone')}</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -381,7 +393,7 @@ export default function OfflineSuppliers() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>{t('email')}</FormLabel>
                       <FormControl>
                         <Input type="email" {...field} />
                       </FormControl>
@@ -396,7 +408,7 @@ export default function OfflineSuppliers() {
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Address</FormLabel>
+                    <FormLabel>{t('address')}</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -410,7 +422,7 @@ export default function OfflineSuppliers() {
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Notes</FormLabel>
+                    <FormLabel>{t('notes')}</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -421,10 +433,10 @@ export default function OfflineSuppliers() {
               
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
+                  {t('cancel')}
                 </Button>
                 <Button type="submit">
-                  {editingSupplier ? 'Update' : 'Create'} Supplier
+                  {editingSupplier ? t('update_supplier') : t('create_supplier')}
                 </Button>
               </DialogFooter>
             </form>

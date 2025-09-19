@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -15,22 +15,29 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Truck, AlertTriangle, Phone, Mail, User, Building, Edit, Plus } from "lucide-react";
 
-// Supplier form schema with client-side validation
-const formSchema = insertSupplierSchema.extend({
-  tenantId: z.string().optional(),
-  name: z.string().min(1, "Supplier name is required"),
-  contactPerson: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().email("Invalid email").optional().or(z.literal('')),
-  address: z.string().optional(),
-  notes: z.string().optional(),
-});
+type Translator = (key: string, params?: { [key: string]: string | number }) => string;
 
-type SupplierForm = z.infer<typeof formSchema>;
+type SupplierForm = z.infer<
+  ReturnType<typeof buildSupplierFormSchema>
+>;
+
+function buildSupplierFormSchema(t: Translator) {
+  return insertSupplierSchema.extend({
+    tenantId: z.string().optional(),
+    name: z.string().min(1, t('supplier_name_required')),
+    contactPerson: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().email(t('invalid_email')).optional().or(z.literal('')),
+    address: z.string().optional(),
+    notes: z.string().optional(),
+  });
+}
 
 export default function Suppliers() {
   const { t } = useI18n();
   const { toast } = useToast();
+
+  const formSchema = useMemo(() => buildSupplierFormSchema(t), [t]);
 
   // State for UI controls
   const [search, setSearch] = useState("");
@@ -200,6 +207,8 @@ export default function Suppliers() {
     );
   }
 
+  const supplierList = filteredSuppliers();
+
   return (
     <>
       <div className="p-4">
@@ -226,17 +235,17 @@ export default function Suppliers() {
         
         {/* Results Count */}
         <div className="text-sm text-muted-foreground mb-3">
-          {filteredSuppliers().length} {t('results')}
+          {t('suppliers_results', { count: supplierList.length.toString() })}
         </div>
         
         {/* Suppliers List */}
-        {filteredSuppliers().length === 0 ? (
+        {supplierList.length === 0 ? (
           <div className="text-center p-8">
             <Truck className="h-12 w-12 mx-auto text-muted-foreground opacity-20 mb-3" />
             <h3 className="font-medium text-muted-foreground">{t('no_suppliers_found')}</h3>
           </div>
         ) : (
-          filteredSuppliers().map(supplier => (
+          supplierList.map(supplier => (
             <Card key={supplier.id} className="mb-3 card">
               <div className="p-4">
                 <div className="flex justify-between items-center">
