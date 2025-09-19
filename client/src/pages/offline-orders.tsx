@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useOfflinePurchaseOrders } from "@/hooks/use-offline-purchase-orders";
 import { useOfflineSuppliers } from "@/hooks/use-offline-suppliers";
 import { useOfflineProducts } from "@/hooks/use-offline-products";
@@ -49,6 +49,8 @@ import {
 function OrderItemsDisplay({ orderId, products }: { orderId: string, products: any[] }) {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useI18n();
+  const formatCurrency = (value?: number) => `${(value ?? 0).toFixed(2)} ${t('currency')}`;
 
   useEffect(() => {
     const loadItems = async () => {
@@ -69,26 +71,26 @@ function OrderItemsDisplay({ orderId, products }: { orderId: string, products: a
   if (loading) {
     return (
       <div>
-        <h3 className="font-semibold mb-4">Order Items</h3>
-        <div className="text-sm text-gray-600">Loading order items...</div>
+        <h3 className="font-semibold mb-4">{t('order_items')}</h3>
+        <div className="text-sm text-gray-600">{t('loading_order_items')}</div>
       </div>
     );
   }
 
   return (
     <div>
-      <h3 className="font-semibold mb-4">Order Items</h3>
+      <h3 className="font-semibold mb-4">{t('order_items')}</h3>
       {items.length === 0 ? (
-        <div className="text-sm text-gray-600">No items found for this order.</div>
+        <div className="text-sm text-gray-600">{t('no_order_items')}</div>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Unit Cost</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Received</TableHead>
+              <TableHead>{t('product')}</TableHead>
+              <TableHead>{t('quantity')}</TableHead>
+              <TableHead>{t('unit_cost')}</TableHead>
+              <TableHead>{t('total')}</TableHead>
+              <TableHead>{t('received_quantity')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -96,10 +98,10 @@ function OrderItemsDisplay({ orderId, products }: { orderId: string, products: a
               const product = products.find(p => p.id === item.productId);
               return (
                 <TableRow key={item.id}>
-                  <TableCell>{product?.name || 'Unknown Product'}</TableCell>
+                  <TableCell>{product?.name || t('unknown_product')}</TableCell>
                   <TableCell>{item.quantity}</TableCell>
-                  <TableCell>${(item.unitCost || item.unitPrice || 0).toFixed(2)}</TableCell>
-                  <TableCell>${(item.totalCost || item.totalPrice || 0).toFixed(2)}</TableCell>
+                  <TableCell>{formatCurrency(item.unitCost || item.unitPrice || 0)}</TableCell>
+                  <TableCell>{formatCurrency(item.totalCost || item.totalPrice || 0)}</TableCell>
                   <TableCell>{item.receivedQuantity || 0}</TableCell>
                 </TableRow>
               );
@@ -121,6 +123,23 @@ export default function OfflineOrders() {
 
   // Load stock locations
   const [stockLocations, setStockLocations] = useState<any[]>([]);
+
+  const formatCurrency = (value?: number) => `${(value ?? 0).toFixed(2)} ${t('currency')}`;
+
+  const orderStatusLabels = useMemo(() => ({
+    draft: t('order_status_draft'),
+    pending: t('order_status_pending'),
+    ordered: t('order_status_ordered'),
+    in_transit: t('in_transit'),
+    received: t('order_status_received'),
+    cancelled: t('order_status_cancelled'),
+  }), [t]);
+
+  const paymentStatusLabels = useMemo(() => ({
+    paid: t('payment_status_paid'),
+    partial: t('payment_status_partial'),
+    unpaid: t('payment_status_unpaid'),
+  }), [t]);
   
   useEffect(() => {
     const loadStockLocations = async () => {
@@ -152,6 +171,7 @@ export default function OfflineOrders() {
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
 
   const loading = productsLoading || suppliersLoading || ordersLoading;
+  const orderProductsTotal = orderProducts.reduce((sum, op) => sum + (op.quantity * op.unitCost), 0);
 
   const handleCreateOrder = async () => {
     try {
@@ -213,8 +233,8 @@ export default function OfflineOrders() {
       }
 
       toast({
-        title: "Success",
-        description: "Purchase order created successfully"
+        title: t('success'),
+        description: t('offline_order_create_success')
       });
 
       // No need to force refresh anymore - database schema is fixed
@@ -231,9 +251,10 @@ export default function OfflineOrders() {
       console.log('=== PURCHASE ORDER CREATION COMPLETED ===');
     } catch (error) {
       console.error('Purchase order creation error:', error);
+      const message = error instanceof Error ? error.message : t('unknown_error');
       toast({
-        title: "Error",
-        description: `Failed to create purchase order: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        title: t('error'),
+        description: t('offline_order_create_error', { message }),
         variant: "destructive"
       });
     }
@@ -270,7 +291,7 @@ export default function OfflineOrders() {
           quantity: receivedQuantity,
           previousQuantity,
           newQuantity,
-          reason: 'Purchase Order Received',
+          reason: t('purchase_order_received_reason'),
           reference: order.orderNumber
         });
       }
@@ -289,13 +310,13 @@ export default function OfflineOrders() {
       }
 
       toast({
-        title: "Success",
-        description: "Order received and stock updated"
+        title: t('success'),
+        description: t('offline_order_receive_success')
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to receive order",
+        title: t('error'),
+        description: t('offline_order_receive_error'),
         variant: "destructive"
       });
     }
@@ -310,21 +331,21 @@ export default function OfflineOrders() {
       const success = await deleteOrder(orderId);
       if (success) {
         toast({
-          title: "Success",
-          description: "Order deleted successfully"
+          title: t('success'),
+          description: t('offline_order_delete_success')
         });
       } else {
         toast({
-          title: "Error",
-          description: "Failed to delete order",
+          title: t('error'),
+          description: t('offline_order_delete_error'),
           variant: "destructive"
         });
       }
       setDeletingOrderId(null);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to delete order",
+        title: t('error'),
+        description: t('offline_order_delete_error'),
         variant: "destructive"
       });
     }
@@ -371,8 +392,8 @@ export default function OfflineOrders() {
 
       if (!success) {
         toast({
-          title: "Error",
-          description: "Failed to update payment information",
+          title: t('error'),
+          description: t('offline_order_payment_update_error'),
           variant: "destructive"
         });
         return;
@@ -385,22 +406,25 @@ export default function OfflineOrders() {
           supplierId: order.supplierId || '',
           amount: paymentAmount,
           paymentMethod: paymentMethod === 'bank_check' ? 'bank_check' : paymentMethod === 'cash' ? 'cash' : 'bank_check',
-          notes: `Payment for order ${order.orderNumber}`
+          notes: t('order_payment_note', { order: order.orderNumber })
         });
       }
 
-      toast({
-        title: "Success",
-        description: `Payment of $${(newPaidAmount - (order.paidAmount || 0)).toFixed(2)} recorded`
-      });
+      const paymentDelta = newPaidAmount - (order.paidAmount || 0);
+      if (paymentDelta !== 0) {
+        toast({
+          title: t('success'),
+          description: t('offline_order_payment_recorded', { amount: formatCurrency(Math.abs(paymentDelta)) })
+        });
+      }
 
       setShowPaymentDialog(false);
       setPaymentOrderId(null);
       setPaidAmount(0);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to record payment",
+        title: t('error'),
+        description: t('offline_order_payment_error'),
         variant: "destructive"
       });
     }
@@ -423,26 +447,26 @@ export default function OfflineOrders() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Purchase Orders</h1>
+        <h1 className="text-3xl font-bold">{t('purchase_orders')}</h1>
         <Dialog open={isCreateOrderOpen} onOpenChange={setIsCreateOrderOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
-              Create Order
+              {t('create_order')}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create Purchase Order</DialogTitle>
+              <DialogTitle>{t('create_purchase_order')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-6">
               {/* Supplier and Warehouse Selection */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="supplier">Supplier *</Label>
+                  <Label htmlFor="supplier">{t('supplier')} *</Label>
                   <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select supplier" />
+                      <SelectValue placeholder={t('select_supplier')} />
                     </SelectTrigger>
                     <SelectContent>
                       {suppliers.map(supplier => (
@@ -454,15 +478,15 @@ export default function OfflineOrders() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="warehouse">Warehouse *</Label>
+                  <Label htmlFor="warehouse">{t('warehouse')} *</Label>
                   <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select warehouse" />
+                      <SelectValue placeholder={t('select_warehouse')} />
                     </SelectTrigger>
                     <SelectContent>
                       {stockLocations.map((location: any) => (
                         <SelectItem key={location.id} value={location.id}>
-                          {location.name} {location.isPrimary && '(Primary)'}
+                          {location.name} {location.isPrimary && t('primary_location_badge')}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -472,12 +496,12 @@ export default function OfflineOrders() {
 
               {/* Product Selection */}
               <div className="space-y-4">
-                <Label>Products</Label>
+                <Label>{t('products')}</Label>
                 <div className="border rounded-lg p-4 space-y-4">
                   {orderProducts.map((orderProduct, index) => (
                     <div key={index} className="grid grid-cols-4 gap-4 items-end">
                       <div className="space-y-2">
-                        <Label>Product</Label>
+                        <Label>{t('product')}</Label>
                         <Select 
                           value={orderProduct.productId} 
                           onValueChange={(value) => {
@@ -487,7 +511,7 @@ export default function OfflineOrders() {
                           }}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select product" />
+                            <SelectValue placeholder={t('select_product')} />
                           </SelectTrigger>
                           <SelectContent>
                             {products.filter(p => p.active).map(product => (
@@ -499,7 +523,7 @@ export default function OfflineOrders() {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>Quantity</Label>
+                        <Label>{t('quantity')}</Label>
                         <Input
                           type="number"
                           min="1"
@@ -512,7 +536,7 @@ export default function OfflineOrders() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Unit Cost</Label>
+                        <Label>{t('unit_cost')}</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -542,45 +566,45 @@ export default function OfflineOrders() {
                     onClick={() => setOrderProducts([...orderProducts, { productId: '', quantity: 1, unitCost: 0 }])}
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    Add Product
+                    {t('add_product')}
                   </Button>
                 </div>
               </div>
 
               {/* Notes */}
               <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
+                <Label htmlFor="notes">{t('notes')}</Label>
                 <Textarea
                   id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Order notes (optional)"
+                  placeholder={t('order_notes_placeholder')}
                   rows={3}
                 />
               </div>
 
               {/* Payment Information */}
               <div className="space-y-4 border-t pt-4">
-                <h4 className="font-semibold">Payment Information</h4>
+                <h4 className="font-semibold">{t('payment_information')}</h4>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="paymentMethod">Payment Method</Label>
+                    <Label htmlFor="paymentMethod">{t('payment_method')}</Label>
                     <Select value={paymentMethod} onValueChange={(value: 'cash' | 'credit' | 'bank_check') => setPaymentMethod(value)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="credit">Credit (Pay Later)</SelectItem>
-                        <SelectItem value="bank_check">Bank Check</SelectItem>
+                        <SelectItem value="cash">{t('cash')}</SelectItem>
+                        <SelectItem value="credit">{t('credit_pay_later')}</SelectItem>
+                        <SelectItem value="bank_check">{t('bank_check')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   {paymentMethod !== 'credit' && (
                     <div className="space-y-2">
-                      <Label htmlFor="paidAmount">Amount Paid</Label>
+                      <Label htmlFor="paidAmount">{t('amount_paid')}</Label>
                       <Input
                         id="paidAmount"
                         type="number"
@@ -598,7 +622,7 @@ export default function OfflineOrders() {
               {/* Order Summary */}
               {orderProducts.length > 0 && (
                 <div className="border-t pt-4">
-                  <h4 className="font-semibold mb-2">Order Summary</h4>
+                  <h4 className="font-semibold mb-2">{t('order_summary')}</h4>
                   <div className="space-y-2">
                     {orderProducts.map((orderProduct, index) => {
                       const product = products.find(p => p.id === orderProduct.productId);
@@ -606,23 +630,23 @@ export default function OfflineOrders() {
                       return product ? (
                         <div key={index} className="flex justify-between text-sm">
                           <span>{product.name} × {orderProduct.quantity}</span>
-                          <span>${total.toFixed(2)}</span>
+                          <span>{formatCurrency(total)}</span>
                         </div>
                       ) : null;
                     })}
                     <div className="border-t pt-2 font-semibold flex justify-between">
-                      <span>Total:</span>
-                      <span>${orderProducts.reduce((sum, op) => sum + (op.quantity * op.unitCost), 0).toFixed(2)}</span>
+                      <span>{t('total')}:</span>
+                      <span>{formatCurrency(orderProductsTotal)}</span>
                     </div>
                     {paymentMethod !== 'credit' && paidAmount > 0 && (
                       <div className="text-sm space-y-1">
                         <div className="flex justify-between text-green-600">
-                          <span>Paid Amount:</span>
-                          <span>${paidAmount.toFixed(2)}</span>
+                          <span>{t('paid_amount')}:</span>
+                          <span>{formatCurrency(paidAmount)}</span>
                         </div>
                         <div className="flex justify-between text-orange-600">
-                          <span>Remaining:</span>
-                          <span>${(orderProducts.reduce((sum, op) => sum + (op.quantity * op.unitCost), 0) - paidAmount).toFixed(2)}</span>
+                          <span>{t('due')}:</span>
+                          <span>{formatCurrency(orderProductsTotal - paidAmount)}</span>
                         </div>
                       </div>
                     )}
@@ -633,13 +657,13 @@ export default function OfflineOrders() {
               {/* Actions */}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsCreateOrderOpen(false)}>
-                  Cancel
+                  {t('cancel')}
                 </Button>
                 <Button 
                   onClick={handleCreateOrder}
                   disabled={!selectedSupplier || !selectedWarehouse || orderProducts.length === 0 || orderProducts.some(op => !op.productId || op.quantity <= 0)}
                 >
-                  Create Order
+                  {t('create_order')}
                 </Button>
               </div>
             </div>
@@ -651,39 +675,41 @@ export default function OfflineOrders() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('total_orders')}</CardTitle>
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{orders.length}</div>
             <p className="text-xs text-muted-foreground">
-              {orders.length === 0 ? 'No orders created yet' : `${orders.filter(o => o.status === 'pending' || o.status === 'ordered').length} active orders`}
+              {orders.length === 0 
+                ? t('no_orders_created') 
+                : t('active_orders_count', { count: orders.filter(o => o.status === 'pending' || o.status === 'ordered').length })}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Suppliers</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('suppliers')}</CardTitle>
             <Truck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{suppliers.length}</div>
             <p className="text-xs text-muted-foreground">
-              Available suppliers
+              {t('available_suppliers')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Products</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('products')}</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{products.length}</div>
             <p className="text-xs text-muted-foreground">
-              Available products
+              {t('available_products')}
             </p>
           </CardContent>
         </Card>
@@ -693,7 +719,7 @@ export default function OfflineOrders() {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
         <Input
-          placeholder="Search orders..."
+          placeholder={t('search_orders')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10"
@@ -706,12 +732,12 @@ export default function OfflineOrders() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Order #</TableHead>
-                <TableHead>Supplier</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="w-20">Actions</TableHead>
+                <TableHead>{t('order_number')}</TableHead>
+                <TableHead>{t('supplier')}</TableHead>
+                <TableHead>{t('date')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
+                <TableHead className="text-right">{t('amount')}</TableHead>
+                <TableHead className="w-20">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -719,9 +745,9 @@ export default function OfflineOrders() {
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-12">
                     <ShoppingCart className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No orders found</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">{t('no_orders_found')}</h3>
                     <p className="text-gray-600">
-                      Create your first purchase order to get started
+                      {t('create_first_order')}
                     </p>
                   </TableCell>
                 </TableRow>
@@ -729,17 +755,17 @@ export default function OfflineOrders() {
                 orders
                   .filter(order => 
                     order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    suppliers.find(s => s.id === order.supplierId)?.name.toLowerCase().includes(searchQuery.toLowerCase())
+                    ((suppliers.find(s => s.id === order.supplierId)?.name?.toLowerCase() ?? '')
+                      .includes(searchQuery.toLowerCase()))
                   )
                   .map(order => {
                     const supplier = suppliers.find(s => s.id === order.supplierId);
-                    const warehouse = stockLocations.find((w: any) => w.id === order.warehouseId);
                     console.log('Rendering order:', order.orderNumber, 'paymentStatus:', order.paymentStatus, 'paidAmount:', order.paidAmount);
                     return (
                       <TableRow key={order.id}>
                         <TableCell className="font-medium">{order.orderNumber}</TableCell>
-                        <TableCell>{supplier?.name || 'Unknown Supplier'}</TableCell>
-                        <TableCell>{order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}</TableCell>
+                        <TableCell>{supplier?.name || t('unknown_supplier')}</TableCell>
+                        <TableCell>{order.orderDate ? new Date(order.orderDate).toLocaleDateString() : t('unknown')}</TableCell>
                         <TableCell>
                           <div className="space-y-1">
                             <Badge 
@@ -747,29 +773,28 @@ export default function OfflineOrders() {
                                      order.status === 'ordered' ? 'secondary' : 
                                      order.status === 'cancelled' ? 'destructive' : 'outline'}
                             >
-                              {order.status}
+                              {orderStatusLabels[order.status as keyof typeof orderStatusLabels] || order.status}
                             </Badge>
                             <Badge 
                               variant={(order.paymentStatus || 'unpaid') === 'paid' ? 'default' : 
                                      (order.paymentStatus || 'unpaid') === 'partial' ? 'secondary' : 'destructive'}
                               className="text-xs"
                             >
-                              {(order.paymentStatus || 'unpaid') === 'paid' ? 'Paid' : 
-                               (order.paymentStatus || 'unpaid') === 'partial' ? 'Partial' : 'Unpaid'}
+                              {paymentStatusLabels[(order.paymentStatus || 'unpaid') as keyof typeof paymentStatusLabels] || (order.paymentStatus || 'unpaid')}
                             </Badge>
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="space-y-1">
-                            <div>${(order.total || order.totalAmount || 0).toFixed(2)}</div>
+                            <div>{formatCurrency(order.total || order.totalAmount || 0)}</div>
                             {(order.paymentStatus || 'unpaid') !== 'unpaid' && (
                               <div className="text-xs text-green-600">
-                                Paid: ${(order.paidAmount || 0).toFixed(2)}
+                                {t('paid_amount')}: {formatCurrency(order.paidAmount || 0)}
                               </div>
                             )}
                             {(order.remainingAmount || 0) > 0 && (
                               <div className="text-xs text-orange-600">
-                                Due: ${(order.remainingAmount || 0).toFixed(2)}
+                                {t('due')}: {formatCurrency(order.remainingAmount || 0)}
                               </div>
                             )}
                           </div>
@@ -781,7 +806,7 @@ export default function OfflineOrders() {
                                 variant="ghost" 
                                 size="sm"
                                 onClick={() => updateOrder(order.id, { status: 'ordered' })}
-                                title="Mark as Ordered"
+                                title={t('mark_as_ordered')}
                               >
                                 <Package className="w-4 h-4" />
                               </Button>
@@ -790,7 +815,7 @@ export default function OfflineOrders() {
                                 variant="ghost" 
                                 size="sm"
                                 onClick={() => handleReceiveOrder(order.id)}
-                                title="Receive Order"
+                                title={t('receive_order')}
                               >
                                 <Truck className="w-4 h-4" />
                               </Button>
@@ -798,7 +823,7 @@ export default function OfflineOrders() {
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              title="View Details"
+                              title={t('view_details')}
                               onClick={() => handleViewOrder(order.id)}
                             >
                               <Eye className="w-4 h-4" />
@@ -807,7 +832,7 @@ export default function OfflineOrders() {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                title="Make Payment"
+                                title={t('make_payment')}
                                 onClick={() => handlePaymentDialog(order.id)}
                               >
                                 <CreditCard className="w-4 h-4" />
@@ -818,22 +843,22 @@ export default function OfflineOrders() {
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
-                                  title="Delete Order"
+                                  title={t('delete_order')}
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Order</AlertDialogTitle>
+                                  <AlertDialogTitle>{t('delete_order_title')}</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Are you sure you want to delete order {order.orderNumber}? This action cannot be undone.
+                                    {t('delete_order_description', { orderNumber: order.orderNumber })}
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                                   <AlertDialogAction onClick={() => handleDeleteOrder(order.id)}>
-                                    Delete
+                                    {t('delete')}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
@@ -860,36 +885,36 @@ export default function OfflineOrders() {
             const supplier = suppliers.find(s => s.id === order?.supplierId);
             const warehouse = stockLocations.find((w: any) => w.id === order?.warehouseId);
             
-            if (!order) return <div>Order not found</div>;
+            if (!order) return <div>{t('order_not_found')}</div>;
             
             return (
               <div className="space-y-6">
                 {/* Order Header */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h3 className="font-semibold">Order Information</h3>
+                    <h3 className="font-semibold">{t('order_information')}</h3>
                     <div className="space-y-2 mt-2">
-                      <div><span className="text-gray-600">Order #:</span> {order.orderNumber}</div>
-                      <div><span className="text-gray-600">Status:</span> 
+                      <div><span className="text-gray-600">{t('order_number_label')}:</span> {order.orderNumber}</div>
+                      <div><span className="text-gray-600">{t('status')}:</span> 
                         <Badge className="ml-2" variant={order.status === 'received' ? 'default' : 
                                                        order.status === 'ordered' ? 'secondary' : 
                                                        order.status === 'cancelled' ? 'destructive' : 'outline'}>
-                          {order.status}
+                          {orderStatusLabels[order.status as keyof typeof orderStatusLabels] || order.status}
                         </Badge>
                       </div>
-                      <div><span className="text-gray-600">Order Date:</span> {order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}</div>
+                      <div><span className="text-gray-600">{t('order_date_label')}:</span> {order.orderDate ? new Date(order.orderDate).toLocaleDateString() : t('unknown')}</div>
                       {order.receivedDate && (
-                        <div><span className="text-gray-600">Received Date:</span> {order.receivedDate ? new Date(order.receivedDate).toLocaleDateString() : 'N/A'}</div>
+                        <div><span className="text-gray-600">{t('received_date_label')}:</span> {order.receivedDate ? new Date(order.receivedDate).toLocaleDateString() : t('unknown')}</div>
                       )}
                     </div>
                   </div>
                   <div>
-                    <h3 className="font-semibold">Supplier & Warehouse</h3>
+                    <h3 className="font-semibold">{t('supplier_and_warehouse')}</h3>
                     <div className="space-y-2 mt-2">
-                      <div><span className="text-gray-600">Supplier:</span> {supplier?.name || 'Unknown'}</div>
-                      <div><span className="text-gray-600">Warehouse:</span> {warehouse?.name || 'Unknown'}</div>
+                      <div><span className="text-gray-600">{t('supplier')}:</span> {supplier?.name || t('unknown_supplier')}</div>
+                      <div><span className="text-gray-600">{t('warehouse')}:</span> {warehouse?.name || t('unknown')}</div>
                       {order.notes && (
-                        <div><span className="text-gray-600">Notes:</span> {order.notes}</div>
+                        <div><span className="text-gray-600">{t('notes_label')}:</span> {order.notes}</div>
                       )}
                     </div>
                   </div>
@@ -901,8 +926,8 @@ export default function OfflineOrders() {
                 {/* Order Summary */}
                 <div className="border-t pt-4">
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold">Total Amount:</span>
-                    <span className="text-xl font-bold">${(order.total || order.totalAmount || 0).toFixed(2)}</span>
+                    <span className="font-semibold">{t('total_amount')}:</span>
+                    <span className="text-xl font-bold">{formatCurrency(order.total || order.totalAmount || 0)}</span>
                   </div>
                 </div>
               </div>
@@ -915,7 +940,7 @@ export default function OfflineOrders() {
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Make Payment</DialogTitle>
+            <DialogTitle>{t('make_payment')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {(() => {
@@ -926,28 +951,28 @@ export default function OfflineOrders() {
                 <div className="space-y-4">
                   <div className="bg-gray-50 p-3 rounded-lg">
                     <div className="text-sm space-y-1">
-                      <div><span className="font-medium">Order:</span> {order.orderNumber}</div>
-                      <div><span className="font-medium">Total:</span> ${(order.total || order.totalAmount || 0).toFixed(2)}</div>
-                      <div><span className="font-medium">Paid:</span> ${(order.paidAmount || 0).toFixed(2)}</div>
-                      <div><span className="font-medium">Due:</span> ${(order.remainingAmount || ((order.total || order.totalAmount || 0) - (order.paidAmount || 0))).toFixed(2)}</div>
+                      <div><span className="font-medium">{t('payment_details_order')}</span> {order.orderNumber}</div>
+                      <div><span className="font-medium">{t('payment_details_total')}</span> {formatCurrency(order.total || order.totalAmount || 0)}</div>
+                      <div><span className="font-medium">{t('payment_details_paid')}</span> {formatCurrency(order.paidAmount || 0)}</div>
+                      <div><span className="font-medium">{t('payment_details_due')}</span> {formatCurrency(order.remainingAmount || ((order.total || order.totalAmount || 0) - (order.paidAmount || 0)))}</div>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="paymentMethodDialog">Payment Method</Label>
+                    <Label htmlFor="paymentMethodDialog">{t('payment_method')}</Label>
                     <Select value={paymentMethod} onValueChange={(value: 'cash' | 'credit' | 'bank_check') => setPaymentMethod(value)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="bank_check">Bank Check</SelectItem>
+                        <SelectItem value="cash">{t('cash')}</SelectItem>
+                        <SelectItem value="bank_check">{t('bank_check')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="paymentAmount">Payment Amount</Label>
+                    <Label htmlFor="paymentAmount">{t('payment_amount')}</Label>
                     <Input
                       id="paymentAmount"
                       type="number"
@@ -964,20 +989,20 @@ export default function OfflineOrders() {
                         size="sm"
                         onClick={() => setPaidAmount((order.total || order.totalAmount || 0) - (order.paidAmount || 0))}
                       >
-                        Pay Full Amount
+                        {t('pay_full_amount')}
                       </Button>
                     </div>
                   </div>
 
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
-                      Cancel
+                      {t('cancel')}
                     </Button>
                     <Button 
                       onClick={handleMakePayment}
                       disabled={paidAmount <= 0 || paidAmount > (order.remainingAmount || ((order.total || order.totalAmount || 0) - (order.paidAmount || 0)))}
                     >
-                      Record Payment
+                      {t('record_payment')}
                     </Button>
                   </div>
                 </div>
@@ -993,15 +1018,15 @@ export default function OfflineOrders() {
           <div className="flex items-start gap-3">
             <Package className="w-5 h-5 text-blue-600 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-blue-900">Orders Module</h3>
+              <h3 className="font-semibold text-blue-900">{t('orders_module_title')}</h3>
               <p className="text-sm text-blue-700 mt-1">
-                This is a simplified offline orders page. In a full implementation, you would be able to:
+                {t('orders_module_description')}
               </p>
               <ul className="text-sm text-blue-700 mt-2 space-y-1 list-disc list-inside">
-                <li>Create purchase orders for suppliers</li>
-                <li>Track order status and delivery</li>
-                <li>Manage order items and quantities</li>
-                <li>Update inventory when orders are received</li>
+                <li>{t('orders_module_point_create')}</li>
+                <li>{t('orders_module_point_track')}</li>
+                <li>{t('orders_module_point_manage')}</li>
+                <li>{t('orders_module_point_update')}</li>
               </ul>
             </div>
           </div>
