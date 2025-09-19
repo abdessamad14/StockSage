@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useOfflineCustomers } from "@/hooks/use-offline-customers";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
@@ -19,22 +19,29 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 
-const customerSchema = z.object({
-  name: z.string().min(1, "Customer name is required"),
-  phone: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  address: z.string().optional(),
-  creditBalance: z.number().optional(),
-  notes: z.string().optional()
-});
-
-type CustomerFormData = z.infer<typeof customerSchema>;
+type CustomerFormData = {
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  creditBalance?: number;
+  notes?: string;
+};
 
 export default function OfflineCustomers() {
   const { customers, loading, createCustomer, updateCustomer, deleteCustomer } = useOfflineCustomers();
   const { t } = useI18n();
   const { toast } = useToast();
   
+  const customerSchema = useMemo(() => z.object({
+    name: z.string().min(1, t('customer_name_required')),
+    phone: z.string().optional(),
+    email: z.string().email(t('invalid_email')).optional().or(z.literal('')),
+    address: z.string().optional(),
+    creditBalance: z.coerce.number().optional(),
+    notes: z.string().optional()
+  }), [t]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<OfflineCustomer | null>(null);
@@ -49,6 +56,9 @@ export default function OfflineCustomers() {
     transactions: CreditTransaction[];
   } | null>(null);
   const [loadingCreditInfo, setLoadingCreditInfo] = useState(false);
+
+  const formatCurrency = (value?: number) => `${(value ?? 0).toFixed(2)} ${t('currency')}`;
+  const formatSignedCurrency = (value: number) => `${value > 0 ? '+' : value < 0 ? '-' : ''}${formatCurrency(Math.abs(value))}`;
 
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
@@ -82,7 +92,7 @@ export default function OfflineCustomers() {
         });
         toast({
           title: t('success'),
-          description: "Customer updated successfully"
+          description: t('customer_updated_successfully')
         });
       } else {
         createCustomer({
@@ -97,7 +107,7 @@ export default function OfflineCustomers() {
         });
         toast({
           title: t('success'),
-          description: "Customer created successfully"
+          description: t('customer_created_successfully')
         });
       }
       
@@ -107,7 +117,7 @@ export default function OfflineCustomers() {
     } catch (error) {
       toast({
         title: t('error'),
-        description: "Failed to save customer",
+        description: t('customer_save_error'),
         variant: "destructive"
       });
     }
@@ -127,11 +137,11 @@ export default function OfflineCustomers() {
   };
 
   const handleDelete = (customer: OfflineCustomer) => {
-    if (confirm(`Are you sure you want to delete "${customer.name}"?`)) {
+    if (confirm(t('confirm_delete_customer', { name: customer.name }))) {
       deleteCustomer(customer.id);
       toast({
         title: t('success'),
-        description: "Customer deleted successfully"
+        description: t('customer_deleted_successfully')
       });
     }
   };
@@ -144,8 +154,8 @@ export default function OfflineCustomers() {
     } catch (error) {
       console.error('Error loading credit info:', error);
       toast({
-        title: "Error",
-        description: "Failed to load credit information",
+        title: t('error'),
+        description: t('credit_load_error'),
         variant: "destructive"
       });
     } finally {
@@ -162,8 +172,8 @@ export default function OfflineCustomers() {
     if (!selectedCustomer) {
       console.log('No customer selected');
       toast({
-        title: "Error",
-        description: "No customer selected",
+        title: t('error'),
+        description: t('credit_no_customer_selected'),
         variant: "destructive"
       });
       return;
@@ -172,8 +182,8 @@ export default function OfflineCustomers() {
     if (creditAmount <= 0) {
       console.log('Invalid amount:', creditAmount);
       toast({
-        title: "Error",
-        description: "Please enter a valid payment amount greater than 0",
+        title: t('error'),
+        description: t('credit_invalid_payment_amount'),
         variant: "destructive"
       });
       return;
@@ -185,7 +195,7 @@ export default function OfflineCustomers() {
       const paymentTransaction = await creditHelpers.addCreditPayment(
         selectedCustomer.id,
         creditAmount,
-        creditNote || `Credit payment - ${format(new Date(), 'MMM dd, yyyy')}`
+        creditNote || t('credit_payment_reference', { date: format(new Date(), 'MMM dd, yyyy') })
       );
       
       console.log('Payment transaction returned:', paymentTransaction);
@@ -204,8 +214,11 @@ export default function OfflineCustomers() {
       } : null);
       
       toast({
-        title: "Success",
-        description: `Payment of $${creditAmount.toFixed(2)} recorded successfully. New balance: $${updatedCustomerInfo.currentBalance.toFixed(2)}`
+        title: t('success'),
+        description: t('credit_payment_success', {
+          amount: formatCurrency(creditAmount),
+          balance: formatCurrency(updatedCustomerInfo.currentBalance)
+        })
       });
 
       setCreditAmount(0);
@@ -215,8 +228,10 @@ export default function OfflineCustomers() {
     } catch (error) {
       console.error('Payment processing error:', error);
       toast({
-        title: "Error",
-        description: `Failed to process credit payment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        title: t('error'),
+        description: t('credit_payment_error', {
+          message: error instanceof Error ? error.message : t('unknown_error')
+        }),
         variant: "destructive"
       });
     }
@@ -241,7 +256,7 @@ export default function OfflineCustomers() {
         <h1 className="text-3xl font-bold">{t('customers')}</h1>
         <Button onClick={() => setIsDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
-          Add Customer
+          {t('add_customer')}
         </Button>
       </div>
 
@@ -249,7 +264,7 @@ export default function OfflineCustomers() {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
         <Input
-          placeholder="Search customers..."
+          placeholder={t('search_customers')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10"
@@ -266,7 +281,7 @@ export default function OfflineCustomers() {
                   <h3 className="font-semibold text-lg">{customer.name}</h3>
                   {(customer.creditBalance || 0) > 0 ? (
                     <Badge variant="destructive" className="text-xs">
-                      ${(customer.creditBalance || 0).toFixed(2)} owed
+                      {t('credit_badge_owed', { amount: formatCurrency(customer.creditBalance) })}
                     </Badge>
                   ) : null}
                 </div>
@@ -298,7 +313,7 @@ export default function OfflineCustomers() {
                     setIsCreditDialogOpen(true);
                     await loadCreditInfo(customer);
                   }}
-                  title="Manage Credit"
+                  title={t('manage_credit')}
                 >
                   <CreditCard className="w-4 h-4" />
                 </Button>
@@ -322,9 +337,9 @@ export default function OfflineCustomers() {
             {(customer.creditBalance || 0) > 0 && (
               <div className="space-y-1 pt-2 border-t">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Credit Balance:</span>
+                  <span className="text-gray-600">{t('credit_balance')}:</span>
                   <span className="font-medium text-red-600">
-                    ${(customer.creditBalance || 0).toFixed(2)}
+                    {formatCurrency(customer.creditBalance)}
                   </span>
                 </div>
               </div>
@@ -340,9 +355,9 @@ export default function OfflineCustomers() {
       {filteredCustomers.length === 0 && (
         <div className="text-center py-12">
           <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No customers found</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">{t('no_customers_found')}</h3>
           <p className="text-gray-600">
-            {searchQuery ? "Try adjusting your search" : "Add your first customer to get started"}
+            {searchQuery ? t('adjust_search_prompt') : t('add_first_customer_prompt')}
           </p>
         </div>
       )}
@@ -352,10 +367,10 @@ export default function OfflineCustomers() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
+              {editingCustomer ? t('edit_customer') : t('add_new_customer')}
             </DialogTitle>
             <DialogDescription>
-              {editingCustomer ? 'Update customer information' : 'Enter the details for the new customer'}
+              {editingCustomer ? t('update_customer_description') : t('create_customer_description')}
             </DialogDescription>
           </DialogHeader>
           
@@ -367,7 +382,7 @@ export default function OfflineCustomers() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Customer Name</FormLabel>
+                      <FormLabel>{t('customer_name')}</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -381,7 +396,7 @@ export default function OfflineCustomers() {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Phone</FormLabel>
+                      <FormLabel>{t('phone')}</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -395,7 +410,7 @@ export default function OfflineCustomers() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>{t('email')}</FormLabel>
                       <FormControl>
                         <Input type="email" {...field} />
                       </FormControl>
@@ -411,7 +426,7 @@ export default function OfflineCustomers() {
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Address</FormLabel>
+                    <FormLabel>{t('address')}</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -425,7 +440,7 @@ export default function OfflineCustomers() {
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Notes</FormLabel>
+                    <FormLabel>{t('notes')}</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -436,10 +451,10 @@ export default function OfflineCustomers() {
               
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
+                  {t('cancel')}
                 </Button>
                 <Button type="submit">
-                  {editingCustomer ? 'Update' : 'Create'} Customer
+                  {editingCustomer ? t('update_customer') : t('create_customer')}
                 </Button>
               </DialogFooter>
             </form>
@@ -451,54 +466,54 @@ export default function OfflineCustomers() {
       <Dialog open={isCreditDialogOpen} onOpenChange={setIsCreditDialogOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Credit Management - {selectedCustomer?.name}</DialogTitle>
+            <DialogTitle>{t('credit_management_title', { name: selectedCustomer?.name ?? '' })}</DialogTitle>
             <DialogDescription>
-              Manage customer credit balance, payments, and view transaction history
+              {t('credit_management_desc')}
             </DialogDescription>
           </DialogHeader>
           
           {selectedCustomer && (
             <Tabs defaultValue="overview" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="payment">Record Payment</TabsTrigger>
-                <TabsTrigger value="history">Transaction History</TabsTrigger>
+                <TabsTrigger value="overview">{t('overview')}</TabsTrigger>
+                <TabsTrigger value="payment">{t('record_payment')}</TabsTrigger>
+                <TabsTrigger value="history">{t('history')}</TabsTrigger>
               </TabsList>
               
               <TabsContent value="overview" className="space-y-4">
                 {loadingCreditInfo ? (
                   <div className="text-center py-8">
-                    <div className="text-lg">Loading credit information...</div>
+                    <div className="text-lg">{t('loading_credit_info')}</div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card className="p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <DollarSign className="w-5 h-5 text-red-500" />
-                        <h3 className="font-semibold">Current Balance</h3>
+                        <h3 className="font-semibold">{t('current_balance')}</h3>
                       </div>
                       <p className="text-2xl font-bold text-red-600">
-                        ${(creditInfo?.currentBalance || 0).toFixed(2)}
+                        {formatCurrency(creditInfo?.currentBalance)}
                       </p>
                     </Card>
                     
                     <Card className="p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <CreditCard className="w-5 h-5 text-blue-500" />
-                        <h3 className="font-semibold">Credit Limit</h3>
+                        <h3 className="font-semibold">{t('credit_limit')}</h3>
                       </div>
                       <p className="text-2xl font-bold text-blue-600">
-                        ${(creditInfo?.creditLimit || 0).toFixed(2)}
+                        {formatCurrency(creditInfo?.creditLimit)}
                       </p>
                     </Card>
                     
                     <Card className="p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <DollarSign className="w-5 h-5 text-green-500" />
-                        <h3 className="font-semibold">Available Credit</h3>
+                        <h3 className="font-semibold">{t('available_credit')}</h3>
                       </div>
                       <p className="text-2xl font-bold text-green-600">
-                        ${Math.max(0, (creditInfo?.availableCredit || 0)).toFixed(2)}
+                        {formatCurrency(Math.max(0, creditInfo?.availableCredit ?? 0))}
                       </p>
                     </Card>
                   </div>
@@ -510,7 +525,7 @@ export default function OfflineCustomers() {
                   <div className="space-y-4">
                     
                     <div>
-                      <label className="text-sm font-medium">Payment Amount</label>
+                      <label className="text-sm font-medium">{t('payment_amount')}</label>
                       <Input
                         type="number"
                         step="0.01"
@@ -522,11 +537,11 @@ export default function OfflineCustomers() {
                     </div>
                     
                     <div>
-                      <label className="text-sm font-medium">Note</label>
+                      <label className="text-sm font-medium">{t('notes')}</label>
                       <Input
                         value={creditNote}
                         onChange={(e) => setCreditNote(e.target.value)}
-                        placeholder="Optional note..."
+                        placeholder={t('optional_note_placeholder')}
                         className="mt-1"
                       />
                     </div>
@@ -536,24 +551,24 @@ export default function OfflineCustomers() {
                       disabled={creditAmount <= 0}
                       className="w-full"
                     >
-                      Record Payment
+                      {t('record_payment')}
                     </Button>
                   </div>
                   
                   <div className="bg-gray-50 p-4 rounded">
-                    <h3 className="font-semibold mb-2">Current Status</h3>
+                    <h3 className="font-semibold mb-2">{t('current_status')}</h3>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span>Current Balance:</span>
+                        <span>{t('current_balance')}:</span>
                         <span className="font-medium text-red-600">
-                          ${(creditInfo?.currentBalance || 0).toFixed(2)}
+                          {formatCurrency(creditInfo?.currentBalance)}
                         </span>
                       </div>
                       {creditAmount > 0 && (
                         <div className="flex justify-between">
-                          <span>After Payment:</span>
+                          <span>{t('after_payment')}:</span>
                           <span className="font-medium text-green-600">
-                            ${Math.max(0, (creditInfo?.currentBalance || 0) - creditAmount).toFixed(2)}
+                            {formatCurrency(Math.max(0, (creditInfo?.currentBalance || 0) - creditAmount))}
                           </span>
                         </div>
                       )}
@@ -565,18 +580,18 @@ export default function OfflineCustomers() {
               <TabsContent value="history" className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
                   <History className="w-5 h-5" />
-                  <h3 className="font-semibold">Credit Transaction History</h3>
+                  <h3 className="font-semibold">{t('credit_transaction_history')}</h3>
                 </div>
                 
                 <div className="border rounded-lg">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Balance After</TableHead>
+                        <TableHead>{t('date')}</TableHead>
+                        <TableHead>{t('type')}</TableHead>
+                        <TableHead>{t('amount')}</TableHead>
+                        <TableHead>{t('description')}</TableHead>
+                        <TableHead>{t('balance_after')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -594,16 +609,14 @@ export default function OfflineCustomers() {
                                   'secondary'
                                 }
                               >
-                                {transaction.type === 'credit_sale' ? 'Sale' : 
-                                 transaction.type === 'payment' ? 'Payment' : 
-                                 transaction.type}
+                                {transaction.type === 'credit_sale' ? t('transaction_type_sale') : 
+                                 transaction.type === 'payment' ? t('transaction_type_payment') : 
+                                 transaction.type === 'adjustment' ? t('transaction_type_adjustment') : transaction.type}
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <span className={
-                                transaction.amount > 0 ? 'text-red-600' : 'text-green-600'
-                              }>
-                                {transaction.amount > 0 ? '+' : ''}${transaction.amount.toFixed(2)}
+                              <span className={transaction.amount > 0 ? 'text-red-600' : 'text-green-600'}>
+                                {formatSignedCurrency(transaction.amount)}
                               </span>
                             </TableCell>
                             <TableCell className="max-w-xs truncate">
@@ -611,7 +624,7 @@ export default function OfflineCustomers() {
                             </TableCell>
                             <TableCell>
                               <span className="font-medium text-red-600">
-                                ${transaction.balanceAfter.toFixed(2)}
+                                {formatCurrency(transaction.balanceAfter)}
                               </span>
                             </TableCell>
                           </TableRow>
@@ -619,7 +632,7 @@ export default function OfflineCustomers() {
                       ) : (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                            {loadingCreditInfo ? 'Loading transactions...' : 'No credit transactions found'}
+                            {loadingCreditInfo ? t('loading_transactions') : t('no_credit_transactions')}
                           </TableCell>
                         </TableRow>
                       )}
@@ -637,7 +650,7 @@ export default function OfflineCustomers() {
               setCreditAmount(0);
               setCreditNote("");
             }}>
-              Close
+              {t('close')}
             </Button>
           </DialogFooter>
         </DialogContent>

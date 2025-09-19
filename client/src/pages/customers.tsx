@@ -229,7 +229,7 @@ export default function Customers() {
         
         {/* Results Count */}
         <div className="text-sm text-muted-foreground mb-3">
-          {filteredCustomers().length} {t('results')}
+          {t('customers_results', { count: filteredCustomers().length.toString() })}
         </div>
         
         {/* Customers List */}
