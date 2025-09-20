@@ -28,6 +28,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
   const { settings } = useOfflineSettings();
   const { user, logout, canManageUsers, canUsePOS, canManageProducts, canManageCustomers, canManageSuppliers, canViewReports } = useOfflineAuth();
   const [location] = useLocation();
+  const isRTL = language === 'ar';
 
   // Use auth permissions
   const canManageInventory = true;
@@ -38,8 +39,18 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
     return location === path;
   };
 
+  const sideBorderClass = isRTL ? 'border-r-4' : 'border-l-4';
+  const drawerPositionClass = isRTL ? 'right-0 left-auto' : 'left-0 right-auto';
+
+  const linkClasses = (path: string) => {
+    const base = `flex items-center px-4 py-3 ${sideBorderClass} border-transparent`;
+    const activeClasses = `text-primary bg-blue-50 border-primary`;
+    const inactiveClasses = `text-textPrimary hover:bg-gray-100`;
+    return `${base} ${isActive(path) ? activeClasses : inactiveClasses}`;
+  };
+
   return (
-    <div className={`fixed top-0 left-0 h-full w-72 bg-white shadow-lg z-50 drawer ${isOpen ? 'drawer-open' : 'drawer-closed'}`}>
+    <div className={`fixed top-0 ${drawerPositionClass} h-full w-72 bg-white shadow-lg z-50 drawer ${isOpen ? 'drawer-open' : 'drawer-closed'}`}>
       <div className="p-4 bg-primary flex items-center border-b border-gray-200">
         <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center mr-3 overflow-hidden">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10 text-primary">
@@ -56,14 +67,14 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
       <div className="overflow-y-auto h-[calc(100%-144px)]">
         <div className="py-2">
           {/* Dashboard */}
-          <Link href="/" className={`flex items-center px-4 py-3 ${isActive('/') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+          <Link href="/" className={linkClasses('/')}>
             <LayoutDashboard className="w-6 h-6 mr-3" />
             <span>{t('dashboard')}</span>
           </Link>
           
           {/* POS */}
           {canUsePOS && (
-            <Link href="/pos" className={`flex items-center px-4 py-3 ${isActive('/pos') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+            <Link href="/pos" className={linkClasses('/pos')}>
               <Store className="w-6 h-6 mr-3" />
               <span>{t('pos')}</span>
             </Link>
@@ -71,7 +82,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           
           {/* Products */}
           {canManageProducts && (
-            <Link href="/products" className={`flex items-center px-4 py-3 ${isActive('/products') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+            <Link href="/products" className={linkClasses('/products')}>
               <Package className="w-6 h-6 mr-3" />
               <span>{t('products')}</span>
             </Link>
@@ -79,7 +90,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           
           {/* Inventory */}
           {canManageInventory && (
-            <Link href="/inventory" className={`flex items-center px-4 py-3 ${isActive('/inventory') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+            <Link href="/inventory" className={linkClasses('/inventory')}>
               <Database className="w-6 h-6 mr-3" />
               <span>{t('inventory')}</span>
             </Link>
@@ -87,7 +98,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           
           {/* Inventory Count */}
           {canManageInventory && (
-            <Link href="/inventory-count" className={`flex items-center px-4 py-3 ${isActive('/inventory-count') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+            <Link href="/inventory-count" className={linkClasses('/inventory-count')}>
               <ClipboardCheck className="w-6 h-6 mr-3" />
               <span>{t('inventory_count')}</span>
             </Link>
@@ -96,7 +107,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           
           {/* Customers */}
           {canManageCustomers && (
-            <Link href="/customers" className={`flex items-center px-4 py-3 ${isActive('/customers') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+            <Link href="/customers" className={linkClasses('/customers')}>
               <Users className="w-6 h-6 mr-3" />
               <span>{t('customers')}</span>
             </Link>
@@ -104,21 +115,21 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           
           {/* Suppliers */}
           {canManageSuppliers && (
-            <Link href="/suppliers" className={`flex items-center px-4 py-3 ${isActive('/suppliers') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+            <Link href="/suppliers" className={linkClasses('/suppliers')}>
               <Truck className="w-6 h-6 mr-3" />
               <span>{t('suppliers')}</span>
             </Link>
           )}
           
           {/* Orders */}
-          <Link href="/orders" className={`flex items-center px-4 py-3 ${isActive('/orders') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+          <Link href="/orders" className={linkClasses('/orders')}>
             <ClipboardList className="w-6 h-6 mr-3" />
             <span>{t('orders')}</span>
           </Link>
-          
+
           {/* Reports */}
           {canViewReports && (
-            <Link href="/reports" className={`flex items-center px-4 py-3 ${isActive('/reports') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+            <Link href="/reports" className={linkClasses('/reports')}>
               <BarChart2 className="w-6 h-6 mr-3" />
               <span>{t('reports')}</span>
             </Link>
@@ -126,7 +137,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           
           {/* Sales History */}
           {canViewSalesHistory && (
-            <Link href="/sales-history" className={`flex items-center px-4 py-3 ${isActive('/sales-history') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+            <Link href="/sales-history" className={linkClasses('/sales-history')}>
               <Receipt className="w-6 h-6 mr-3" />
               <span>{t('sales_history')}</span>
             </Link>
@@ -134,7 +145,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           
           {/* User Management */}
           {canManageUsers && (
-            <Link href="/users" className={`flex items-center px-4 py-3 ${isActive('/users') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+            <Link href="/users" className={linkClasses('/users')}>
               <UserCog className="w-6 h-6 mr-3" />
               <span>{t('user_management')}</span>
             </Link>
@@ -142,7 +153,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           
           {/* Settings */}
           {canManageSettings && (
-            <Link href="/settings" className={`flex items-center px-4 py-3 ${isActive('/settings') ? 'text-primary bg-blue-50 border-l-4 border-primary' : 'text-textPrimary hover:bg-gray-100'}`}>
+            <Link href="/settings" className={linkClasses('/settings')}>
               <Settings className="w-6 h-6 mr-3" />
               <span>{t('settings')}</span>
             </Link>
