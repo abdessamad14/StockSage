@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { useOfflineSales } from "@/hooks/use-offline-sales";
 import { useOfflineProducts } from "@/hooks/use-offline-products";
@@ -46,10 +46,26 @@ export default function OfflineSalesHistory() {
   const [selectedSale, setSelectedSale] = useState<OfflineSale | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+  const formatCurrency = (value?: number) => `${(value ?? 0).toFixed(2)} ${t('currency')}`;
+  const formatNumber = (value: number) => value.toLocaleString();
+
+  const saleStatusLabels = useMemo(() => ({
+    completed: t('sale_status_completed'),
+    pending: t('sale_status_pending'),
+    cancelled: t('sale_status_cancelled'),
+  }), [t]);
+
+  const paymentMethodLabels = useMemo(() => ({
+    cash: t('cash'),
+    credit: t('credit'),
+    card: t('card_payment'),
+    mobile: t('mobile_payment'),
+  }), [t]);
+
   const filteredSales = sales.filter(sale => {
     const matchesSearch = !searchQuery || 
       sale.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customers.find(c => c.id === sale.customerId)?.name.toLowerCase().includes(searchQuery.toLowerCase());
+      (customers.find(c => c.id === sale.customerId)?.name?.toLowerCase() ?? '').includes(searchQuery.toLowerCase());
     
     const matchesStatus = statusFilter === "all" || sale.status === statusFilter;
     const matchesPayment = paymentMethodFilter === "all" || sale.paymentMethod === paymentMethodFilter;
@@ -62,14 +78,14 @@ export default function OfflineSalesHistory() {
   const averageTransaction = totalTransactions > 0 ? totalSales / totalTransactions : 0;
 
   const getCustomerName = (customerId: string | null) => {
-    if (!customerId) return "Walk-in Customer";
+    if (!customerId) return t('walk_in_customer');
     const customer = customers.find(c => c.id === customerId);
-    return customer?.name || "Unknown Customer";
+    return customer?.name || t('unknown_customer');
   };
 
   const getProductName = (productId: string) => {
     const product = products.find(p => p.id === productId);
-    return product?.name || "Unknown Product";
+    return product?.name || t('unknown_product');
   };
 
   const handleViewDetails = (sale: OfflineSale) => {
@@ -83,18 +99,20 @@ export default function OfflineSalesHistory() {
       const printerReady = await ThermalReceiptPrinter.isPrinterReady();
       if (!printerReady) {
         toast({
-          title: "Printer Not Ready",
-          description: "Please configure and connect your thermal printer in Settings",
+          title: t('offline_sales_printer_not_ready_title'),
+          description: t('offline_sales_printer_not_ready_desc'),
           variant: "destructive"
         });
         return;
       }
 
       // Prepare receipt data
+      const customerName = sale.customerId ? getCustomerName(sale.customerId) : undefined;
+
       const receiptData: ReceiptData = {
         invoiceNumber: sale.invoiceNumber,
         date: new Date(sale.date),
-        customerName: getCustomerName(sale.customerId) !== "Walk-in Customer" ? getCustomerName(sale.customerId) : undefined,
+        customerName,
         items: sale.items.map(item => ({
           name: getProductName(item.productId),
           quantity: item.quantity,
@@ -114,14 +132,14 @@ export default function OfflineSalesHistory() {
       await ThermalReceiptPrinter.printReceipt(receiptData);
       
       toast({
-        title: "Success",
-        description: "Receipt printed successfully"
+        title: t('success'),
+        description: t('offline_sales_print_success')
       });
     } catch (error) {
       console.error('Print error:', error);
       toast({
-        title: "Print Error",
-        description: "Failed to print receipt. Please check your printer connection.",
+        title: t('offline_sales_print_error_title'),
+        description: t('offline_sales_print_error_desc'),
         variant: "destructive"
       });
     }
@@ -151,8 +169,8 @@ export default function OfflineSalesHistory() {
     window.URL.revokeObjectURL(url);
 
     toast({
-      title: "Success",
-      description: "Sales data exported successfully"
+      title: t('success'),
+      description: t('offline_sales_export_success')
     });
   };
 
@@ -173,10 +191,10 @@ export default function OfflineSalesHistory() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Sales History</h1>
+        <h1 className="text-3xl font-bold">{t('offline_sales_history_title')}</h1>
         <Button onClick={handleExportData} disabled={filteredSales.length === 0}>
           <Download className="w-4 h-4 mr-2" />
-          Export CSV
+          {t('offline_sales_export')}
         </Button>
       </div>
 
@@ -184,39 +202,39 @@ export default function OfflineSalesHistory() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('offline_sales_total_sales')}</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalSales.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalSales)}</div>
             <p className="text-xs text-muted-foreground">
-              From {totalTransactions} transactions
+              {t('offline_sales_total_sales_desc', { count: formatNumber(totalTransactions) })}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Transactions</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('offline_sales_transactions')}</CardTitle>
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalTransactions}</div>
+            <div className="text-2xl font-bold">{formatNumber(totalTransactions)}</div>
             <p className="text-xs text-muted-foreground">
-              Total completed sales
+              {t('offline_sales_transactions_desc')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Sale</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('offline_sales_average_sale')}</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${averageTransaction.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(averageTransaction)}</div>
             <p className="text-xs text-muted-foreground">
-              Per transaction
+              {t('offline_sales_average_sale_desc')}
             </p>
           </CardContent>
         </Card>
@@ -227,7 +245,7 @@ export default function OfflineSalesHistory() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
-            placeholder="Search by invoice number or customer..."
+            placeholder={t('offline_sales_search_placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -236,25 +254,26 @@ export default function OfflineSalesHistory() {
         
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Filter by status" />
+            <SelectValue placeholder={t('offline_sales_status_filter_placeholder')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="all">{t('offline_sales_status_all')}</SelectItem>
+            <SelectItem value="completed">{saleStatusLabels.completed}</SelectItem>
+            <SelectItem value="pending">{saleStatusLabels.pending}</SelectItem>
+            <SelectItem value="cancelled">{saleStatusLabels.cancelled}</SelectItem>
           </SelectContent>
         </Select>
 
         <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
           <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Filter by payment" />
+            <SelectValue placeholder={t('offline_sales_payment_filter_placeholder')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Payment Methods</SelectItem>
-            <SelectItem value="cash">Cash</SelectItem>
-            <SelectItem value="card">Card</SelectItem>
-            <SelectItem value="mobile">Mobile Payment</SelectItem>
+            <SelectItem value="all">{t('offline_sales_payment_all')}</SelectItem>
+            <SelectItem value="cash">{paymentMethodLabels.cash}</SelectItem>
+            <SelectItem value="credit">{paymentMethodLabels.credit}</SelectItem>
+            <SelectItem value="card">{paymentMethodLabels.card}</SelectItem>
+            <SelectItem value="mobile">{paymentMethodLabels.mobile}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -265,13 +284,13 @@ export default function OfflineSalesHistory() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Invoice</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Payment Method</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="w-20">Actions</TableHead>
+                <TableHead>{t('invoice_number')}</TableHead>
+                <TableHead>{t('date')}</TableHead>
+                <TableHead>{t('customer')}</TableHead>
+                <TableHead>{t('payment_method')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
+                <TableHead className="text-right">{t('amount')}</TableHead>
+                <TableHead className="w-20">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -288,7 +307,7 @@ export default function OfflineSalesHistory() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="capitalize">
-                      {sale.paymentMethod}
+                      {paymentMethodLabels[sale.paymentMethod as keyof typeof paymentMethodLabels] || sale.paymentMethod}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -299,11 +318,11 @@ export default function OfflineSalesHistory() {
                       }
                       className="capitalize"
                     >
-                      {sale.status}
+                      {saleStatusLabels[sale.status as keyof typeof saleStatusLabels] || sale.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    ${sale.totalAmount.toFixed(2)}
+                    {formatCurrency(sale.totalAmount)}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -311,6 +330,7 @@ export default function OfflineSalesHistory() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleViewDetails(sale)}
+                        title={t('view_details')}
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
@@ -318,7 +338,7 @@ export default function OfflineSalesHistory() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handlePrintReceipt(sale)}
-                        title="Print Receipt"
+                        title={t('offline_sales_print_receipt')}
                       >
                         <Receipt className="w-4 h-4" />
                       </Button>
@@ -332,11 +352,11 @@ export default function OfflineSalesHistory() {
           {filteredSales.length === 0 && (
             <div className="text-center py-12">
               <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No sales found</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('no_sales_found')}</h3>
               <p className="text-gray-600">
                 {searchQuery || statusFilter !== "all" || paymentMethodFilter !== "all"
-                  ? "Try adjusting your filters"
-                  : "No sales have been recorded yet"}
+                  ? t('offline_sales_no_results_filters')
+                  : t('offline_sales_no_results_empty')}
               </p>
             </div>
           )}
@@ -347,7 +367,7 @@ export default function OfflineSalesHistory() {
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Sale Details</DialogTitle>
+            <DialogTitle>{t('sale_details')}</DialogTitle>
           </DialogHeader>
           
           {selectedSale && (
@@ -355,44 +375,44 @@ export default function OfflineSalesHistory() {
               {/* Sale Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <h3 className="font-semibold mb-2">Sale Information</h3>
+                  <h3 className="font-semibold mb-2">{t('offline_sales_info_section')}</h3>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Invoice:</span>
+                      <span className="text-gray-600">{t('invoice_number')}:</span>
                       <span>{selectedSale.invoiceNumber}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Date:</span>
+                      <span className="text-gray-600">{t('date')}:</span>
                       <span>{format(new Date(selectedSale.date), 'MMM dd, yyyy HH:mm')}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Customer:</span>
+                      <span className="text-gray-600">{t('customer')}:</span>
                       <span>{getCustomerName(selectedSale.customerId)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Status:</span>
+                      <span className="text-gray-600">{t('status')}:</span>
                       <Badge variant="outline" className="capitalize">
-                        {selectedSale.status}
+                        {saleStatusLabels[selectedSale.status as keyof typeof saleStatusLabels] || selectedSale.status}
                       </Badge>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="font-semibold mb-2">Payment Information</h3>
+                  <h3 className="font-semibold mb-2">{t('payment_information')}</h3>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Method:</span>
-                      <span className="capitalize">{selectedSale.paymentMethod}</span>
+                      <span className="text-gray-600">{t('payment_method')}:</span>
+                      <span className="capitalize">{paymentMethodLabels[selectedSale.paymentMethod as keyof typeof paymentMethodLabels] || selectedSale.paymentMethod}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Paid:</span>
-                      <span>${selectedSale.paidAmount.toFixed(2)}</span>
+                      <span className="text-gray-600">{t('amount_paid')}:</span>
+                      <span>{formatCurrency(selectedSale.paidAmount)}</span>
                     </div>
                     {selectedSale.changeAmount && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Change:</span>
-                        <span>${selectedSale.changeAmount.toFixed(2)}</span>
+                        <span className="text-gray-600">{t('change_amount')}:</span>
+                        <span>{formatCurrency(selectedSale.changeAmount)}</span>
                       </div>
                     )}
                   </div>
@@ -401,14 +421,14 @@ export default function OfflineSalesHistory() {
 
               {/* Items */}
               <div>
-                <h3 className="font-semibold mb-2">Items</h3>
+                <h3 className="font-semibold mb-2">{t('offline_sales_items_section')}</h3>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead className="text-center">Qty</TableHead>
-                      <TableHead className="text-right">Unit Price</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead>{t('product')}</TableHead>
+                      <TableHead className="text-center">{t('quantity')}</TableHead>
+                      <TableHead className="text-right">{t('unit_price')}</TableHead>
+                      <TableHead className="text-right">{t('total')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -416,8 +436,8 @@ export default function OfflineSalesHistory() {
                       <TableRow key={item.id}>
                         <TableCell>{getProductName(item.productId)}</TableCell>
                         <TableCell className="text-center">{item.quantity}</TableCell>
-                        <TableCell className="text-right">${item.unitPrice.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">${item.totalPrice.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.totalPrice)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -429,19 +449,19 @@ export default function OfflineSalesHistory() {
                 <div className="space-y-1 text-sm">
                   {selectedSale.discountAmount && (
                     <div className="flex justify-between text-red-600">
-                      <span>Discount:</span>
-                      <span>-${selectedSale.discountAmount.toFixed(2)}</span>
+                      <span>{t('discount')}:</span>
+                      <span>-{formatCurrency(selectedSale.discountAmount)}</span>
                     </div>
                   )}
                   {selectedSale.taxAmount && (
                     <div className="flex justify-between">
-                      <span>Tax:</span>
-                      <span>${selectedSale.taxAmount.toFixed(2)}</span>
+                      <span>{t('tax')}:</span>
+                      <span>{formatCurrency(selectedSale.taxAmount)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold text-lg">
-                    <span>Total:</span>
-                    <span>${selectedSale.totalAmount.toFixed(2)}</span>
+                    <span>{t('total')}:</span>
+                    <span>{formatCurrency(selectedSale.totalAmount)}</span>
                   </div>
                 </div>
               </div>
@@ -450,10 +470,10 @@ export default function OfflineSalesHistory() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
-              Close
+              {t('close')}
             </Button>
             <Button onClick={() => selectedSale && handlePrintReceipt(selectedSale)}>
-              Print Receipt
+              {t('offline_sales_print_receipt')}
             </Button>
           </DialogFooter>
         </DialogContent>
