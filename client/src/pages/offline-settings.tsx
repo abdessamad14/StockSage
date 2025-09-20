@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useOfflineSettings } from "@/hooks/use-offline-settings";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
@@ -9,39 +9,51 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Settings, Store, DollarSign, Bell, Palette, Globe, Building2, Printer } from "lucide-react";
+import { Store, DollarSign, Bell, Palette, Building2, Printer } from "lucide-react";
 import USBThermalPrinterConfig from '@/components/USBThermalPrinterConfig';
 
-const settingsSchema = z.object({
-  businessName: z.string().min(1, "Business name is required"),
+type Translator = (key: string, params?: { [key: string]: string | number }) => string;
+
+const buildSettingsSchema = (t: Translator) => z.object({
+  businessName: z.string().min(1, t('offline_settings_business_name_required')),
   address: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
-  currency: z.string().min(1, "Currency is required"),
-  taxRate: z.number().min(0).max(100, "Tax rate must be between 0 and 100"),
-  lowStockThreshold: z.number().min(0, "Low stock threshold must be positive"),
+  currency: z.string().min(1, t('offline_settings_currency_required')),
+  taxRate: z
+    .number()
+    .min(0, t('offline_settings_tax_rate_range'))
+    .max(100, t('offline_settings_tax_rate_range')),
+  lowStockThreshold: z.number().min(0, t('offline_settings_low_stock_positive')),
   enableNotifications: z.boolean(),
   enableLowStockAlerts: z.boolean(),
   enableAutoBackup: z.boolean(),
-  language: z.string().min(1, "Language is required"),
-  theme: z.string().min(1, "Theme is required")
+  language: z.string().min(1, t('offline_settings_language_required')),
+  theme: z.string().min(1, t('offline_settings_theme_required'))
 });
 
-type SettingsFormData = z.infer<typeof settingsSchema>;
+type SettingsFormData = z.infer<ReturnType<typeof buildSettingsSchema>>;
 
 export default function OfflineSettings() {
   const { settings, loading, updateSettings } = useOfflineSettings();
   const { t } = useI18n();
   const { toast } = useToast();
+  const settingsSchema = useMemo(() => buildSettingsSchema(t), [t]);
   
   const [activeTab, setActiveTab] = useState("business");
+  const tabs = useMemo(
+    () => [
+      { id: "business", label: t('offline_settings_tab_business'), icon: Building2 },
+      { id: "financial", label: t('offline_settings_tab_financial'), icon: DollarSign },
+      { id: "notifications", label: t('offline_settings_tab_notifications'), icon: Bell },
+      { id: "appearance", label: t('offline_settings_tab_appearance'), icon: Palette },
+      { id: "printing", label: t('offline_settings_tab_printing'), icon: Printer }
+    ],
+    [t]
+  );
 
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
@@ -71,12 +83,12 @@ export default function OfflineSettings() {
       });
       toast({
         title: t('success'),
-        description: "Settings updated successfully"
+        description: t('offline_settings_updated')
       });
     } catch (error) {
       toast({
         title: t('error'),
-        description: "Failed to update settings",
+        description: t('offline_settings_update_error'),
         variant: "destructive"
       });
     }
@@ -94,14 +106,6 @@ export default function OfflineSettings() {
       </div>
     );
   }
-
-  const tabs = [
-    { id: "business", label: "Business", icon: Building2 },
-    { id: "financial", label: "Financial", icon: DollarSign },
-    { id: "notifications", label: "Notifications", icon: Bell },
-    { id: "appearance", label: "Appearance", icon: Palette },
-    { id: "printing", label: "Printing", icon: Printer }
-  ];
 
   return (
     <div className="p-6 space-y-6">
@@ -139,10 +143,10 @@ export default function OfflineSettings() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Store className="w-5 h-5" />
-                    Business Information
+                    {t('offline_settings_business_title')}
                   </CardTitle>
                   <CardDescription>
-                    Basic information about your business
+                    {t('offline_settings_business_desc')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -151,7 +155,7 @@ export default function OfflineSettings() {
                     name="businessName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Business Name</FormLabel>
+                        <FormLabel>{t('offline_settings_business_name')}</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -165,7 +169,7 @@ export default function OfflineSettings() {
                     name="address"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Address</FormLabel>
+                        <FormLabel>{t('offline_settings_address')}</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -179,7 +183,7 @@ export default function OfflineSettings() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone</FormLabel>
+                        <FormLabel>{t('offline_settings_phone')}</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -193,7 +197,7 @@ export default function OfflineSettings() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>{t('offline_settings_email')}</FormLabel>
                         <FormControl>
                           <Input type="email" {...field} />
                         </FormControl>
@@ -213,10 +217,10 @@ export default function OfflineSettings() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <DollarSign className="w-5 h-5" />
-                    Financial Settings
+                    {t('offline_settings_financial_title')}
                   </CardTitle>
                   <CardDescription>
-                    Currency, tax rates, and pricing settings
+                    {t('offline_settings_financial_desc')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -225,20 +229,20 @@ export default function OfflineSettings() {
                     name="currency"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Currency</FormLabel>
+                        <FormLabel>{t('offline_settings_currency_label')}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select currency" />
+                              <SelectValue placeholder={t('offline_settings_currency_placeholder')} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="USD">USD - US Dollar</SelectItem>
-                            <SelectItem value="EUR">EUR - Euro</SelectItem>
-                            <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                            <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
-                            <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
-                            <SelectItem value="JPY">JPY - Japanese Yen</SelectItem>
+                            <SelectItem value="USD">{t('offline_settings_currency_usd')}</SelectItem>
+                            <SelectItem value="EUR">{t('offline_settings_currency_eur')}</SelectItem>
+                            <SelectItem value="GBP">{t('offline_settings_currency_gbp')}</SelectItem>
+                            <SelectItem value="CAD">{t('offline_settings_currency_cad')}</SelectItem>
+                            <SelectItem value="AUD">{t('offline_settings_currency_aud')}</SelectItem>
+                            <SelectItem value="JPY">{t('offline_settings_currency_jpy')}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -251,7 +255,7 @@ export default function OfflineSettings() {
                     name="taxRate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Tax Rate (%)</FormLabel>
+                        <FormLabel>{t('offline_settings_tax_rate')}</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -270,7 +274,7 @@ export default function OfflineSettings() {
                     name="lowStockThreshold"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Low Stock Threshold</FormLabel>
+                        <FormLabel>{t('offline_settings_low_stock_threshold')}</FormLabel>
                         <FormControl>
                           <Input 
                             type="number"
@@ -294,15 +298,12 @@ export default function OfflineSettings() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Bell className="w-5 h-5" />
-                    Notification Settings
+                    {t('offline_settings_notifications_title')}
                   </CardTitle>
                   <CardDescription>
-                    Manage alerts and notifications
+                    {t('offline_settings_notifications_desc')}
                   </CardDescription>
                 </CardHeader>
-                <TabsContent value="printing" className="space-y-6">
-                  <USBThermalPrinterConfig />
-                </TabsContent>
                 <CardContent className="space-y-6">
                   <FormField
                     control={form.control}
@@ -311,10 +312,10 @@ export default function OfflineSettings() {
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                           <FormLabel className="text-base">
-                            Enable Notifications
+                            {t('offline_settings_enable_notifications')}
                           </FormLabel>
                           <div className="text-sm text-muted-foreground">
-                            Receive general app notifications
+                            {t('offline_settings_enable_notifications_desc')}
                           </div>
                         </div>
                         <FormControl>
@@ -334,10 +335,10 @@ export default function OfflineSettings() {
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                           <FormLabel className="text-base">
-                            Low Stock Alerts
+                            {t('offline_settings_low_stock_alerts')}
                           </FormLabel>
                           <div className="text-sm text-muted-foreground">
-                            Get notified when products are running low
+                            {t('offline_settings_low_stock_alerts_desc')}
                           </div>
                         </div>
                         <FormControl>
@@ -357,10 +358,10 @@ export default function OfflineSettings() {
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                           <FormLabel className="text-base">
-                            Auto Backup
+                            {t('offline_settings_auto_backup')}
                           </FormLabel>
                           <div className="text-sm text-muted-foreground">
-                            Automatically backup data to local storage
+                            {t('offline_settings_auto_backup_desc')}
                           </div>
                         </div>
                         <FormControl>
@@ -384,10 +385,10 @@ export default function OfflineSettings() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Palette className="w-5 h-5" />
-                    Appearance Settings
+                    {t('offline_settings_appearance_title')}
                   </CardTitle>
                   <CardDescription>
-                    Customize the look and feel of the app
+                    {t('offline_settings_appearance_desc')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -396,17 +397,17 @@ export default function OfflineSettings() {
                     name="theme"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Theme</FormLabel>
+                        <FormLabel>{t('offline_settings_theme_label')}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select theme" />
+                              <SelectValue placeholder={t('offline_settings_theme_placeholder')} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="light">Light</SelectItem>
-                            <SelectItem value="dark">Dark</SelectItem>
-                            <SelectItem value="system">System</SelectItem>
+                            <SelectItem value="light">{t('offline_settings_theme_light')}</SelectItem>
+                            <SelectItem value="dark">{t('offline_settings_theme_dark')}</SelectItem>
+                            <SelectItem value="system">{t('offline_settings_theme_system')}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -419,20 +420,20 @@ export default function OfflineSettings() {
                     name="language"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Language</FormLabel>
+                        <FormLabel>{t('offline_settings_language_label')}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select language" />
+                              <SelectValue placeholder={t('offline_settings_language_placeholder')} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="en">English</SelectItem>
-                            <SelectItem value="es">Spanish</SelectItem>
-                            <SelectItem value="fr">French</SelectItem>
-                            <SelectItem value="de">German</SelectItem>
-                            <SelectItem value="it">Italian</SelectItem>
-                            <SelectItem value="pt">Portuguese</SelectItem>
+                            <SelectItem value="en">{t('offline_settings_language_en')}</SelectItem>
+                            <SelectItem value="es">{t('offline_settings_language_es')}</SelectItem>
+                            <SelectItem value="fr">{t('offline_settings_language_fr')}</SelectItem>
+                            <SelectItem value="de">{t('offline_settings_language_de')}</SelectItem>
+                            <SelectItem value="it">{t('offline_settings_language_it')}</SelectItem>
+                            <SelectItem value="pt">{t('offline_settings_language_pt')}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -451,10 +452,10 @@ export default function OfflineSettings() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Printer className="w-5 h-5" />
-                    Thermal Printer Configuration
+                    {t('offline_settings_printing_title')}
                   </CardTitle>
                   <CardDescription>
-                    Configure your USB thermal printer for receipt printing
+                    {t('offline_settings_printing_desc')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -467,7 +468,7 @@ export default function OfflineSettings() {
           {/* Save Button */}
           <div className="flex justify-end">
             <Button type="submit" size="lg">
-              Save Settings
+              {t('offline_settings_save_button')}
             </Button>
           </div>
         </form>
