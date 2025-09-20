@@ -553,11 +553,11 @@ export default function OfflineProducts() {
 
           {/* Products Legacy List */}
           <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-indigo-50 shadow-sm overflow-hidden">
-            <div className="hidden md:grid grid-cols-12 gap-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-4 py-3 text-xs font-semibold tracking-wide text-white uppercase">
-              <div className="md:col-span-5">{t('product_list_product')}</div>
-              <div className="md:col-span-4">{t('product_list_pricing')}</div>
-              <div className="md:col-span-2">{t('product_list_stock')}</div>
-              <div className="md:col-span-1 text-right">{t('product_list_actions')}</div>
+            <div className="hidden md:grid md:grid-cols-[5fr_4fr_2fr_1fr] gap-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-4 py-3 text-xs font-semibold tracking-wide text-white uppercase">
+              <div>{t('product_list_product')}</div>
+              <div className="pl-2">{t('product_list_pricing')}</div>
+              <div>{t('product_list_stock')}</div>
+              <div className="text-right">{t('product_list_actions')}</div>
             </div>
             <div className="divide-y divide-blue-100/60">
               {filteredProducts.length === 0 && (
@@ -569,13 +569,20 @@ export default function OfflineProducts() {
                 const quantity = getWarehouseStock(product.id);
                 const isLowStock = quantity <= (product.minStockLevel || 0);
 
+                const stockLabel = `${quantity}${product.unit ? ` ${product.unit}` : ''}`;
+                const profit = product.sellingPrice - product.costPrice;
+                const marginPercentage = product.sellingPrice > 0 ? (profit / product.sellingPrice) * 100 : 0;
+                const stockValue = product.costPrice * quantity;
+                const profitColor = profit >= 0 ? 'text-emerald-600' : 'text-red-500';
+                const marginColor = profit >= 0 ? 'text-emerald-700' : 'text-red-500';
+
                 return (
                   <div
                     key={product.id}
-                    className="flex flex-col gap-4 px-4 py-4 transition md:grid md:grid-cols-12 hover:bg-white/90 bg-white/70"
+                    className="flex flex-col gap-4 px-4 py-4 transition md:grid md:grid-cols-[5fr_4fr_2fr_1fr] md:gap-4 hover:bg-white/90 bg-white/70"
                   >
                     {/* Product column */}
-                    <div className="md:col-span-5 flex gap-4">
+                    <div className="flex gap-4">
                       <div className="w-20 h-20 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-100/60 via-white to-purple-100/60 flex items-center justify-center overflow-hidden">
                         {product.image ? (
                           <img
@@ -612,7 +619,7 @@ export default function OfflineProducts() {
                     </div>
 
                     {/* Pricing column */}
-                    <div className="md:col-span-4 grid grid-cols-2 gap-2 text-sm">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="space-y-1">
                         <p className="text-xs uppercase text-slate-500">{t('cost_price')}</p>
                         <p className="font-semibold text-slate-800">{formatPrice(product.costPrice)}</p>
@@ -620,6 +627,14 @@ export default function OfflineProducts() {
                       <div className="space-y-1">
                         <p className="text-xs uppercase text-slate-500">{t('price')}</p>
                         <p className="font-semibold text-blue-600">{formatPrice(product.sellingPrice)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs uppercase text-slate-500">{t('profit_margin')}</p>
+                        <p className={`font-semibold ${profitColor}`}>{formatPrice(profit)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs uppercase text-slate-500">{t('margin_percentage')}</p>
+                        <p className={`font-semibold ${marginColor}`}>{marginPercentage.toFixed(1)}%</p>
                       </div>
                       {product.semiWholesalePrice !== undefined && (
                         <div className="space-y-1">
@@ -636,7 +651,7 @@ export default function OfflineProducts() {
                     </div>
 
                     {/* Stock column */}
-                    <div className="md:col-span-2 space-y-2 text-sm">
+                    <div className="space-y-2 text-sm">
                       <div className="flex items-center justify-between">
                         <span className="text-xs uppercase text-slate-500">{t('stock')}</span>
                         <span
@@ -644,7 +659,7 @@ export default function OfflineProducts() {
                             isLowStock ? 'bg-red-500' : 'bg-emerald-500'
                           }`}
                         >
-                          {quantity} {product.unit}
+                          {stockLabel}
                         </span>
                       </div>
                       {product.minStockLevel !== undefined && (
@@ -653,10 +668,14 @@ export default function OfflineProducts() {
                           <span>{product.minStockLevel}</span>
                         </div>
                       )}
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span>{t('stock_value')}</span>
+                        <span className="font-semibold text-slate-700">{formatPrice(stockValue)}</span>
+                      </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="md:col-span-1 flex items-start justify-end gap-2">
+                    <div className="flex items-start justify-end gap-2">
                       <Button
                         variant="outline"
                         size="icon"
