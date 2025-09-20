@@ -956,18 +956,18 @@ export default function OfflinePOS() {
 
   return (
     <>
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gradient-to-br from-[#fff3e6] via-[#f5f7ff] to-[#e8f6f0]">
       {/* Left Panel - Thermal Printer Receipt */}
-      <div className="w-[450px] bg-white border-r-2 border-gray-300 flex flex-col h-full">
+      <div className="w-[450px] bg-white/95 backdrop-blur border-r-2 border-[#f1b24a] shadow-xl flex flex-col h-full">
         {/* Receipt Header */}
-        <div className="bg-blue-600 text-white p-4 flex-shrink-0">
+        <div className="bg-gradient-to-r from-[#c1121f] via-[#f4a259] to-[#0f866c] text-white p-4 flex-shrink-0">
           <h2 className="text-lg font-bold">{t('offline_pos_receipt_title').toUpperCase()}</h2>
           <div className="text-sm opacity-90">#{new Date().getTime().toString().slice(-6)}</div>
         </div>
 
         {/* Receipt Content - Scrollable */}
-        <div className="p-2 bg-gray-50 font-mono text-xs overflow-y-auto" style={{height: 'calc(100vh - 160px - 280px)'}}>
-          <div className="bg-white p-3 rounded shadow-sm">
+        <div className="p-2 bg-[#fdf5ec] font-mono text-xs overflow-y-auto" style={{height: 'calc(100vh - 160px - 280px)'}}>
+          <div className="bg-white/90 rounded-xl shadow-md border border-[#f4c36a]/60 p-3">
             <div className="text-center border-b pb-1 mb-2">
               <div className="font-bold text-sm">STOCKSAGE POS</div>
               <div className="text-xs text-gray-500">{new Date().toLocaleString('fr-MA')}</div>
@@ -1010,17 +1010,17 @@ export default function OfflinePOS() {
               
               {/* Customer Credit Display */}
               {selectedCustomer && (
-                <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                <div className="mt-2 p-2 bg-gradient-to-br from-[#dff6ff] to-[#ccffe1] rounded-xl border border-[#0f866c]/30 shadow-sm">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1">
-                      <CreditCard className="h-3 w-3 text-blue-600" />
-                      <span className="text-xs font-medium text-blue-800">{t('offline_pos_customer_credit')}</span>
+                      <CreditCard className="h-3 w-3 text-[#0f866c]" />
+                      <span className="text-xs font-semibold text-[#0f866c]">{t('offline_pos_customer_credit')}</span>
                     </div>
                     <Button
                       onClick={() => setIsCreditDialogOpen(true)}
                       size="sm"
                       variant="outline"
-                      className="h-5 px-2 text-xs bg-blue-100 border-blue-300 hover:bg-blue-200 text-blue-700"
+                      className="h-5 px-2 text-xs bg-white/70 border border-[#0f866c]/30 hover:bg-[#0f866c]/10 text-[#0f866c]"
                     >
                       <Settings className="h-3 w-3 mr-1" />
                       {t('offline_pos_settle')}
@@ -1183,7 +1183,7 @@ export default function OfflinePOS() {
                       <span>-{discountValue.toFixed(2)} DH</span>
                     </div>
                   )}
-                  <div className="flex justify-between font-bold text-sm border-t pt-1 bg-blue-50 px-2 py-1 rounded">
+                  <div className="flex justify-between font-bold text-sm border-t pt-1 bg-gradient-to-r from-[#06d6a0]/20 via-[#118ab2]/20 to-[#4cc9f0]/20 px-2 py-1 rounded-lg border-[#0f866c]/20">
                     <span>{t('total').toUpperCase()}:</span>
                     <span>{total.toFixed(2)} DH</span>
                   </div>
@@ -1194,10 +1194,10 @@ export default function OfflinePOS() {
         </div>
         
         {/* Action Buttons - Compact Fixed Bottom */}
-        <div className="bg-white border-t flex-shrink-0" style={{height: '280px', padding: '12px'}}>
+        <div className="bg-gradient-to-t from-[#fff1d6] via-[#fde2e4] to-white border-t border-[#f4c36a] flex-shrink-0" style={{height: '280px', padding: '12px'}}>
           {/* Quick Cash Payment Buttons */}
           <div className="mb-3">
-            <div className="text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">{t('offline_pos_quick_payment')}</div>
+            <div className="text-xs font-semibold text-[#0f866c] mb-1 uppercase tracking-wide tracking-[0.2em]">{t('offline_pos_quick_payment')}</div>
             <div className="grid grid-cols-2 gap-1 mb-2">
               {[20, 50, 100, 200].map((amount) => {
                 const getBanknoteColor = (value: number) => {
@@ -1290,7 +1290,7 @@ export default function OfflinePOS() {
               <input
                 type="number"
                 placeholder={t('offline_pos_other_amount')}
-                className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
+                className="flex-1 px-2 py-1 border-2 border-[#f4c36a]/60 focus:border-[#0f866c] focus:ring-[#0f866c]/40 rounded text-xs bg-white/90"
                 value={customCashAmount}
                 onChange={(e) => setCustomCashAmount(e.target.value)}
                 min={total}
@@ -1430,7 +1430,7 @@ export default function OfflinePOS() {
               disabled={cart.length === 0}
               className={`h-10 text-xs font-bold border-2 transition-all ${
                 cart.length > 0 
-                  ? 'bg-blue-500 hover:bg-blue-600 border-blue-600' 
+                  ? 'bg-gradient-to-r from-[#0f866c] via-[#1b998b] to-[#118ab2] hover:shadow-xl border-transparent'
                   : 'bg-gray-400 border-gray-500'
               } text-white`}
             >
@@ -1444,7 +1444,7 @@ export default function OfflinePOS() {
                   description: t('offline_pos_cart_cleared_desc'),
                 });
               }}
-              className="h-10 text-xs font-bold bg-red-500 hover:bg-red-700 text-white border-2 border-red-600 transition-all hover:shadow-lg"
+              className="h-10 text-xs font-bold bg-gradient-to-r from-[#d00000] via-[#ef233c] to-[#f94144] text-white border-2 border-[#b7094c]/60 transition-all hover:shadow-xl"
             >
               🗑️ {t('clear').toUpperCase()}
             </Button>
@@ -1457,27 +1457,27 @@ export default function OfflinePOS() {
       {/* Middle Panel - Products */}
       <div className="flex-1 flex flex-col">
         {/* Top Bar with Search and Toggle */}
-        <div className="bg-white p-4 border-b shadow-sm">
+        <div className="bg-white/95 border-b border-[#f4c36a]/40 shadow-sm p-4 backdrop-blur">
           <div className="flex items-center space-x-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#0f866c] h-5 w-5" />
               <Input
                 placeholder={rightSidebarView === 'products'
                   ? t('offline_pos_search_products_placeholder')
                   : t('offline_pos_search_orders_placeholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-12 text-lg"
+                className="pl-10 h-12 text-lg border-2 border-[#f4c36a]/50 focus:border-[#0f866c] focus:ring-[#0f866c]"
               />
             </div>
             <div className="flex items-center space-x-2">
               {/* View Toggle */}
-              <div className="flex bg-gray-200 rounded-lg p-1">
+              <div className="flex bg-gradient-to-r from-[#fde2e4] via-[#fff1d6] to-[#dff6ff] rounded-lg p-1 border border-[#f4c36a]/50 shadow-inner">
                 <Button
                   variant={rightSidebarView === 'products' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setRightSidebarView('products')}
-                  className="px-4 py-2"
+                  className={`px-4 py-2 ${rightSidebarView === 'products' ? 'bg-[#0f866c] text-white shadow-md border border-[#0f866c]/50' : 'text-slate-600 hover:text-[#0f866c]'}`}
                 >
                   <Grid3X3 className="h-4 w-4 mr-2" />
                   {t('products')}
@@ -1486,15 +1486,15 @@ export default function OfflinePOS() {
                   variant={rightSidebarView === 'orders' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setRightSidebarView('orders')}
-                  className="px-4 py-2"
+                  className={`px-4 py-2 ${rightSidebarView === 'orders' ? 'bg-[#c1121f] text-white shadow-md border border-[#c1121f]/50' : 'text-slate-600 hover:text-[#c1121f]'}`}
                 >
                   <List className="h-4 w-4 mr-2" />
                   {t('orders')}
                 </Button>
               </div>
-              <div className="flex items-center space-x-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
-                <ScanLine className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium text-green-700">{t('offline_pos_usb_scanner_active')}</span>
+              <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-[#06d6a0]/20 via-[#118ab2]/15 to-[#0f866c]/20 border border-[#0f866c]/30 rounded-lg shadow-sm">
+                <ScanLine className="h-4 w-4 text-[#0f866c]" />
+                <span className="text-sm font-semibold text-[#0f866c]">{t('offline_pos_usb_scanner_active')}</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="text-right">
@@ -1518,93 +1518,112 @@ export default function OfflinePOS() {
           {/* Turnover Statistics - Only show in orders view */}
           {rightSidebarView === 'orders' && (
             <div className="mt-4 grid grid-cols-4 gap-3">
-              <div className="bg-blue-100 p-3 rounded-lg text-center">
-                <div className="text-blue-600 font-bold text-lg">{todaysTurnover.ordersCount}</div>
-                <div className="text-blue-500 text-sm">{t('offline_pos_orders_stat_label')}</div>
-              </div>
-              <div className="bg-green-100 p-3 rounded-lg text-center">
-                <div className="text-green-600 font-bold text-lg">{todaysTurnover.total.toFixed(0)} DH</div>
-                <div className="text-green-500 text-sm">{t('offline_pos_total_revenue_label')}</div>
-              </div>
-              <div className="bg-emerald-100 p-3 rounded-lg text-center">
-                <div className="text-emerald-600 font-bold text-lg">{todaysTurnover.paid.toFixed(0)} DH</div>
-                <div className="text-emerald-500 text-sm">{t('offline_pos_paid_stat_label')}</div>
-              </div>
-              <div className="bg-purple-100 p-3 rounded-lg text-center">
-                <div className="text-purple-600 font-bold text-lg">{todaysTurnover.credit.toFixed(0)} DH</div>
-                <div className="text-purple-500 text-sm">{t('offline_pos_credit_stat_label')}</div>
-              </div>
+              {[{
+                value: todaysTurnover.ordersCount,
+                label: t('offline_pos_orders_stat_label'),
+                gradient: 'from-[#3a86ff] via-[#4cc9f0] to-[#4895ef]'
+              }, {
+                value: `${todaysTurnover.total.toFixed(0)} DH`,
+                label: t('offline_pos_total_revenue_label'),
+                gradient: 'from-[#0f866c] via-[#14b8a6] to-[#0ea5e9]'
+              }, {
+                value: `${todaysTurnover.paid.toFixed(0)} DH`,
+                label: t('offline_pos_paid_stat_label'),
+                gradient: 'from-[#f4a259] via-[#f76c5e] to-[#ef476f]'
+              }, {
+                value: `${todaysTurnover.credit.toFixed(0)} DH`,
+                label: t('offline_pos_credit_stat_label'),
+                gradient: 'from-[#ff9f1c] via-[#ff6d00] to-[#d00000]'
+              }].map((card, index) => (
+                <div key={index} className="relative overflow-hidden rounded-2xl shadow-lg">
+                  <div className={`h-full w-full bg-gradient-to-r ${card.gradient} p-[1px]`}
+                  >
+                    <div className="h-full w-full rounded-[1.1rem] bg-white/85 px-4 py-3 text-center">
+                      <div className="text-lg font-bold text-slate-900">
+                        {card.value}
+                      </div>
+                      <div className="text-xs font-semibold text-slate-600 tracking-wide uppercase">
+                        {card.label}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
           {/* Barcode Buffer Display (for debugging) */}
           {barcodeBuffer && (
-            <div className="mt-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded text-sm">
-              <span className="text-blue-600 font-medium">{t('offline_pos_scan_in_progress')}: </span>
+            <div className="mt-2 px-3 py-1 bg-gradient-to-r from-[#dff6ff] via-[#ccffe1] to-[#fff1d6] border border-[#0f866c]/30 rounded text-sm shadow-sm">
+              <span className="text-[#0f866c] font-semibold">{t('offline_pos_scan_in_progress')}: </span>
               <span className="font-mono">{barcodeBuffer}</span>
             </div>
           )}
         </div>
 
         {/* Colorful Function Buttons (Classic POS Style) - Moved to Top */}
-        <div className="bg-gray-100 border-b border-gray-300 p-2">
-          <div className="flex items-center gap-2 mb-2">
-            <ShoppingCart className="h-4 w-4 text-blue-600" />
-            <span className="font-bold text-sm">{t('offline_pos_system_functions').toUpperCase()}</span>
+        <div className="bg-gradient-to-r from-[#fff1d6]/90 via-[#fde2e4]/90 to-[#dff6ff]/90 border-b border-[#f4c36a] p-3 shadow-inner">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#c1121f] via-[#f4a259] to-[#0f866c] text-white shadow-md">
+              <ShoppingCart className="h-4 w-4" />
+            </div>
+            <span className="font-bold text-sm tracking-widest text-slate-800">
+              {t('offline_pos_system_functions').toUpperCase()}
+            </span>
           </div>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-3">
             <Button
               onClick={() => window.location.href = '/dashboard'}
-              className="h-10 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+              className="h-12 bg-gradient-to-br from-[#d90429] via-[#ff6b6b] to-[#c9184a] text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg border border-[#c9184a]/40"
             >
               <Home className="h-4 w-4" />
               {t('dashboard').toUpperCase()}
             </Button>
             <Button
               onClick={() => window.location.href = '/products'}
-              className="h-10 bg-green-500 hover:bg-green-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+              className="h-12 bg-gradient-to-br from-[#06d6a0] via-[#1b998b] to-[#0f866c] text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg border border-[#0f866c]/40"
             >
               <Package className="h-4 w-4" />
               {t('products').toUpperCase()}
             </Button>
             <Button
               onClick={() => window.location.href = '/customers'}
-              className="h-10 bg-purple-500 hover:bg-purple-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+              className="h-12 bg-gradient-to-br from-[#5a189a] via-[#7209b7] to-[#560bad] text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg border border-[#560bad]/40"
             >
               <Users className="h-4 w-4" />
               {t('customers').toUpperCase()}
             </Button>
             <Button
               onClick={() => window.location.href = '/suppliers'}
-              className="h-10 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+              className="h-12 bg-gradient-to-br from-[#ff9f1c] via-[#ff6d00] to-[#f3722c] text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg border border-[#ff6d00]/40"
             >
               <Truck className="h-4 w-4" />
               {t('suppliers').toUpperCase()}
             </Button>
             <Button
               onClick={() => window.location.href = '/inventory'}
-              className="h-10 bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+              className="h-12 bg-gradient-to-br from-[#ffd166] via-[#f9c74f] to-[#f4a259] text-slate-900 font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg border border-[#f4a259]/40"
             >
               <Warehouse className="h-4 w-4" />
               {t('inventory').toUpperCase()}
             </Button>
             <Button
               onClick={() => window.location.href = '/sales-history'}
-              className="h-10 bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+              className="h-12 bg-gradient-to-br from-[#118ab2] via-[#0e7490] to-[#073b4c] text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg border border-[#073b4c]/40"
             >
               <FileText className="h-4 w-4" />
               {t('sales_history').toUpperCase()}
             </Button>
             <Button
               onClick={() => window.location.href = '/reports'}
-              className="h-10 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+              className="h-12 bg-gradient-to-br from-[#4361ee] via-[#4895ef] to-[#3a0ca3] text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg border border-[#3a0ca3]/40"
             >
               <BarChart3 className="h-4 w-4" />
               {t('reports').toUpperCase()}
             </Button>
             <Button
               onClick={() => window.location.href = '/settings'}
-              className="h-10 bg-gray-500 hover:bg-gray-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
+              className="h-12 bg-gradient-to-br from-[#495057] via-[#2f3e46] to-[#1b262c] text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg border border-[#1b262c]/40"
             >
               <Settings className="h-4 w-4" />
               {t('settings').toUpperCase()}
@@ -1619,19 +1638,21 @@ export default function OfflinePOS() {
             {rightSidebarView === 'products' ? (
             <>
               {/* Horizontal Categories */}
-              <div className="bg-white border-b p-4">
+              <div className="bg-white/90 border-b border-[#f4c36a]/40 p-4 backdrop-blur">
                 <div className="flex space-x-6 overflow-x-auto pb-2">
                   <div
                     onClick={() => setSelectedCategory('all')}
                     className="flex flex-col items-center space-y-2 cursor-pointer min-w-[60px]"
                   >
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm ${
-                      selectedCategory === 'all' ? 'bg-blue-500' : 'bg-gray-100'
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-md border ${
+                      selectedCategory === 'all'
+                        ? 'bg-gradient-to-br from-[#f77f00] via-[#fcbf49] to-[#ff9f1c] border-[#f77f00]/50'
+                        : 'bg-white/70 border-[#f4c36a]/40'
                     }`}>
-                      <span className={`text-2xl ${selectedCategory === 'all' ? 'text-white' : 'text-gray-600'}`}>🍽️</span>
+                      <span className={`text-2xl ${selectedCategory === 'all' ? 'text-white' : 'text-slate-500'}`}>🍽️</span>
                     </div>
                     <span className={`text-xs font-medium ${
-                      selectedCategory === 'all' ? 'text-blue-600' : 'text-gray-600'
+                      selectedCategory === 'all' ? 'text-[#b3541e]' : 'text-slate-600'
                     }`}>{t('offline_pos_all').toUpperCase()}</span>
                   </div>
                   {categories.map(category => {
@@ -1643,8 +1664,10 @@ export default function OfflinePOS() {
                       className="flex flex-col items-center space-y-2 cursor-pointer min-w-[60px]"
                     >
                       {category.image && category.image.trim() !== '' ? (
-                        <div className={`w-14 h-14 rounded-full overflow-hidden shadow-sm ${
-                          selectedCategory === category.id ? 'ring-2 ring-blue-500' : ''
+                        <div className={`w-14 h-14 rounded-full overflow-hidden shadow-md border ${
+                          selectedCategory === category.id
+                            ? 'ring-2 ring-white/80 bg-gradient-to-br from-[#06d6a0] via-[#1b998b] to-[#118ab2] border-[#118ab2]/40'
+                            : 'border-[#e0f2f1]'
                         }`}>
                           <img 
                             src={decodeURIComponent(category.image)} 
@@ -1656,15 +1679,17 @@ export default function OfflinePOS() {
                         </div>
                       ) : (
                         <div 
-                          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm ${
-                            selectedCategory === category.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
+                          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-md border ${
+                            selectedCategory === category.id
+                              ? 'bg-gradient-to-br from-[#06d6a0] via-[#1b998b] to-[#118ab2] text-white border-[#118ab2]/50'
+                              : 'bg-white/70 text-slate-500 border-[#e0f2f1]'
                           }`}
                         >
                           <span className="text-2xl">🏷️</span>
                         </div>
                       )}
                       <span className={`text-xs font-medium text-center ${
-                        selectedCategory === category.id ? 'text-blue-600' : 'text-gray-600'
+                        selectedCategory === category.id ? 'text-[#0f866c]' : 'text-slate-600'
                       }`}>{category.name.toUpperCase()}</span>
                     </div>
                     );
@@ -1677,9 +1702,18 @@ export default function OfflinePOS() {
                 <div className="grid grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                   {filteredProducts.map((product, index) => {
                     const colors = [
-                      'bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500',
-                      'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-orange-500',
-                      'bg-teal-500', 'bg-cyan-500', 'bg-lime-500', 'bg-amber-500'
+                      'bg-gradient-to-br from-[#f94144] via-[#f3722c] to-[#f8961e]',
+                      'bg-gradient-to-br from-[#06d6a0] via-[#1b998b] to-[#118ab2]',
+                      'bg-gradient-to-br from-[#3a86ff] via-[#4361ee] to-[#7209b7]',
+                      'bg-gradient-to-br from-[#ffbe0b] via-[#fb8500] to-[#ff6d00]',
+                      'bg-gradient-to-br from-[#ef233c] via-[#d00000] to-[#9d0208]',
+                      'bg-gradient-to-br from-[#8338ec] via-[#9d4edd] to-[#7209b7]',
+                      'bg-gradient-to-br from-[#118ab2] via-[#06d6a0] to-[#4cc9f0]',
+                      'bg-gradient-to-br from-[#f4a259] via-[#f77f00] to-[#e85d04]',
+                      'bg-gradient-to-br from-[#ff9f1c] via-[#ffbf69] to-[#ffd6a5]',
+                      'bg-gradient-to-br from-[#06d6a0] via-[#0f866c] to-[#1b998b]',
+                      'bg-gradient-to-br from-[#c1121f] via-[#ef233c] to-[#f72585]',
+                      'bg-gradient-to-br from-[#4cc9f0] via-[#4895ef] to-[#4361ee]'
                     ];
                     const bgColor = colors[index % colors.length];
                     
@@ -1687,7 +1721,7 @@ export default function OfflinePOS() {
                       <div
                         key={product.id}
                         onClick={() => addToCart(product)}
-                        className={`${bgColor} text-white rounded-xl p-4 cursor-pointer hover:shadow-lg transform hover:scale-105 transition-all duration-200 active:scale-95 relative overflow-hidden`}
+                        className={`${bgColor} text-white rounded-xl p-4 cursor-pointer hover:shadow-xl transform hover:scale-105 transition-all duration-200 active:scale-95 relative overflow-hidden border border-white/20`}
                       >
                         <div className="text-center">
                           {product.image ? (
@@ -1720,16 +1754,16 @@ export default function OfflinePOS() {
             /* Orders View */
             <div className="p-4">
               {todaysOrders.length === 0 ? (
-                <div className="text-center py-16 text-gray-500">
-                  <Clock className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <h3 className="text-lg font-medium mb-2">{t('offline_pos_no_orders_today_title')}</h3>
-                  <p className="text-sm">{t('offline_pos_no_orders_today_desc')}</p>
+                <div className="text-center py-16 text-[#0f866c] bg-white/80 border border-[#f4c36a]/40 rounded-2xl">
+                  <Clock className="h-16 w-16 mx-auto mb-4 text-[#f4a259]" />
+                  <h3 className="text-lg font-semibold mb-2">{t('offline_pos_no_orders_today_title')}</h3>
+                  <p className="text-sm text-slate-600">{t('offline_pos_no_orders_today_desc')}</p>
                 </div>
               ) : (
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="bg-white/95 rounded-2xl border border-[#f4c36a]/40 overflow-hidden shadow-lg">
                   {/* Table Header */}
-                  <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
-                    <div className="grid grid-cols-6 gap-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                  <div className="bg-gradient-to-r from-[#0f866c]/15 via-[#f4a259]/15 to-[#c1121f]/15 border-b border-[#f4c36a]/30 px-4 py-3">
+                    <div className="grid grid-cols-6 gap-4 text-xs font-semibold text-slate-700 uppercase tracking-wide">
                       <div>{t('pos_order_number')}</div>
                       <div>{t('time')}</div>
                       <div>{t('items')}</div>
@@ -1740,40 +1774,42 @@ export default function OfflinePOS() {
                   </div>
                   
                   {/* Table Body */}
-                  <div className="divide-y divide-gray-200">
+                  <div className="divide-y divide-[#f4c36a]/30">
                     {todaysOrders.map((order) => (
                       <div
                         key={order.id}
-                        className="grid grid-cols-6 gap-4 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                        className="grid grid-cols-6 gap-4 px-4 py-3 hover:bg-[#fff4e3] cursor-pointer transition-colors"
                         onClick={() => loadOrderIntoCart(order)}
                       >
-                        <div className="text-sm font-medium text-blue-600">
+                        <div className="text-sm font-bold text-[#0f866c]">
                           #{order.id}
                         </div>
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm text-slate-800">
                           {new Date(order.date).toLocaleTimeString('fr-FR', { 
                             hour: '2-digit', 
                             minute: '2-digit' 
                           })}
                         </div>
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm text-slate-800">
                           {order.items.length} {t('items')}
                         </div>
-                        <div className="text-sm font-semibold text-green-600">
+                        <div className="text-sm font-semibold text-[#c1121f]">
                           {order.totalAmount.toFixed(0)} DH
                         </div>
-                        <div className="text-sm text-gray-900 capitalize">
+                        <div className="text-sm text-slate-800 capitalize">
                           {order.paymentMethod === 'cash' ? t('cash') : 
                            order.paymentMethod === 'credit' ? t('credit') : 
                            order.paymentMethod === 'card' ? t('card_payment') : order.paymentMethod}
                         </div>
                         <div>
                           <Badge 
-                            variant={
-                              order.paymentMethod === 'credit' ? 'secondary' :
-                              order.paidAmount >= order.totalAmount ? 'default' : 'destructive'
-                            }
-                            className="text-xs"
+                            className={`text-xs font-semibold border-0 ${
+                              order.paymentMethod === 'credit'
+                                ? 'bg-[#ffd166] text-[#8d5800]'
+                                : order.paidAmount >= order.totalAmount
+                                  ? 'bg-[#06d6a0] text-white'
+                                  : 'bg-[#ef476f] text-white'
+                            }`}
                           >
                             {order.paymentMethod === 'credit' ? t('credit') :
                              order.paidAmount >= order.totalAmount ? t('payment_status_paid') : t('payment_status_unpaid')}
@@ -1789,56 +1825,58 @@ export default function OfflinePOS() {
           </div>
 
           {/* Numeric Keypad Section - Legacy POS Style */}
-          <div className="w-80 bg-gray-100 border-l border-gray-300 p-3">
-            <div className="bg-white rounded-lg shadow-lg p-3">
-              <div className="text-center font-bold text-sm mb-3">{t('offline_pos_keypad_title').toUpperCase()}</div>
+          <div className="w-80 bg-gradient-to-b from-[#fde2e4] via-[#fff1d6] to-[#dff6ff] border-l border-[#f4c36a] p-3">
+            <div className="bg-white/90 rounded-2xl shadow-lg p-4 border border-[#f4c36a]/40">
+              <div className="text-center font-bold text-sm mb-3 text-[#0f866c] tracking-[0.3em]">
+                {t('offline_pos_keypad_title').toUpperCase()}
+              </div>
               
               {/* Display */}
-              <div className="bg-gray-900 text-green-400 p-3 rounded mb-3 font-mono">
-                <div className="text-xs text-green-300 mb-1">
+              <div className="bg-[#0f172a] text-[#06d6a0] p-3 rounded-xl mb-4 font-mono border border-[#118ab2]/40 shadow-inner">
+                <div className="text-xs text-[#4cc9f0] mb-1">
                   {t('offline_pos_keypad_mode_label').toUpperCase()}: {(numericInput.mode ? getNumericModeLabel(numericInput.mode) : t('offline_pos_mode_barcode')).toUpperCase()}
                 </div>
                 <div className="text-xl text-right">
                   {numericInput.value || '0.00'}
                 </div>
               </div>
-              
+
               {/* Numeric Buttons */}
               <div className="grid grid-cols-3 gap-2">
                 {['7', '8', '9', '4', '5', '6', '1', '2', '3'].map((num) => (
                   <Button
                     key={num}
                     onClick={() => handleNumericInput(num)}
-                    className="h-12 bg-gray-200 hover:bg-gray-300 text-black font-bold text-lg border-2 border-gray-400"
+                    className="h-12 bg-gradient-to-br from-[#edf2fb] to-[#ccdbfd] hover:from-[#ccdbfd] hover:to-[#abc4ff] text-[#0f172a] font-bold text-lg border-0 shadow-md"
                   >
                     {num}
                   </Button>
                 ))}
                 <Button
                   onClick={() => handleNumericInput('0')}
-                  className="h-12 bg-gray-200 hover:bg-gray-300 text-black font-bold text-lg border-2 border-gray-400 col-span-2"
+                  className="h-12 bg-gradient-to-br from-[#edf2fb] to-[#ccdbfd] hover:from-[#ccdbfd] hover:to-[#abc4ff] text-[#0f172a] font-bold text-lg border-0 shadow-md col-span-2"
                 >
                   0
                 </Button>
                 <Button
                   onClick={() => handleNumericInput('.')}
-                  className="h-12 bg-gray-200 hover:bg-gray-300 text-black font-bold text-lg border-2 border-gray-400"
+                  className="h-12 bg-gradient-to-br from-[#edf2fb] to-[#ccdbfd] hover:from-[#ccdbfd] hover:to-[#abc4ff] text-[#0f172a] font-bold text-lg border-0 shadow-md"
                 >
                   .
                 </Button>
               </div>
-              
+
               {/* Function Keys */}
               <div className="grid grid-cols-2 gap-2 mt-3">
                 <Button
                   onClick={() => handleNumericInput('clear')}
-                  className="h-10 bg-red-500 hover:bg-red-600 text-white font-bold"
+                  className="h-10 bg-gradient-to-r from-[#d00000] via-[#ef233c] to-[#f94144] text-white font-bold shadow-md"
                 >
                   {t('offline_pos_keypad_button_clear').toUpperCase()}
                 </Button>
                 <Button
                   onClick={() => handleNumericInput('enter')}
-                  className="h-10 bg-green-500 hover:bg-green-600 text-white font-bold"
+                  className="h-10 bg-gradient-to-r from-[#06d6a0] via-[#14b8a6] to-[#118ab2] text-white font-bold shadow-md"
                 >
                   {t('offline_pos_keypad_button_enter').toUpperCase()}
                 </Button>
@@ -1851,7 +1889,7 @@ export default function OfflinePOS() {
                     setNumericInput({ value: '', mode: 'quantity', targetItemId: null });
                     toast({ title: t('offline_pos_mode_toast_quantity') });
                   }}
-                  className={`h-10 ${numericInput.mode === 'quantity' ? 'bg-blue-700' : 'bg-blue-500'} hover:bg-blue-600 text-white font-bold text-xs`}
+                  className={`h-10 text-white font-bold text-xs shadow-md ${numericInput.mode === 'quantity' ? 'bg-gradient-to-r from-[#118ab2] via-[#4361ee] to-[#7209b7]' : 'bg-gradient-to-r from-[#4895ef] via-[#4cc9f0] to-[#4361ee]'}`}
                 >
                   {t('offline_pos_keypad_button_quantity').toUpperCase()}
                 </Button>
@@ -1860,7 +1898,7 @@ export default function OfflinePOS() {
                     setNumericInput({ value: '', mode: 'price', targetItemId: null });
                     toast({ title: t('offline_pos_mode_toast_price') });
                   }}
-                  className={`h-10 ${numericInput.mode === 'price' ? 'bg-purple-700' : 'bg-purple-500'} hover:bg-purple-600 text-white font-bold text-xs`}
+                  className={`h-10 text-white font-bold text-xs shadow-md ${numericInput.mode === 'price' ? 'bg-gradient-to-r from-[#c1121f] via-[#ef476f] to-[#f72585]' : 'bg-gradient-to-r from-[#f77f00] via-[#f4a261] to-[#f94144]'}`}
                 >
                   {t('offline_pos_keypad_button_price').toUpperCase()}
                 </Button>
@@ -1869,35 +1907,35 @@ export default function OfflinePOS() {
                     setNumericInput({ value: '', mode: 'discount', targetItemId: null });
                     toast({ title: t('offline_pos_mode_toast_discount') });
                   }}
-                  className={`h-10 ${numericInput.mode === 'discount' ? 'bg-orange-700' : 'bg-orange-500'} hover:bg-orange-600 text-white font-bold text-xs`}
+                  className={`h-10 text-white font-bold text-xs shadow-md ${numericInput.mode === 'discount' ? 'bg-gradient-to-r from-[#06d6a0] via-[#1b998b] to-[#0f866c]' : 'bg-gradient-to-r from-[#0f866c] via-[#56cfe1] to-[#4cc9f0]'}`}
                 >
                   {t('offline_pos_keypad_button_discount').toUpperCase()}
                 </Button>
                 <Button
                   onClick={handleVoidLastItem}
-                  className="h-10 bg-red-500 hover:bg-red-600 text-white font-bold text-xs"
+                  className="h-10 bg-gradient-to-r from-[#d00000] via-[#ef233c] to-[#f94144] text-white font-bold text-xs shadow-md"
                 >
                   {t('offline_pos_keypad_button_void').toUpperCase()}
                 </Button>
               </div>
-              
+
               {/* Mode Instructions */}
-              <div className="mt-3 p-2 bg-blue-50 rounded text-xs">
-                <div className="font-semibold mb-1">{t('offline_pos_instruction_title')}:</div>
+              <div className="mt-3 p-3 bg-gradient-to-r from-[#dff6ff]/70 via-[#fde2e4]/70 to-[#fff1d6]/70 rounded-xl text-xs border border-[#f4c36a]/30">
+                <div className="font-semibold mb-1 text-[#0f866c]">{t('offline_pos_instruction_title')}:</div>
                 {numericInput.mode === 'barcode' && (
-                  <p>{t('offline_pos_instruction_barcode')}</p>
+                  <p className="text-slate-600">{t('offline_pos_instruction_barcode')}</p>
                 )}
                 {numericInput.mode === 'quantity' && (
-                  <p>{t('offline_pos_instruction_quantity')}</p>
+                  <p className="text-slate-600">{t('offline_pos_instruction_quantity')}</p>
                 )}
                 {numericInput.mode === 'price' && (
-                  <p>{t('offline_pos_instruction_price')}</p>
+                  <p className="text-slate-600">{t('offline_pos_instruction_price')}</p>
                 )}
                 {numericInput.mode === 'discount' && (
-                  <p>{t('offline_pos_instruction_discount')}</p>
+                  <p className="text-slate-600">{t('offline_pos_instruction_discount')}</p>
                 )}
                 {numericInput.mode === 'payment' && (
-                  <p>{t('offline_pos_instruction_payment')}</p>
+                  <p className="text-slate-600">{t('offline_pos_instruction_payment')}</p>
                 )}
               </div>
             </div>
