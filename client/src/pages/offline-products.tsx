@@ -66,6 +66,11 @@ export default function OfflineProducts() {
   // Get primary warehouse
   const primaryWarehouse = stockLocations.find(loc => loc.isPrimary) || stockLocations[0];
 
+  const formatPrice = (value?: number | null) => {
+    const safeValue = typeof value === 'number' ? value : 0;
+    return `${safeValue.toFixed(2)} ${t('currency')}`;
+  };
+
   // Function to get warehouse-specific stock quantity
   const getWarehouseStock = (productId: string): number => {
     if (!primaryWarehouse) return 0;
@@ -546,62 +551,135 @@ export default function OfflineProducts() {
             </Select>
           </div>
 
-          {/* Products Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProducts.map((product) => (
-              <Card key={product.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">{product.name}</CardTitle>
-                    <div className="flex gap-1">
+          {/* Products Legacy List */}
+          <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-indigo-50 shadow-sm overflow-hidden">
+            <div className="hidden md:grid grid-cols-12 gap-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-4 py-3 text-xs font-semibold tracking-wide text-white uppercase">
+              <div className="md:col-span-5">{t('product_list_product')}</div>
+              <div className="md:col-span-4">{t('product_list_pricing')}</div>
+              <div className="md:col-span-2">{t('product_list_stock')}</div>
+              <div className="md:col-span-1 text-right">{t('product_list_actions')}</div>
+            </div>
+            <div className="divide-y divide-blue-100/60">
+              {filteredProducts.length === 0 && (
+                <div className="px-4 py-10 text-center text-sm text-gray-500">
+                  {t('legacy_list_empty')}
+                </div>
+              )}
+              {filteredProducts.map((product) => {
+                const quantity = getWarehouseStock(product.id);
+                const isLowStock = quantity <= (product.minStockLevel || 0);
+
+                return (
+                  <div
+                    key={product.id}
+                    className="flex flex-col gap-4 px-4 py-4 transition md:grid md:grid-cols-12 hover:bg-white/90 bg-white/70"
+                  >
+                    {/* Product column */}
+                    <div className="md:col-span-5 flex gap-4">
+                      <div className="w-20 h-20 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-100/60 via-white to-purple-100/60 flex items-center justify-center overflow-hidden">
+                        {product.image ? (
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Package className="w-8 h-8 text-blue-500" />
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-base leading-tight text-slate-900">{product.name}</p>
+                          <Badge className="bg-blue-100 text-blue-700 border border-blue-200">{getCategoryName(product.categoryId)}</Badge>
+                          {!product.active && (
+                            <Badge variant="outline" className="border-yellow-500 text-yellow-700">
+                              {t('inactive')}
+                            </Badge>
+                          )}
+                        </div>
+                        {product.description && (
+                          <p className="text-xs text-slate-500 line-clamp-2">{product.description}</p>
+                        )}
+                        <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+                          {product.barcode && (
+                            <span>{t('barcode')}: <span className="font-mono text-slate-700">{product.barcode}</span></span>
+                          )}
+                          {product.unit && (
+                            <span>{t('unit')}: {product.unit}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Pricing column */}
+                    <div className="md:col-span-4 grid grid-cols-2 gap-2 text-sm">
+                      <div className="space-y-1">
+                        <p className="text-xs uppercase text-slate-500">{t('cost_price')}</p>
+                        <p className="font-semibold text-slate-800">{formatPrice(product.costPrice)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs uppercase text-slate-500">{t('price')}</p>
+                        <p className="font-semibold text-blue-600">{formatPrice(product.sellingPrice)}</p>
+                      </div>
+                      {product.semiWholesalePrice !== undefined && (
+                        <div className="space-y-1">
+                          <p className="text-xs uppercase text-slate-500">{t('semi_wholesale_price')}</p>
+                          <p className="font-semibold text-emerald-600">{formatPrice(product.semiWholesalePrice)}</p>
+                        </div>
+                      )}
+                      {product.wholesalePrice !== undefined && (
+                        <div className="space-y-1">
+                          <p className="text-xs uppercase text-slate-500">{t('wholesale_price')}</p>
+                          <p className="font-semibold text-emerald-700">{formatPrice(product.wholesalePrice)}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Stock column */}
+                    <div className="md:col-span-2 space-y-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs uppercase text-slate-500">{t('stock')}</span>
+                        <span
+                          className={`font-semibold px-2 py-1 rounded-full text-white ${
+                            isLowStock ? 'bg-red-500' : 'bg-emerald-500'
+                          }`}
+                        >
+                          {quantity} {product.unit}
+                        </span>
+                      </div>
+                      {product.minStockLevel !== undefined && (
+                        <div className="flex items-center justify-between text-xs text-slate-500">
+                          <span>{t('min_stock_level')}</span>
+                          <span>{product.minStockLevel}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="md:col-span-1 flex items-start justify-end gap-2">
                       <Button
-                        variant="ghost"
-                        size="sm"
+                        variant="outline"
+                        size="icon"
+                        className="h-9 w-9 border-blue-200 text-blue-600 hover:bg-blue-50"
                         onClick={() => openProductDialog(product)}
+                        title={t('edit')}
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
                       <Button
-                        variant="ghost"
-                        size="sm"
+                        variant="outline"
+                        size="icon"
+                        className="h-9 w-9 text-red-600 border-red-200 hover:bg-red-50"
                         onClick={() => handleDeleteProduct(product.id)}
+                        title={t('delete')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
-                  <Badge variant="secondary" className="w-fit">
-                    {getCategoryName(product.categoryId)}
-                  </Badge>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {product.image && (
-                    <div className="mb-2">
-                      <img 
-                        src={product.image} 
-                        alt={product.name}
-                        className="w-full h-32 object-cover rounded-md"
-                      />
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">{t('price')}:</span>
-                    <span className="font-medium">${product.sellingPrice.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">{t('stock')}:</span>
-                    <span className={`font-medium ${getWarehouseStock(product.id) <= (product.minStockLevel || 0) ? 'text-red-600' : ''}`}>
-                      {getWarehouseStock(product.id)} {product.unit}
-                    </span>
-                  </div>
-                  {product.barcode && (
-                    <div className="text-xs text-gray-500">
-                      {t('barcode')}: {product.barcode}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                );
+              })}
+            </div>
           </div>
         </TabsContent>
 
