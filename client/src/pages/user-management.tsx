@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useOfflineUsers } from '@/hooks/use-offline-users';
-import { databaseUserStorage } from '@/lib/database-user-storage';
+import { useI18n } from '@/lib/i18n';
 import { OfflineUser } from '@/lib/user-storage';
 import { 
   Users, 
@@ -25,7 +25,8 @@ import {
 
 export default function UserManagement() {
   const { toast } = useToast();
-  const { users, loading, createUser, updateUser, deleteUser, refreshUsers } = useOfflineUsers();
+  const { t } = useI18n();
+  const { users, createUser, updateUser, deleteUser } = useOfflineUsers();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<OfflineUser | null>(null);
@@ -52,8 +53,8 @@ export default function UserManagement() {
   const handleCreate = async () => {
     if (!formData.username || !formData.name || !formData.pin) {
       toast({
-        title: "Champs requis",
-        description: "Veuillez remplir tous les champs obligatoires",
+        title: t('user_management_required_fields'),
+        description: t('user_management_required_fields_message'),
         variant: "destructive",
       });
       return;
@@ -61,8 +62,8 @@ export default function UserManagement() {
 
     if (formData.pin.length !== 4 || !/^\d{4}$/.test(formData.pin)) {
       toast({
-        title: "PIN invalide",
-        description: "Le PIN doit contenir exactement 4 chiffres",
+        title: t('user_management_invalid_pin'),
+        description: t('user_management_invalid_pin_message'),
         variant: "destructive",
       });
       return;
@@ -78,15 +79,15 @@ export default function UserManagement() {
       });
 
       toast({
-        title: "Utilisateur créé",
-        description: `L'utilisateur ${formData.name} a été créé avec succès`,
+        title: t('success'),
+        description: t('user_management_create_success', { name: formData.name }),
       });
       resetForm();
       setIsCreateOpen(false);
     } catch (error) {
       toast({
-        title: "Erreur",
-        description: "Impossible de créer l'utilisateur",
+        title: t('error'),
+        description: t('create_user_error'),
         variant: "destructive",
       });
     }
@@ -109,8 +110,8 @@ export default function UserManagement() {
 
     if (!formData.username || !formData.name || !formData.pin) {
       toast({
-        title: "Champs requis",
-        description: "Veuillez remplir tous les champs obligatoires",
+        title: t('user_management_required_fields'),
+        description: t('user_management_required_fields_message'),
         variant: "destructive",
       });
       return;
@@ -126,16 +127,16 @@ export default function UserManagement() {
       });
 
       toast({
-        title: "Utilisateur modifié",
-        description: `L'utilisateur ${formData.name} a été modifié avec succès`,
+        title: t('success'),
+        description: t('user_management_update_success', { name: formData.name }),
       });
       resetForm();
       setIsEditOpen(false);
       setEditingUser(null);
     } catch (error) {
       toast({
-        title: "Erreur",
-        description: "Impossible de modifier l'utilisateur",
+        title: t('error'),
+        description: t('update_user_error'),
         variant: "destructive",
       });
     }
@@ -145,13 +146,13 @@ export default function UserManagement() {
     try {
       await deleteUser(userId);
       toast({
-        title: "Utilisateur supprimé",
-        description: "L'utilisateur a été supprimé avec succès",
+        title: t('success'),
+        description: t('user_deleted'),
       });
     } catch (error) {
       toast({
-        title: "Erreur",
-        description: "Impossible de supprimer l'utilisateur",
+        title: t('error'),
+        description: t('delete_user_error'),
         variant: "destructive",
       });
     }
@@ -186,9 +187,9 @@ export default function UserManagement() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Users className="h-6 w-6" />
-            Gestion des Utilisateurs
+            {t('user_management')}
           </h1>
-          <p className="text-gray-600">Gérez les comptes utilisateurs et leurs accès</p>
+          <p className="text-gray-600">{t('user_management_description')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -197,11 +198,11 @@ export default function UserManagement() {
             onClick={() => setShowPins(!showPins)}
           >
             {showPins ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            {showPins ? 'Masquer PINs' : 'Afficher PINs'}
+            {showPins ? t('user_management_hide_pins') : t('user_management_show_pins')}
           </Button>
           <Button onClick={() => setIsCreateOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Nouvel Utilisateur
+            {t('new_user')}
           </Button>
         </div>
       </div>
@@ -220,16 +221,16 @@ export default function UserManagement() {
                     <div className="flex items-center space-x-2">
                       <h3 className="font-semibold">{user.name}</h3>
                       <Badge className={getRoleColor(user.role)}>
-                        {user.role === 'admin' ? 'Administrateur' : 'Caissier'}
+                        {user.role === 'admin' ? t('admin') : t('cashier')}
                       </Badge>
                       {!user.active && (
-                        <Badge variant="secondary">Inactif</Badge>
+                        <Badge variant="secondary">{t('inactive')}</Badge>
                       )}
                     </div>
                     <p className="text-sm text-gray-600">@{user.username}</p>
                     {showPins && user.pin && (
                       <p className="text-sm font-mono bg-gray-100 px-2 py-1 rounded mt-1 inline-block">
-                        PIN: {user.pin}
+                        {t('pin')}: {user.pin}
                       </p>
                     )}
                   </div>
@@ -261,40 +262,40 @@ export default function UserManagement() {
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Créer un Nouvel Utilisateur</DialogTitle>
+            <DialogTitle>{t('add_user')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="username">Nom d'utilisateur *</Label>
+              <Label htmlFor="username">{t('username')} *</Label>
               <Input
                 id="username"
                 value={formData.username}
                 onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                placeholder="nom_utilisateur"
+                placeholder={t('username_placeholder')}
               />
             </div>
             <div>
-              <Label htmlFor="name">Nom complet *</Label>
+              <Label htmlFor="name">{t('full_name')} *</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Nom Prénom"
+                placeholder={t('full_name_placeholder')}
               />
             </div>
             <div>
-              <Label htmlFor="pin">Code PIN (4 chiffres) *</Label>
+              <Label htmlFor="pin">{t('pin_code_label')} *</Label>
               <Input
                 id="pin"
                 type="password"
                 maxLength={4}
                 value={formData.pin}
                 onChange={(e) => setFormData(prev => ({ ...prev, pin: e.target.value.replace(/\D/g, '') }))}
-                placeholder="0000"
+                placeholder={t('pin_placeholder')}
               />
             </div>
             <div>
-              <Label htmlFor="role">Rôle</Label>
+              <Label htmlFor="role">{t('role')}</Label>
               <Select
                 value={formData.role}
                 onValueChange={(value: 'admin' | 'cashier') => setFormData(prev => ({ ...prev, role: value }))}
@@ -303,8 +304,8 @@ export default function UserManagement() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cashier">Caissier</SelectItem>
-                  <SelectItem value="admin">Administrateur</SelectItem>
+                  <SelectItem value="cashier">{t('cashier')}</SelectItem>
+                  <SelectItem value="admin">{t('admin')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -314,15 +315,15 @@ export default function UserManagement() {
                 checked={formData.active}
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, active: checked }))}
               />
-              <Label htmlFor="active">Compte actif</Label>
+              <Label htmlFor="active">{t('active_account')}</Label>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-              Annuler
+              {t('cancel')}
             </Button>
             <Button onClick={handleCreate}>
-              Créer
+              {t('create')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -332,40 +333,40 @@ export default function UserManagement() {
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Modifier l'Utilisateur</DialogTitle>
+            <DialogTitle>{t('edit_user')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="edit-username">Nom d'utilisateur *</Label>
+              <Label htmlFor="edit-username">{t('username')} *</Label>
               <Input
                 id="edit-username"
                 value={formData.username}
                 onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                placeholder="nom_utilisateur"
+                placeholder={t('username_placeholder')}
               />
             </div>
             <div>
-              <Label htmlFor="edit-name">Nom complet *</Label>
+              <Label htmlFor="edit-name">{t('full_name')} *</Label>
               <Input
                 id="edit-name"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Nom Prénom"
+                placeholder={t('full_name_placeholder')}
               />
             </div>
             <div>
-              <Label htmlFor="edit-pin">Code PIN (4 chiffres) *</Label>
+              <Label htmlFor="edit-pin">{t('pin_code_label')} *</Label>
               <Input
                 id="edit-pin"
                 type="password"
                 maxLength={4}
                 value={formData.pin}
                 onChange={(e) => setFormData(prev => ({ ...prev, pin: e.target.value.replace(/\D/g, '') }))}
-                placeholder="0000"
+                placeholder={t('pin_placeholder')}
               />
             </div>
             <div>
-              <Label htmlFor="edit-role">Rôle</Label>
+              <Label htmlFor="edit-role">{t('role')}</Label>
               <Select
                 value={formData.role}
                 onValueChange={(value: 'admin' | 'cashier') => setFormData(prev => ({ ...prev, role: value }))}
@@ -374,8 +375,8 @@ export default function UserManagement() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cashier">Caissier</SelectItem>
-                  <SelectItem value="admin">Administrateur</SelectItem>
+                  <SelectItem value="cashier">{t('cashier')}</SelectItem>
+                  <SelectItem value="admin">{t('admin')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -385,15 +386,15 @@ export default function UserManagement() {
                 checked={formData.active}
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, active: checked }))}
               />
-              <Label htmlFor="edit-active">Compte actif</Label>
+              <Label htmlFor="edit-active">{t('active_account')}</Label>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditOpen(false)}>
-              Annuler
+              {t('cancel')}
             </Button>
             <Button onClick={handleUpdate}>
-              Mettre à jour
+              {t('update')}
             </Button>
           </DialogFooter>
         </DialogContent>
