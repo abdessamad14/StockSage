@@ -221,6 +221,13 @@ const frTranslations: TranslationDictionary = {
   'offline_pos_credit_sale_label': '🛒 Vente à crédit',
   'offline_pos_credit_payment_label': '💰 Paiement',
   'offline_pos_no_credit_transactions': 'Aucune transaction de crédit trouvée',
+  'product_list_product': 'Article',
+  'product_list_pricing': 'Prix & marges',
+  'product_list_stock': 'Stock',
+  'product_list_actions': 'Actions',
+  'semi_wholesale_price': 'Prix semi-gros',
+  'wholesale_price': 'Prix de gros',
+  'legacy_list_empty': 'Aucun article ne correspond à votre recherche',
 
   // Customers
   'customer_created_successfully': 'Client créé avec succès',
@@ -1117,6 +1124,13 @@ const arTranslations: TranslationDictionary = {
   'offline_pos_credit_sale_label': '🛒 بيع بالائتمان',
   'offline_pos_credit_payment_label': '💰 دفعة',
   'offline_pos_no_credit_transactions': 'لا توجد معاملات ائتمان',
+  'product_list_product': 'المنتج',
+  'product_list_pricing': 'الأسعار والهامش',
+  'product_list_stock': 'المخزون',
+  'product_list_actions': 'إجراءات',
+  'semi_wholesale_price': 'سعر نصف الجملة',
+  'wholesale_price': 'سعر الجملة',
+  'legacy_list_empty': 'لا يوجد أي منتج مطابق لبحثك',
 
   // Customers
   'customer_created_successfully': 'تم إنشاء العميل بنجاح',
