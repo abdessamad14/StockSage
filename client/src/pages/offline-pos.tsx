@@ -676,14 +676,14 @@ export default function OfflinePOS() {
       await ThermalReceiptPrinter.printReceipt(receiptData);
       
       toast({
-        title: "Success",
-        description: "Receipt printed successfully",
+        title: t('success'),
+        description: t('offline_sales_print_success'),
       });
     } catch (error) {
       console.error('Print error:', error);
       toast({
-        title: "Print Error",
-        description: error instanceof Error ? error.message : "Failed to print receipt",
+        title: t('offline_sales_print_error_title'),
+        description: error instanceof Error ? error.message : t('offline_sales_print_error_desc'),
         variant: "destructive",
       });
     }
@@ -695,8 +695,8 @@ export default function OfflinePOS() {
     const effectivePaidAmount = paidAmountOverride || paidAmount;
     if (cart.length === 0) {
       toast({
-        title: "Error",
-        description: "Cart is empty",
+        title: t('error'),
+        description: t('cart_empty'),
         variant: "destructive",
       });
       return;
@@ -704,8 +704,8 @@ export default function OfflinePOS() {
 
     if (effectivePaymentMethod === 'cash' && effectivePaidAmount < total) {
       toast({
-        title: "Error",
-        description: "Insufficient payment amount",
+        title: t('error'),
+        description: t('insufficient_amount'),
         variant: "destructive",
       });
       return;
@@ -782,8 +782,8 @@ export default function OfflinePOS() {
         } catch (creditError) {
           console.error('Error processing credit transaction:', creditError);
           toast({
-            title: "Warning",
-            description: "Sale completed but credit recording failed",
+            title: t('warning'),
+            description: t('offline_pos_credit_record_warning'),
             variant: "destructive",
           });
         }
@@ -902,36 +902,54 @@ export default function OfflinePOS() {
         
         await ThermalReceiptPrinter.printReceipt(receiptData);
         
-        toast({
-          title: "Paiement réussi",
-          description: "Reçu imprimé automatiquement",
-        });
-      } catch (printError) {
-        console.error('Auto-print error:', printError);
-        toast({
-          title: "Paiement réussi",
-          description: "Vente terminée (erreur d'impression)",
-        });
-      }
-    } catch (error) {
-      console.error('Error processing sale:', error);
-      console.error('Error details:', {
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        type: typeof error
-      });
       toast({
-        title: "Error",
-        description: `Failed to process sale: ${error instanceof Error ? error.message : String(error)}`,
-        variant: "destructive",
+        title: t('sale_completed'),
+        description: t('offline_pos_receipt_auto_printed'),
       });
+    } catch (printError) {
+      console.error('Auto-print error:', printError);
+      toast({
+        title: t('sale_completed'),
+        description: t('offline_pos_sale_completed_print_error'),
+      });
+    }
+  } catch (error) {
+    console.error('Error processing sale:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      type: typeof error
+    });
+    toast({
+      title: t('error'),
+      description: t('offline_pos_sale_error', {
+        message: error instanceof Error ? error.message : String(error),
+      }),
+      variant: "destructive",
+    });
+  }
+  };
+
+  const getNumericModeLabel = (mode: typeof numericInput.mode) => {
+    switch (mode) {
+      case 'quantity':
+        return t('offline_pos_mode_quantity');
+      case 'price':
+        return t('offline_pos_mode_price');
+      case 'discount':
+        return t('offline_pos_mode_discount');
+      case 'payment':
+        return t('offline_pos_mode_payment');
+      case 'barcode':
+      default:
+        return t('offline_pos_mode_barcode');
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-lg">Loading POS...</div>
+        <div className="text-lg">{t('loading')}</div>
       </div>
     );
   }
@@ -943,7 +961,7 @@ export default function OfflinePOS() {
       <div className="w-[450px] bg-white border-r-2 border-gray-300 flex flex-col h-full">
         {/* Receipt Header */}
         <div className="bg-blue-600 text-white p-4 flex-shrink-0">
-          <h2 className="text-lg font-bold">TICKET DE CAISSE</h2>
+          <h2 className="text-lg font-bold">{t('offline_pos_receipt_title').toUpperCase()}</h2>
           <div className="text-sm opacity-90">#{new Date().getTime().toString().slice(-6)}</div>
         </div>
 
@@ -958,10 +976,11 @@ export default function OfflinePOS() {
             {/* Payment Method & Customer - Compact */}
             <div className="mb-2 space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-600">Mode:</span>
+                <span className="text-gray-600">{t('offline_pos_mode_label')}:</span>
                 <span className="font-semibold">
-                  {paymentMethod === 'cash' && <span className="text-green-600">💰 ESPÈCES</span>}
-                  {paymentMethod === 'credit' && <span className="text-purple-600">📋 CRÉDIT</span>}
+                  {paymentMethod === 'cash' && <span className="text-green-600">💰 {t('cash')}</span>}
+                  {paymentMethod === 'credit' && <span className="text-purple-600">📋 {t('credit')}</span>}
+                  {paymentMethod === 'card' && <span className="text-blue-600">💳 {t('card_payment')}</span>}
                 </span>
               </div>
               
@@ -977,10 +996,10 @@ export default function OfflinePOS() {
                 }}
               >
                 <SelectTrigger className="h-6 text-xs">
-                  <SelectValue placeholder="Client" />
+                  <SelectValue placeholder={t('select_customer')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="walk-in">🚶 Client de passage</SelectItem>
+                  <SelectItem value="walk-in">🚶 {t('walk_in_customer')}</SelectItem>
                   {customers.map(customer => (
                     <SelectItem key={customer.id} value={customer.id}>
                       👤 {customer.name}
@@ -995,7 +1014,7 @@ export default function OfflinePOS() {
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1">
                       <CreditCard className="h-3 w-3 text-blue-600" />
-                      <span className="text-xs font-medium text-blue-800">Crédit Client</span>
+                      <span className="text-xs font-medium text-blue-800">{t('offline_pos_customer_credit')}</span>
                     </div>
                     <Button
                       onClick={() => setIsCreditDialogOpen(true)}
@@ -1004,7 +1023,7 @@ export default function OfflinePOS() {
                       className="h-5 px-2 text-xs bg-blue-100 border-blue-300 hover:bg-blue-200 text-blue-700"
                     >
                       <Settings className="h-3 w-3 mr-1" />
-                      Régler
+                      {t('offline_pos_settle')}
                     </Button>
                   </div>
                   {loadingCreditInfo ? (
@@ -1019,7 +1038,7 @@ export default function OfflinePOS() {
                       </div>
                     </div>
                   ) : (
-                    <div className="text-xs text-gray-500">Aucune information de crédit</div>
+                    <div className="text-xs text-gray-500">{t('offline_pos_no_credit_info')}</div>
                   )}
                 </div>
               )}
@@ -1028,7 +1047,7 @@ export default function OfflinePOS() {
             {cart.length === 0 ? (
               <div className="text-center text-gray-400 py-3">
                 <Receipt className="h-6 w-6 mx-auto mb-1 opacity-50" />
-                <p className="text-xs">Aucun article</p>
+                <p className="text-xs">{t('offline_pos_no_items')}</p>
               </div>
             ) : (
               <div className="space-y-1">
@@ -1038,14 +1057,22 @@ export default function OfflinePOS() {
                       <div className="font-medium truncate flex items-center gap-1">
                         {item.product.name}
                         {item.unitPrice < item.product.costPrice && (
-                          <span className="text-red-500 text-xs" title={`Prix de vente (${item.unitPrice} DH) inférieur au coût (${item.product.costPrice} DH)`}>
+                          <span
+                            className="text-red-500 text-xs"
+                            title={t('offline_pos_price_below_cost', {
+                              price: item.unitPrice.toFixed(2),
+                              cost: item.product.costPrice.toFixed(2),
+                            })}
+                          >
                             ⚠️
                           </span>
                         )}
                       </div>
                       {item.unitPrice < item.product.costPrice && (
                         <div className="text-red-500 text-xs mt-0.5">
-                          Perte: {(item.product.costPrice - item.unitPrice).toFixed(2)} DH/unité
+                          {t('offline_pos_loss_per_unit', {
+                            amount: (item.product.costPrice - item.unitPrice).toFixed(2),
+                          })}
                         </div>
                       )}
                       <div className="text-gray-500 text-xs flex items-center gap-1">
@@ -1098,7 +1125,7 @@ export default function OfflinePOS() {
                             }
                           }}
                           className="w-16 px-1 py-0 text-xs border border-gray-300 rounded bg-white text-center"
-                          placeholder="qty"
+                          placeholder={t('offline_pos_qty_placeholder')}
                         />
                         x 
                         <input
@@ -1136,7 +1163,7 @@ export default function OfflinePOS() {
                               ? 'border-red-500 bg-red-50 text-red-700' 
                               : 'border-gray-300'
                           }`}
-                          placeholder="prix"
+                          placeholder={t('offline_pos_price_placeholder')}
                         />
                         DH
                       </div>
@@ -1147,17 +1174,17 @@ export default function OfflinePOS() {
                 
                 <div className="border-t pt-2 mt-2 space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span>Sous-total:</span>
+                    <span>{t('subtotal')}:</span>
                     <span>{subtotal.toFixed(2)} DH</span>
                   </div>
                   {discountValue > 0 && (
                     <div className="flex justify-between text-red-600 text-xs">
-                      <span>Remise:</span>
+                      <span>{t('discount')}:</span>
                       <span>-{discountValue.toFixed(2)} DH</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold text-sm border-t pt-1 bg-blue-50 px-2 py-1 rounded">
-                    <span>TOTAL:</span>
+                    <span>{t('total').toUpperCase()}:</span>
                     <span>{total.toFixed(2)} DH</span>
                   </div>
                 </div>
@@ -1170,7 +1197,7 @@ export default function OfflinePOS() {
         <div className="bg-white border-t flex-shrink-0" style={{height: '280px', padding: '12px'}}>
           {/* Quick Cash Payment Buttons */}
           <div className="mb-3">
-            <div className="text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Paiement Rapide</div>
+            <div className="text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">{t('offline_pos_quick_payment')}</div>
             <div className="grid grid-cols-2 gap-1 mb-2">
               {[20, 50, 100, 200].map((amount) => {
                 const getBanknoteColor = (value: number) => {
@@ -1189,8 +1216,8 @@ export default function OfflinePOS() {
                     onClick={async () => {
                       if (cart.length === 0) {
                         toast({
-                          title: "Panier vide",
-                          description: "Ajoutez des articles avant de procéder au paiement",
+                          title: t('cart_empty'),
+                          description: t('offline_pos_add_items_before_payment'),
                           variant: "destructive",
                         });
                         return;
@@ -1214,7 +1241,7 @@ export default function OfflinePOS() {
                       // Show change notification
                       if (changeAmount > 0) {
                         toast({
-                          title: "Monnaie à rendre",
+                          title: t('offline_pos_change_title'),
                           description: `${changeAmount.toFixed(2)} DH`,
                           duration: 5000,
                         });
@@ -1262,7 +1289,7 @@ export default function OfflinePOS() {
             <div className="flex gap-1">
               <input
                 type="number"
-                placeholder="Autre montant"
+                placeholder={t('offline_pos_other_amount')}
                 className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
                 value={customCashAmount}
                 onChange={(e) => setCustomCashAmount(e.target.value)}
@@ -1287,7 +1314,7 @@ export default function OfflinePOS() {
                   const changeAmount = amount - total;
                   if (changeAmount > 0) {
                     toast({
-                      title: "Monnaie à rendre",
+                      title: t('offline_pos_change_title'),
                       description: `${changeAmount.toFixed(2)} DH`,
                       duration: 5000,
                     });
@@ -1299,7 +1326,7 @@ export default function OfflinePOS() {
                 className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded"
                 disabled={!customCashAmount || parseFloat(customCashAmount) < total}
               >
-                OK
+                {t('confirm')}
               </Button>
             </div>
           </div>
@@ -1310,20 +1337,20 @@ export default function OfflinePOS() {
               onClick={async () => {
                 if (cart.length === 0) {
                   toast({
-                    title: "Panier vide",
-                    description: "Ajoutez des articles avant de procéder au paiement",
+                    title: t('cart_empty'),
+                    description: t('offline_pos_add_items_before_payment'),
                     variant: "destructive",
                   });
                   return;
                 }
-                
+
                 if (selectedCustomer) {
                   // Process credit sale immediately
                   await processSale('credit');
                 } else {
                   toast({
-                    title: "Erreur",
-                    description: "Veuillez sélectionner un client pour le paiement à crédit",
+                    title: t('error'),
+                    description: t('offline_pos_select_customer_credit'),
                     variant: "destructive",
                   });
                 }
@@ -1336,14 +1363,14 @@ export default function OfflinePOS() {
                 !selectedCustomer ? 'opacity-50' : ''
               }`}
             >
-              📋 CRÉDIT
+              📋 {t('credit').toUpperCase()}
             </Button>
             <Button
               onClick={() => {
                 if (cart.length === 0) {
                   toast({
-                    title: "Panier vide",
-                    description: "Ajoutez des articles pour imprimer un reçu",
+                    title: t('cart_empty'),
+                    description: t('offline_pos_add_items_print_receipt'),
                     variant: "destructive",
                   });
                   return;
@@ -1374,26 +1401,26 @@ export default function OfflinePOS() {
                   try {
                     await ThermalReceiptPrinter.printReceipt(tempReceiptData);
                     toast({
-                      title: "Impression réussie",
-                      description: "Reçu imprimé avec succès",
+                      title: t('success'),
+                      description: t('offline_sales_print_success'),
                     });
                   } catch (error) {
                     console.error('Print error:', error);
                     // Handle specific printer errors with user-friendly messages
-                    let errorMessage = "Erreur d'impression inconnue";
-                    
+                    let errorMessage = t('offline_pos_print_unknown_error');
+
                     if (error instanceof Error) {
                       if (error.message.includes('USB device not found')) {
-                        errorMessage = "Imprimante non connectée. Vérifiez la connexion USB.";
+                        errorMessage = t('offline_pos_printer_not_connected');
                       } else if (error.message.includes('Receipt print failed')) {
-                        errorMessage = "Impression échouée. Vérifiez l'imprimante.";
+                        errorMessage = t('offline_pos_printer_failed');
                       } else {
                         errorMessage = error.message;
                       }
                     }
-                    
+
                     toast({
-                      title: "Problème d'impression",
+                      title: t('offline_pos_print_issue_title'),
                       description: errorMessage,
                       variant: "destructive",
                     });
@@ -1407,19 +1434,19 @@ export default function OfflinePOS() {
                   : 'bg-gray-400 border-gray-500'
               } text-white`}
             >
-              🖨️ IMPRIMER
+              🖨️ {t('print_receipt')}
             </Button>
             <Button
               onClick={() => {
                 clearCart();
                 toast({
-                  title: "Panier effacé",
-                  description: "Tous les articles ont été supprimés",
+                  title: t('offline_pos_cart_cleared_title'),
+                  description: t('offline_pos_cart_cleared_desc'),
                 });
               }}
               className="h-10 text-xs font-bold bg-red-500 hover:bg-red-700 text-white border-2 border-red-600 transition-all hover:shadow-lg"
             >
-              🗑️ EFFACER
+              🗑️ {t('clear').toUpperCase()}
             </Button>
           </div>
           
@@ -1435,7 +1462,9 @@ export default function OfflinePOS() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <Input
-                placeholder={rightSidebarView === 'products' ? "Rechercher produits ou scanner code-barres..." : "Rechercher dans les commandes..."}
+                placeholder={rightSidebarView === 'products'
+                  ? t('offline_pos_search_products_placeholder')
+                  : t('offline_pos_search_orders_placeholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 h-12 text-lg"
@@ -1451,7 +1480,7 @@ export default function OfflinePOS() {
                   className="px-4 py-2"
                 >
                   <Grid3X3 className="h-4 w-4 mr-2" />
-                  Produits
+                  {t('products')}
                 </Button>
                 <Button
                   variant={rightSidebarView === 'orders' ? 'default' : 'ghost'}
@@ -1460,16 +1489,16 @@ export default function OfflinePOS() {
                   className="px-4 py-2"
                 >
                   <List className="h-4 w-4 mr-2" />
-                  Commandes
+                  {t('orders')}
                 </Button>
               </div>
               <div className="flex items-center space-x-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
                 <ScanLine className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium text-green-700">Scanner USB Actif</span>
+                <span className="text-sm font-medium text-green-700">{t('offline_pos_usb_scanner_active')}</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="text-right">
-                  <div className="text-sm text-gray-500">Vendeur: {user?.name || 'Unknown'}</div>
+                  <div className="text-sm text-gray-500">{t('offline_pos_seller_label')}: {user?.name || t('unknown_customer')}</div>
                   <div className="text-sm font-medium">{new Date().toLocaleDateString('fr-MA')}</div>
                 </div>
                 <Button
@@ -1477,10 +1506,10 @@ export default function OfflinePOS() {
                   size="sm"
                   onClick={logout}
                   className="flex items-center space-x-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-                  title="Se déconnecter"
+                  title={t('logout')}
                 >
                   <LogOut className="h-4 w-4" />
-                  <span className="hidden sm:inline">Logout</span>
+                  <span className="hidden sm:inline">{t('logout')}</span>
                 </Button>
               </div>
             </div>
@@ -1491,27 +1520,27 @@ export default function OfflinePOS() {
             <div className="mt-4 grid grid-cols-4 gap-3">
               <div className="bg-blue-100 p-3 rounded-lg text-center">
                 <div className="text-blue-600 font-bold text-lg">{todaysTurnover.ordersCount}</div>
-                <div className="text-blue-500 text-sm">Commandes</div>
+                <div className="text-blue-500 text-sm">{t('offline_pos_orders_stat_label')}</div>
               </div>
               <div className="bg-green-100 p-3 rounded-lg text-center">
                 <div className="text-green-600 font-bold text-lg">{todaysTurnover.total.toFixed(0)} DH</div>
-                <div className="text-green-500 text-sm">CA Total</div>
+                <div className="text-green-500 text-sm">{t('offline_pos_total_revenue_label')}</div>
               </div>
               <div className="bg-emerald-100 p-3 rounded-lg text-center">
                 <div className="text-emerald-600 font-bold text-lg">{todaysTurnover.paid.toFixed(0)} DH</div>
-                <div className="text-emerald-500 text-sm">Payé</div>
+                <div className="text-emerald-500 text-sm">{t('offline_pos_paid_stat_label')}</div>
               </div>
               <div className="bg-purple-100 p-3 rounded-lg text-center">
                 <div className="text-purple-600 font-bold text-lg">{todaysTurnover.credit.toFixed(0)} DH</div>
-                <div className="text-purple-500 text-sm">Crédit</div>
+                <div className="text-purple-500 text-sm">{t('offline_pos_credit_stat_label')}</div>
               </div>
             </div>
           )}
-          
+
           {/* Barcode Buffer Display (for debugging) */}
           {barcodeBuffer && (
             <div className="mt-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded text-sm">
-              <span className="text-blue-600 font-medium">Scan en cours: </span>
+              <span className="text-blue-600 font-medium">{t('offline_pos_scan_in_progress')}: </span>
               <span className="font-mono">{barcodeBuffer}</span>
             </div>
           )}
@@ -1521,7 +1550,7 @@ export default function OfflinePOS() {
         <div className="bg-gray-100 border-b border-gray-300 p-2">
           <div className="flex items-center gap-2 mb-2">
             <ShoppingCart className="h-4 w-4 text-blue-600" />
-            <span className="font-bold text-sm">FONCTIONS SYSTÈME</span>
+            <span className="font-bold text-sm">{t('offline_pos_system_functions').toUpperCase()}</span>
           </div>
           <div className="grid grid-cols-4 gap-2">
             <Button
@@ -1529,56 +1558,56 @@ export default function OfflinePOS() {
               className="h-10 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
             >
               <Home className="h-4 w-4" />
-              ACCUEIL
+              {t('dashboard').toUpperCase()}
             </Button>
             <Button
               onClick={() => window.location.href = '/products'}
               className="h-10 bg-green-500 hover:bg-green-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
             >
               <Package className="h-4 w-4" />
-              ARTICLES
+              {t('products').toUpperCase()}
             </Button>
             <Button
               onClick={() => window.location.href = '/customers'}
               className="h-10 bg-purple-500 hover:bg-purple-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
             >
               <Users className="h-4 w-4" />
-              CLIENTS
+              {t('customers').toUpperCase()}
             </Button>
             <Button
               onClick={() => window.location.href = '/suppliers'}
               className="h-10 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
             >
               <Truck className="h-4 w-4" />
-              FOURNISSEURS
+              {t('suppliers').toUpperCase()}
             </Button>
             <Button
               onClick={() => window.location.href = '/inventory'}
               className="h-10 bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
             >
               <Warehouse className="h-4 w-4" />
-              STOCK
+              {t('inventory').toUpperCase()}
             </Button>
             <Button
               onClick={() => window.location.href = '/sales-history'}
               className="h-10 bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
             >
               <FileText className="h-4 w-4" />
-              VENTES
+              {t('sales_history').toUpperCase()}
             </Button>
             <Button
               onClick={() => window.location.href = '/reports'}
               className="h-10 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
             >
               <BarChart3 className="h-4 w-4" />
-              RAPPORTS
+              {t('reports').toUpperCase()}
             </Button>
             <Button
               onClick={() => window.location.href = '/settings'}
               className="h-10 bg-gray-500 hover:bg-gray-600 text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg"
             >
               <Settings className="h-4 w-4" />
-              CONFIG
+              {t('settings').toUpperCase()}
             </Button>
           </div>
         </div>
@@ -1603,7 +1632,7 @@ export default function OfflinePOS() {
                     </div>
                     <span className={`text-xs font-medium ${
                       selectedCategory === 'all' ? 'text-blue-600' : 'text-gray-600'
-                    }`}>TOUS</span>
+                    }`}>{t('offline_pos_all').toUpperCase()}</span>
                   </div>
                   {categories.map(category => {
                     console.log('Category:', category.name, 'Has image:', !!category.image, 'Image length:', category.image?.length);
@@ -1693,8 +1722,8 @@ export default function OfflinePOS() {
               {todaysOrders.length === 0 ? (
                 <div className="text-center py-16 text-gray-500">
                   <Clock className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <h3 className="text-lg font-medium mb-2">Aucune commande aujourd'hui</h3>
-                  <p className="text-sm">Les commandes apparaîtront ici une fois créées</p>
+                  <h3 className="text-lg font-medium mb-2">{t('offline_pos_no_orders_today_title')}</h3>
+                  <p className="text-sm">{t('offline_pos_no_orders_today_desc')}</p>
                 </div>
               ) : (
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -1728,15 +1757,15 @@ export default function OfflinePOS() {
                           })}
                         </div>
                         <div className="text-sm text-gray-900">
-                          {order.items.length} article{order.items.length > 1 ? 's' : ''}
+                          {order.items.length} {t('items')}
                         </div>
                         <div className="text-sm font-semibold text-green-600">
                           {order.totalAmount.toFixed(0)} DH
                         </div>
                         <div className="text-sm text-gray-900 capitalize">
-                          {order.paymentMethod === 'cash' ? 'Espèces' : 
-                           order.paymentMethod === 'credit' ? 'Crédit' : 
-                           order.paymentMethod === 'card' ? 'Carte' : order.paymentMethod}
+                          {order.paymentMethod === 'cash' ? t('cash') : 
+                           order.paymentMethod === 'credit' ? t('credit') : 
+                           order.paymentMethod === 'card' ? t('card_payment') : order.paymentMethod}
                         </div>
                         <div>
                           <Badge 
@@ -1746,8 +1775,8 @@ export default function OfflinePOS() {
                             }
                             className="text-xs"
                           >
-                            {order.paymentMethod === 'credit' ? 'Crédit' :
-                             order.paidAmount >= order.totalAmount ? 'Payé' : 'Impayé'}
+                            {order.paymentMethod === 'credit' ? t('credit') :
+                             order.paidAmount >= order.totalAmount ? t('payment_status_paid') : t('payment_status_unpaid')}
                           </Badge>
                         </div>
                       </div>
@@ -1762,12 +1791,12 @@ export default function OfflinePOS() {
           {/* Numeric Keypad Section - Legacy POS Style */}
           <div className="w-80 bg-gray-100 border-l border-gray-300 p-3">
             <div className="bg-white rounded-lg shadow-lg p-3">
-              <div className="text-center font-bold text-sm mb-3">PAVÉ NUMÉRIQUE</div>
+              <div className="text-center font-bold text-sm mb-3">{t('offline_pos_keypad_title').toUpperCase()}</div>
               
               {/* Display */}
               <div className="bg-gray-900 text-green-400 p-3 rounded mb-3 font-mono">
                 <div className="text-xs text-green-300 mb-1">
-                  MODE: {numericInput.mode ? numericInput.mode.toUpperCase() : 'BARCODE'}
+                  {t('offline_pos_keypad_mode_label').toUpperCase()}: {(numericInput.mode ? getNumericModeLabel(numericInput.mode) : t('offline_pos_mode_barcode')).toUpperCase()}
                 </div>
                 <div className="text-xl text-right">
                   {numericInput.value || '0.00'}
@@ -1805,13 +1834,13 @@ export default function OfflinePOS() {
                   onClick={() => handleNumericInput('clear')}
                   className="h-10 bg-red-500 hover:bg-red-600 text-white font-bold"
                 >
-                  EFFACER
+                  {t('offline_pos_keypad_button_clear').toUpperCase()}
                 </Button>
                 <Button
                   onClick={() => handleNumericInput('enter')}
                   className="h-10 bg-green-500 hover:bg-green-600 text-white font-bold"
                 >
-                  ENTRER
+                  {t('offline_pos_keypad_button_enter').toUpperCase()}
                 </Button>
               </div>
               
@@ -1820,55 +1849,55 @@ export default function OfflinePOS() {
                 <Button
                   onClick={() => {
                     setNumericInput({ value: '', mode: 'quantity', targetItemId: null });
-                    toast({ title: 'Mode Quantité - Entrez la quantité' });
+                    toast({ title: t('offline_pos_mode_toast_quantity') });
                   }}
                   className={`h-10 ${numericInput.mode === 'quantity' ? 'bg-blue-700' : 'bg-blue-500'} hover:bg-blue-600 text-white font-bold text-xs`}
                 >
-                  QTÉ
+                  {t('offline_pos_keypad_button_quantity').toUpperCase()}
                 </Button>
                 <Button
                   onClick={() => {
                     setNumericInput({ value: '', mode: 'price', targetItemId: null });
-                    toast({ title: 'Mode Prix - Entrez le prix' });
+                    toast({ title: t('offline_pos_mode_toast_price') });
                   }}
                   className={`h-10 ${numericInput.mode === 'price' ? 'bg-purple-700' : 'bg-purple-500'} hover:bg-purple-600 text-white font-bold text-xs`}
                 >
-                  PRIX
+                  {t('offline_pos_keypad_button_price').toUpperCase()}
                 </Button>
                 <Button
                   onClick={() => {
                     setNumericInput({ value: '', mode: 'discount', targetItemId: null });
-                    toast({ title: 'Mode Remise - Entrez le montant' });
+                    toast({ title: t('offline_pos_mode_toast_discount') });
                   }}
                   className={`h-10 ${numericInput.mode === 'discount' ? 'bg-orange-700' : 'bg-orange-500'} hover:bg-orange-600 text-white font-bold text-xs`}
                 >
-                  REMISE
+                  {t('offline_pos_keypad_button_discount').toUpperCase()}
                 </Button>
                 <Button
                   onClick={handleVoidLastItem}
                   className="h-10 bg-red-500 hover:bg-red-600 text-white font-bold text-xs"
                 >
-                  ANNULER
+                  {t('offline_pos_keypad_button_void').toUpperCase()}
                 </Button>
               </div>
               
               {/* Mode Instructions */}
               <div className="mt-3 p-2 bg-blue-50 rounded text-xs">
-                <div className="font-semibold mb-1">Instructions:</div>
+                <div className="font-semibold mb-1">{t('offline_pos_instruction_title')}:</div>
                 {numericInput.mode === 'barcode' && (
-                  <p>Entrez le code-barres puis ENTRER pour ajouter un produit</p>
+                  <p>{t('offline_pos_instruction_barcode')}</p>
                 )}
                 {numericInput.mode === 'quantity' && (
-                  <p>Entrez la quantité puis ENTRER pour modifier le dernier article</p>
+                  <p>{t('offline_pos_instruction_quantity')}</p>
                 )}
                 {numericInput.mode === 'price' && (
-                  <p>Entrez le prix puis ENTRER pour modifier le dernier article</p>
+                  <p>{t('offline_pos_instruction_price')}</p>
                 )}
                 {numericInput.mode === 'discount' && (
-                  <p>Entrez le montant de remise puis ENTRER</p>
+                  <p>{t('offline_pos_instruction_discount')}</p>
                 )}
                 {numericInput.mode === 'payment' && (
-                  <p>Entrez le montant payé puis ENTRER</p>
+                  <p>{t('offline_pos_instruction_payment')}</p>
                 )}
               </div>
             </div>
@@ -1881,24 +1910,24 @@ export default function OfflinePOS() {
     <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
         <DialogContent className="max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>Sale Receipt</DialogTitle>
+            <DialogTitle>{t('offline_pos_receipt_dialog_title')}</DialogTitle>
           </DialogHeader>
           {lastSale && (
             <div className="space-y-4">
               <div className="text-center">
                 <h3 className="font-bold">StockSage POS</h3>
-                <p className="text-sm text-gray-500">Sale #{lastSale.id}</p>
+                <p className="text-sm text-gray-500">{t('offline_pos_sale_number', { id: lastSale.id })}</p>
                 <p className="text-sm text-gray-500">{new Date(lastSale.date).toLocaleString()}</p>
               </div>
               
               <Separator />
               
               <div>
-                <h4 className="font-medium mb-2">Items:</h4>
+                <h4 className="font-medium mb-2">{t('items')}:</h4>
                 {lastSale.items.map(item => (
                   <div key={item.id} className="flex justify-between text-sm">
                     <span>{item.productName} x{item.quantity}</span>
-                    <span>${item.totalPrice.toFixed(2)}</span>
+                    <span>{item.totalPrice.toFixed(2)} DH</span>
                   </div>
                 ))}
               </div>
@@ -1907,25 +1936,25 @@ export default function OfflinePOS() {
               
               <div className="space-y-1">
                 <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>${(lastSale.totalAmount - (lastSale.taxAmount || 0)).toFixed(2)}</span>
+                  <span>{t('subtotal')}:</span>
+                  <span>{(lastSale.totalAmount - (lastSale.taxAmount || 0)).toFixed(2)} DH</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Tax:</span>
-                  <span>${(lastSale.taxAmount || 0).toFixed(2)}</span>
+                  <span>{t('offline_pos_tax_label')}:</span>
+                  <span>{(lastSale.taxAmount || 0).toFixed(2)} DH</span>
                 </div>
                 <div className="flex justify-between font-bold">
-                  <span>Total:</span>
-                  <span>${lastSale.totalAmount.toFixed(2)}</span>
+                  <span>{t('total')}:</span>
+                  <span>{lastSale.totalAmount.toFixed(2)} DH</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Paid ({lastSale.paymentMethod}):</span>
-                  <span>${lastSale.paidAmount.toFixed(2)}</span>
+                  <span>{t('offline_pos_paid_label')} ({lastSale.paymentMethod}):</span>
+                  <span>{lastSale.paidAmount.toFixed(2)} DH</span>
                 </div>
                 {(lastSale.changeAmount || 0) > 0 && (
                   <div className="flex justify-between">
-                    <span>Change:</span>
-                    <span>${(lastSale.changeAmount || 0).toFixed(2)}</span>
+                    <span>{t('offline_pos_change_label')}:</span>
+                    <span>{(lastSale.changeAmount || 0).toFixed(2)} DH</span>
                   </div>
                 )}
               </div>
@@ -1949,14 +1978,14 @@ export default function OfflinePOS() {
                       paymentMethod: lastSale.paymentMethod
                     });
                     toast({
-                      title: "Succès",
-                      description: "Reçu imprimé avec succès",
+                      title: t('success'),
+                      description: t('offline_sales_print_success'),
                     });
                   } catch (error) {
                     console.error('Print failed:', error);
                     toast({
-                      title: "Erreur d'impression",
-                      description: error instanceof Error ? error.message : 'Erreur d\'impression',
+                      title: t('offline_sales_print_error_title'),
+                      description: error instanceof Error ? error.message : t('offline_sales_print_error_desc'),
                       variant: "destructive",
                     });
                   }
@@ -1965,11 +1994,11 @@ export default function OfflinePOS() {
               disabled={!lastSale}
             >
               <Printer className="h-4 w-4 mr-2" />
-              Print Receipt
+              {t('print_receipt')}
             </Button>
             <Button onClick={() => setIsReceiptOpen(false)}>
               <Receipt className="h-4 w-4 mr-2" />
-              Close
+              {t('close')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2013,7 +2042,7 @@ export default function OfflinePOS() {
                     <Card className="p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <CreditCard className="w-5 h-5 text-blue-500" />
-                        <h3 className="font-semibold">Limite de Crédit</h3>
+                        <h3 className="font-semibold">{t('credit_limit')}</h3>
                       </div>
                       <p className="text-2xl font-bold text-blue-600">
                         {(creditInfo?.creditLimit || 0).toFixed(2)} DH
@@ -2023,7 +2052,7 @@ export default function OfflinePOS() {
                     <Card className="p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <DollarSign className="w-5 h-5 text-green-500" />
-                        <h3 className="font-semibold">Crédit Disponible</h3>
+                        <h3 className="font-semibold">{t('available_credit')}</h3>
                       </div>
                       <p className="text-2xl font-bold text-green-600">
                         {Math.max(0, (creditInfo?.creditLimit || 0) - (creditInfo?.currentBalance || 0)).toFixed(2)} DH
@@ -2049,11 +2078,11 @@ export default function OfflinePOS() {
                     </div>
                     
                     <div>
-                      <label className="text-sm font-medium">Note</label>
+                      <label className="text-sm font-medium">{t('notes')}</label>
                       <Textarea
                         value={creditNote}
                         onChange={(e) => setCreditNote(e.target.value)}
-                        placeholder="Note optionnelle..."
+                        placeholder={t('optional_note_placeholder')}
                         className="mt-1"
                         rows={3}
                       />
@@ -2078,13 +2107,13 @@ export default function OfflinePOS() {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Limite de Crédit:</span>
+                        <span>{t('credit_limit')}:</span>
                         <span className="font-medium text-blue-600">
                           {(creditInfo?.creditLimit || 0).toFixed(2)} DH
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Après Paiement:</span>
+                        <span>{t('after_payment')}:</span>
                         <span className="font-medium text-green-600">
                           {Math.max(0, (creditInfo?.currentBalance || 0) - creditAmount).toFixed(2)} DH
                         </span>
@@ -2103,7 +2132,7 @@ export default function OfflinePOS() {
                           <div className="flex justify-between items-start">
                             <div>
                               <div className="font-medium">
-                                {transaction.type === 'credit_sale' ? '🛒 Vente à crédit' : '💰 Paiement'}
+                                {transaction.type === 'credit_sale' ? t('offline_pos_credit_sale_label') : t('offline_pos_credit_payment_label')}
                               </div>
                               <div className="text-sm text-gray-600">
                                 {new Date(transaction.date).toLocaleString('fr-MA')}
@@ -2124,7 +2153,7 @@ export default function OfflinePOS() {
                   ) : (
                     <div className="text-center py-8 text-gray-500">
                       <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>Aucune transaction de crédit trouvée</p>
+                      <p>{t('offline_pos_no_credit_transactions')}</p>
                     </div>
                   )}
                 </div>
