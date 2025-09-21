@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -134,6 +134,22 @@ export default function OfflinePOS() {
   const [loadingCreditInfo, setLoadingCreditInfo] = useState(false);
   const [creditAmount, setCreditAmount] = useState(0);
   const [creditNote, setCreditNote] = useState('');
+  const [quickSearchTerm, setQuickSearchTerm] = useState('');
+
+  const quickSearchResults = useMemo(() => {
+    if (!quickSearchTerm.trim()) {
+      return [];
+    }
+
+    const normalizedQuery = quickSearchTerm.toLowerCase();
+    return products
+      .filter((product) => {
+        const matchesName = product.name.toLowerCase().includes(normalizedQuery);
+        const matchesBarcode = product.barcode?.toLowerCase().includes(normalizedQuery);
+        return matchesName || matchesBarcode;
+      })
+      .slice(0, 8);
+  }, [quickSearchTerm, products]);
 
   // Load data on component mount
   useEffect(() => {
@@ -503,6 +519,20 @@ export default function OfflinePOS() {
       };
       setCart([...cart, newItem]);
     }
+  };
+
+  const handleQuickAdd = (product: OfflineProduct) => {
+    addToCart(product);
+    setQuickSearchTerm('');
+    toast({
+      title: t('product_added'),
+      description: t('product_added_to_cart', { name: product.name })
+    });
+  };
+
+  const formatPriceValue = (value?: number | null) => {
+    const safeValue = typeof value === 'number' ? value : 0;
+    return `${safeValue.toFixed(2)} ${t('currency')}`;
   };
 
   const updateCartItemQuantity = (productId: string, quantity: number) => {
@@ -958,7 +988,7 @@ export default function OfflinePOS() {
     <>
     <div className="flex h-screen bg-gradient-to-br from-[#fff3e6] via-[#f5f7ff] to-[#e8f6f0]">
       {/* Left Panel - Thermal Printer Receipt */}
-      <div className="w-[450px] bg-white/95 backdrop-blur border-r-2 border-[#f1b24a] shadow-xl flex flex-col h-full">
+      <div className="w-[520px] bg-white/95 backdrop-blur border-r-2 border-[#f1b24a] shadow-xl flex flex-col h-full">
         {/* Receipt Header */}
         <div className="bg-gradient-to-r from-[#c1121f] via-[#f4a259] to-[#0f866c] text-white p-4 flex-shrink-0">
           <h2 className="text-lg font-bold">{t('offline_pos_receipt_title').toUpperCase()}</h2>
@@ -1043,7 +1073,66 @@ export default function OfflinePOS() {
                 </div>
               )}
             </div>
-            
+
+            {/* Quick product picker */}
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-semibold text-[#0f866c] uppercase tracking-wide">
+                  {t('add_product')}
+                </span>
+                {quickSearchTerm && quickSearchResults.length > 0 && (
+                  <span className="text-[10px] text-slate-500">
+                    {t('offline_pos_quick_add_hint') || 'Enter to add first match'}
+                  </span>
+                )}
+              </div>
+              <div className="relative">
+                <Input
+                  value={quickSearchTerm}
+                  onChange={(event) => setQuickSearchTerm(event.target.value)}
+                  placeholder={t('offline_pos_search_products_placeholder')}
+                  className="h-8 text-xs border-[#0f866c]/40 focus:border-[#0f866c] focus:ring-[#0f866c]/40"
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && quickSearchResults.length > 0) {
+                      event.preventDefault();
+                      handleQuickAdd(quickSearchResults[0]);
+                    }
+                  }}
+                />
+                {quickSearchTerm && (
+                  <div className="absolute z-30 mt-1 w-full rounded-md border border-[#0f866c]/30 bg-white shadow-lg">
+                    {quickSearchResults.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-slate-500">
+                        {t('product_not_found')}
+                      </div>
+                    ) : (
+                      quickSearchResults.map((product) => (
+                        <button
+                          key={product.id}
+                          type="button"
+                          className="w-full px-3 py-2 text-left text-xs hover:bg-[#0f866c]/10 flex items-center justify-between gap-2"
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            handleQuickAdd(product);
+                          }}
+                        >
+                          <div>
+                            <div className="font-semibold text-slate-800 line-clamp-1">{product.name}</div>
+                            <div className="text-[10px] text-slate-500">
+                              {product.barcode || t('offline_pos_barcode_missing')}
+                            </div>
+                          </div>
+                          <div className="text-[11px] font-semibold text-[#0f866c]">
+                            {formatPriceValue(product.sellingPrice)}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {cart.length === 0 ? (
               <div className="text-center text-gray-400 py-3">
                 <Receipt className="h-6 w-6 mx-auto mb-1 opacity-50" />
