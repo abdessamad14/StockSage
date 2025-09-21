@@ -6,6 +6,15 @@ import { existsSync } from 'fs';
 
 console.log('🚀 Starting StockSage...');
 
+const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+
+// Ensure build assets exist
+const distPath = join(process.cwd(), 'dist', 'public');
+if (!existsSync(distPath)) {
+  console.error('❌ Build artefacts not found at dist/public. Run `npm run setup` first.');
+  process.exit(1);
+}
+
 // Check if database exists
 const dbPath = join(process.cwd(), 'data', 'stocksage.db');
 if (!existsSync(dbPath)) {
@@ -32,7 +41,7 @@ if (!existsSync(dbPath)) {
 
 function startServer() {
   // Start the server
-  const serverProcess = spawn('npm', ['run', 'dev'], {
+  const serverProcess = spawn(npmCmd, ['run', 'start:local'], {
     stdio: 'inherit',
     cwd: process.cwd()
   });

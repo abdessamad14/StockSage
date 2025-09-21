@@ -36,7 +36,7 @@ A comprehensive offline-first inventory and point-of-sale (POS) system designed 
 - Modern web browser
 - SQLite database automatically created on first run (no installation required)
 
-### Installation
+### Installation (Windows, macOS, Linux)
 
 1. **Clone the repository**
 
@@ -45,35 +45,145 @@ git clone https://github.com/yourusername/stocksage.git
 cd stocksage
 ```
 
-2. **Install dependencies**
+2. **Run the guided setup**
 
 ```bash
-npm install
+npm run setup
 ```
+
+This command:
+- Installs dependencies
+- Builds the production web client into `dist/public`
+- Initialises the SQLite database (`data/stocksage.db`)
+- Seeds default values (admin account, stock locations, settings, etc.)
 
 3. **Start the application**
 
 ```bash
-node start.js
+npm start
 ```
 
-This will:
-- Initialize the SQLite database automatically
-- Start the backend API server (port 5003)
-- Start the frontend development server (port 3001)
+`npm start` runs the production server (Express API + static assets) and will reinitialise the database automatically if it is missing.
 
-4. **Access the application**
+4. **Sign in** using the default credentials created during setup:
 
-Open your browser and navigate to: `http://localhost:3001`
+```
+Tenant ID : tenant_1
+Username  : admin
+Password  : admin123
+PIN       : 1234
+```
 
-### Simple Setup
+Override these values by passing flags such as `--tenant-id`, `--admin-user`, `--admin-password`, etc., to `node scripts/init-sqlite.js`, or by defining environment variables before running `npm run setup`.
 
-StockSage is designed to work immediately with minimal setup. The SQLite database is automatically initialized and all services start with one command, making it perfect for:
+5. **Access the application**
 
-- **Small businesses** needing immediate inventory management
-- **Offline environments** where internet connectivity is limited
-- **Demo purposes** with one-command deployment
-- **Development** with persistent local database
+Visit `http://localhost:3000` in your browser. The API is served from `http://localhost:5000`.
+
+### Quick Relaunch
+
+If `node_modules` and `dist/public` already exist, `npm start` skips the setup work and launches immediately. Re-run `npm run setup` whenever you want to rebuild assets or reseed the database.
+
+### Advanced Seeding
+
+Customise the seeded business profile and administrator by running:
+
+```bash
+node scripts/init-sqlite.js \
+  --tenant-id=mycompany \
+  --admin-user=owner \
+  --admin-password=StrongPass! \
+  --admin-pin=4321 \
+  --business-name="My Company" \
+  --currency=USD \
+  --language=en
+```
+
+All options respect environment variables prefixed with `STOCKSAGE_`. Add them to a `.env` file before invoking `npm run setup` to automate per-client provisioning.
+
+### Deploying to Client Machines (Source-Free)
+
+Follow these steps when you need to install StockSage for a customer while keeping your source code private:
+
+1. **Prepare the release on your build machine**
+   - Run `npm run setup` once. This installs dependencies, builds the web client, and ensures the seeding scripts work.
+   - Remove the `data/` directory from the release bundle if it was created; the installer will rebuild it on-site.
+   - Package the runtime artefacts only (for example: `dist/`, `server/`, `shared/`, `scripts/`, `package.json`, lockfile, `start.js`, `start.bat`, `start.sh`, and `node_modules/` if you prefer offline installs).
+
+2. **Install on the client workstation**
+   - Unpack the release into a directory such as `C:\StockSage\app` or `/opt/stocksage/app`.
+   - Open a terminal in that directory and run `start.bat` (Windows) or `./start.sh` (macOS/Linux). On first launch the script invokes `node scripts/init-sqlite.js --seed` automatically and generates `data/stocksage.db` with the default admin account.
+   - Log in with the default credentials from the previous section and hand the system over to the customer.
+
+3. **Keep operational data isolated**
+   - All business data lives in the `data/` directory (mainly `data/stocksage.db` plus WAL/SHM files). Back this folder up regularly.
+   - You can store the backups in a separate drive or network share without exposing application files.
+
+4. **Upgrade without touching data**
+   - Stop the running instance.
+   - Copy the existing `data/` folder to a safe location.
+   - Replace the application directory with the new release package (which should not contain its own `data/` folder).
+   - Restore the saved `data/` folder into the new installation root.
+   - Run `start.bat` / `./start.sh` again; the app reuses the preserved SQLite database and immediately picks up the new code.
+
+5. **Disaster recovery**
+   - If you ever need to reinstall from scratch, unpack a fresh release and copy the most recent `data/` backup into the new install before starting the service. No additional migrations are required because SQLite is self-contained.
+
+Documenting this process directly in the README ensures every deployment follows the same predictable pattern and keeps client data isolated from shipped binaries.
+
+### Running StockSage Automatically After Reboots
+
+Configure the platform’s startup manager so StockSage launches as soon as the machine boots:
+
+- **Windows (Task Scheduler)**
+  1. Open *Task Scheduler* → *Create Task*.
+  2. *General* tab: pick a descriptive name (e.g. “StockSage POS”), tick “Run whether user is logged on or not”, and “Run with highest privileges”.
+  3. *Triggers* tab: add a new trigger “At startup”.
+  4. *Actions* tab: add an action “Start a program”, point to `start.bat`, and set the *Start in* directory to the StockSage install folder (e.g. `C:\StockSage\app`).
+  5. Save the task; the app will start on every boot. (Optional: use [NSSM](https://nssm.cc/) or `sc.exe create` if you prefer a Windows service.)
+
+- **Linux (systemd)**
+  1. Copy the installation to `/opt/stocksage/app` (or similar) and make sure `start.sh` is executable.
+  2. Create `/etc/systemd/system/stocksage.service` with:
+     ```ini
+     [Unit]
+     Description=StockSage POS
+     After=network.target
+
+     [Service]
+     WorkingDirectory=/opt/stocksage/app
+     ExecStart=/usr/bin/env bash /opt/stocksage/app/start.sh
+     Restart=on-failure
+     Environment=NODE_ENV=production
+
+     [Install]
+     WantedBy=multi-user.target
+     ```
+  3. Enable and start it: `sudo systemctl daemon-reload && sudo systemctl enable --now stocksage`.
+
+- **macOS (launchd)**
+  1. Place the app under `/Applications/StockSage.app` (or any path) and ensure `start.sh` is executable.
+  2. Create `~/Library/LaunchAgents/com.stocksage.pos.plist`:
+     ```xml
+     <?xml version="1.0" encoding="UTF-8"?>
+     <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+     <plist version="1.0">
+       <dict>
+         <key>Label</key><string>com.stocksage.pos</string>
+         <key>ProgramArguments</key>
+         <array>
+           <string>/bin/bash</string>
+           <string>/Applications/StockSage/start.sh</string>
+         </array>
+         <key>WorkingDirectory</key><string>/Applications/StockSage</string>
+         <key>RunAtLoad</key><true/>
+         <key>KeepAlive</key><true/>
+       </dict>
+     </plist>
+     ```
+  3. Load it with `launchctl load ~/Library/LaunchAgents/com.stocksage.pos.plist`.
+
+Whichever method you pick, make sure the command runs inside the StockSage installation directory so the script can locate `data/` and `dist/`. Test by rebooting once to confirm the service starts, then monitor logs (`journalctl -u stocksage`, Task Scheduler history, or `launchctl list`) for troubleshooting.
 
 ## Core Features
 
