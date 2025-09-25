@@ -6,6 +6,12 @@ import { existsSync } from 'fs';
 
 const projectRoot = process.cwd();
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const args = process.argv.slice(2);
+const offlineMode = args.includes('--offline') || process.env.STOCKSAGE_OFFLINE === 'true';
+const skipInstall = offlineMode || args.includes('--skip-install');
+const skipBuild = args.includes('--skip-build');
+const hasClientSource = existsSync(join(projectRoot, 'client', 'index.html'));
+const hasPrebuiltDist = existsSync(join(projectRoot, 'dist', 'public'));
 
 function runCommand(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -25,11 +31,27 @@ function runCommand(command, args, options = {}) {
 }
 
 try {
-  console.log('📦 Installing dependencies...');
-  await runCommand(npmCmd, ['install'], { cwd: projectRoot });
+  if (skipInstall) {
+    console.log('📦 Skipping dependency installation (offline mode)');
+    if (!existsSync(join(projectRoot, 'node_modules'))) {
+      throw new Error('node_modules directory is missing; cannot skip installation in offline mode');
+    }
+  } else {
+    console.log('📦 Installing dependencies...');
+    await runCommand(npmCmd, ['install'], { cwd: projectRoot });
+  }
 
-  console.log('🏗️  Building web client...');
-  await runCommand(npmCmd, ['run', 'build'], { cwd: projectRoot });
+  if (skipBuild) {
+    console.log('🧱 Skipping web client build (requested)');
+  } else if (!hasClientSource) {
+    if (!hasPrebuiltDist) {
+      throw new Error('client/index.html is missing and dist/public was not found; cannot build bundled release');
+    }
+    console.log('🧱 Skipping web client build (using pre-built assets)');
+  } else {
+    console.log('🏗️  Building web client...');
+    await runCommand(npmCmd, ['run', 'build'], { cwd: projectRoot });
+  }
 
   const distPublicPath = join(projectRoot, 'dist', 'public');
   if (!existsSync(distPublicPath)) {

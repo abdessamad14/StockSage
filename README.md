@@ -57,6 +57,8 @@ This command:
 - Initialises the SQLite database (`data/stocksage.db`)
 - Seeds default values (admin account, stock locations, settings, etc.)
 
+> Tip: When using a pre-packaged release that already includes `node_modules`, run `npm run setup -- --offline` to skip contacting the npm registry. Packaged builds also detect the absence of the `client/` source tree and automatically reuse the pre-built `dist/public` assets without running Vite again.
+
 3. **Start the application**
 
 ```bash
@@ -220,6 +222,56 @@ Whichever method you pick, make sure the command runs inside the StockSage insta
 - **Reconciliation options**: Accept count, keep system, or manual adjustment
 - **Transaction recording**: All reconciliations create audit trail entries
 
+## Troubleshooting
+
+### Database Issues
+
+#### "table users has no column named pin" Error
+
+If you encounter this error when running `npm run setup` on a machine with an existing database, it means the database was created with an older schema version. To fix this:
+
+```bash
+# Run the database repair tool
+npm run db:fix
+```
+
+This will:
+- Add the missing `pin` column to the users table
+- Set default PINs (Admin: 1234, Cashier: 5678)
+- Create a default cashier user if it doesn't exist
+- Verify other essential columns
+
+#### Database Corruption
+
+If the database appears corrupted or has multiple schema issues:
+
+```bash
+# Backup your data (if needed)
+cp data/stocksage.db data/stocksage-backup.db
+
+# Delete the database and recreate it
+rm data/stocksage.db
+npm run setup
+```
+
+#### Permission Issues
+
+If you get permission errors accessing the database:
+
+```bash
+# Check file permissions
+ls -la data/stocksage.db
+
+# Fix permissions (Linux/macOS)
+chmod 664 data/stocksage.db
+```
+
+### Common Issues
+
+- **Port already in use**: Change the port in `start.js` or kill the process using the port
+- **Node.js version**: Ensure you're using Node.js 18.x or later
+- **Missing dependencies**: Run `npm install` to ensure all packages are installed
+
 ## Development
 
 ### Available Commands
@@ -260,6 +312,17 @@ StockSage requires both frontend and backend for full functionality:
    - Configure database path and API endpoints
 
 **Note**: Database and application run on the same machine for optimal offline performance.
+
+### Offline installation (no internet access)
+
+If the target machine cannot reach the internet, create a deployment package on a connected workstation and copy the resulting folder/`.tgz` to the offline computer.
+
+1. On a connected machine run `node scripts/build-package.js --out ./packages`. The script installs dependencies, builds the client, and bundles the `node_modules` directory so nothing needs to be downloaded later.
+2. Copy the generated `stocksage-<timestamp>/` folder (or the archive) to the offline system via USB drive or other removable media.
+3. Ensure Node.js and npm are already installed on the offline system (run `node -v`/`npm -v`). StockSage is tested with Node 20.x.
+4. From the copied release folder run `npm run setup -- --offline` (optional if you want to reseed the database without contacting the npm registry; the script automatically skips the Vite build when only pre-built assets are present) or start directly with `node start.js` — all necessary packages are already bundled.
+
+If Node.js or npm are missing, install them from an offline installer before running StockSage. Keep the deployment bundle intact so reinstalling only requires copying the folder again.
 
 ## Architecture
 

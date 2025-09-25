@@ -12,6 +12,7 @@
     "start:local": "cross-env NODE_ENV=production tsx server/index.ts",
     "setup": "node scripts/install.js",
     "db:init": "node scripts/init-sqlite.js",
+    "db:fix": "node scripts/fix-database.js",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "test": "vitest",
