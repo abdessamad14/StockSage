@@ -432,6 +432,20 @@ If no user profiles appear on the login screen:
 - Run `npm run setup` again to ensure default users are created
 - Check that the setup process completed without errors
 
+**For Windows users specifically:**
+```bash
+# Test if users were created properly
+npm run db:test-users
+
+# If no users exist, this will create them automatically
+# If users exist, it will show their details
+```
+
+**If users still don't appear:**
+1. Check the browser console for API errors
+2. Verify the server is running on the correct port (5003)
+3. Ensure the database file exists in `data/stocksage.db`
+
 ## Contributing
 
 1. Fork the repository

@@ -137,8 +137,15 @@ function insertRowIfColumnsExist(db, table, values) {
   const placeholders = filteredEntries.map(([column]) => `@${column}`).join(', ');
   const params = Object.fromEntries(filteredEntries);
 
-  db.prepare(`INSERT INTO ${table} (${columns}) VALUES (${placeholders})`).run(params);
-  return true;
+  try {
+    db.prepare(`INSERT INTO ${table} (${columns}) VALUES (${placeholders})`).run(params);
+    return true;
+  } catch (error) {
+    console.error(`  ❌ Error inserting into ${table}:`, error.message);
+    console.error(`  📝 Attempted columns:`, columns);
+    console.error(`  📝 Attempted values:`, Object.keys(params).map(key => `${key}=${params[key]}`).join(', '));
+    return false;
+  }
 }
 
 function ensureTenantDefaults(db, config) {
@@ -195,9 +202,12 @@ function ensureAdminAccount(db, config) {
     delete params.pin;
   }
 
-  insertRowIfColumnsExist(db, 'users', params);
-
-  console.log(`  • Created admin user '${config.adminUsername}' (tenant ${config.tenantId})`);
+  const adminCreated = insertRowIfColumnsExist(db, 'users', params);
+  if (adminCreated) {
+    console.log(`  • Created admin user '${config.adminUsername}' (tenant ${config.tenantId})`);
+  } else {
+    console.warn(`  ⚠️  Failed to create admin user '${config.adminUsername}'`);
+  }
 
   // Create default cashier user
   const cashierExists = db
@@ -223,8 +233,12 @@ function ensureAdminAccount(db, config) {
       delete cashierParams.pin;
     }
 
-    insertRowIfColumnsExist(db, 'users', cashierParams);
-    console.log(`  • Created cashier user 'cashier' (PIN: 5678)`);
+    const cashierCreated = insertRowIfColumnsExist(db, 'users', cashierParams);
+    if (cashierCreated) {
+      console.log(`  • Created cashier user 'cashier' (PIN: 5678)`);
+    } else {
+      console.warn(`  ⚠️  Failed to create cashier user`);
+    }
   }
 }
 
