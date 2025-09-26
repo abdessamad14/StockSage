@@ -390,6 +390,48 @@ With local SQLite database storage:
 - **Easy backups**: Simply copy the database file for backups
 - **File-based**: Database can be moved, copied, or restored easily
 
+## Troubleshooting
+
+### Build Issues
+
+**Error: "Failed to load module script: Expected a JavaScript module but got HTML"**
+
+This error occurs when the build process fails or is incomplete. To fix:
+
+1. **Ensure Node.js compatibility**: Use Node.js 18+ or 20+
+2. **Clean and rebuild**:
+   ```bash
+   rm -rf node_modules dist
+   npm install
+   npm run setup
+   ```
+3. **Check for build errors**: Look for any error messages during the build process
+4. **Verify build output**: Ensure `dist/public/assets/` contains JavaScript and CSS files
+
+**Error: "table users has no column named pin"**
+
+If you have an existing database from before PIN authentication was added:
+
+```bash
+npm run db:fix
+```
+
+This will add the missing PIN column and create default users if needed.
+
+### Windows Compatibility
+
+If you encounter path resolution errors on Windows:
+- Ensure you're using the latest version from GitHub
+- The Windows compatibility fixes are included in recent versions
+- Try running as Administrator if permission issues occur
+
+### Empty Login Screen
+
+If no user profiles appear on the login screen:
+- The database may not have been initialized properly
+- Run `npm run setup` again to ensure default users are created
+- Check that the setup process completed without errors
+
 ## Contributing
 
 1. Fork the repository

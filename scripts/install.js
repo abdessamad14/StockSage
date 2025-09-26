@@ -50,13 +50,33 @@ try {
     console.log('🧱 Skipping web client build (using pre-built assets)');
   } else {
     console.log('🏗️  Building web client...');
-    await runCommand(npmCmd, ['run', 'build'], { cwd: projectRoot });
+    try {
+      await runCommand(npmCmd, ['run', 'build'], { cwd: projectRoot });
+      console.log('✅ Web client build completed successfully');
+    } catch (error) {
+      console.error('❌ Web client build failed:', error.message);
+      throw new Error('Build process failed. Please check your Node.js version and try again.');
+    }
   }
 
   const distPublicPath = join(projectRoot, 'dist', 'public');
   if (!existsSync(distPublicPath)) {
-    console.warn('⚠️  Build output not found at dist/public. Static assets may not be served correctly.');
+    throw new Error('Build output not found at dist/public. Build process may have failed silently.');
   }
+
+  // Verify critical build files exist
+  const indexHtmlPath = join(distPublicPath, 'index.html');
+  const assetsPath = join(distPublicPath, 'assets');
+  
+  if (!existsSync(indexHtmlPath)) {
+    throw new Error('index.html not found in build output. Build process incomplete.');
+  }
+  
+  if (!existsSync(assetsPath)) {
+    throw new Error('Assets directory not found in build output. Build process incomplete.');
+  }
+  
+  console.log('✅ Build verification completed successfully');
 
   console.log('🗃️  Initialising SQLite database...');
   await runCommand('node', ['scripts/init-sqlite.js', '--seed'], { cwd: projectRoot });
