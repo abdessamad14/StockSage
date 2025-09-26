@@ -199,7 +199,33 @@ function ensureAdminAccount(db, config) {
 
   console.log(`  • Created admin user '${config.adminUsername}' (tenant ${config.tenantId})`);
 
-  // Also ensure there is a support user if desired? keep simple.
+  // Create default cashier user
+  const cashierExists = db
+    .prepare('SELECT id FROM users WHERE username = ?')
+    .get('cashier');
+
+  if (!cashierExists) {
+    const cashierParams = {
+      username: 'cashier',
+      password: hashPassword('cashier123'),
+      pin: '5678',
+      name: 'Cashier',
+      business_name: config.businessName,
+      email: '',
+      phone: '',
+      role: 'cashier',
+      tenant_id: config.tenantId,
+      profile_image: null,
+      active: 1
+    };
+
+    if (!hasPinColumn) {
+      delete cashierParams.pin;
+    }
+
+    insertRowIfColumnsExist(db, 'users', cashierParams);
+    console.log(`  • Created cashier user 'cashier' (PIN: 5678)`);
+  }
 }
 
 function ensureSettings(db, config) {

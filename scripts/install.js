@@ -62,10 +62,10 @@ try {
   await runCommand('node', ['scripts/init-sqlite.js', '--seed'], { cwd: projectRoot });
 
   console.log('\n✅ StockSage is ready!');
-  console.log('   Default admin credentials:');
-  console.log('     • Tenant ID : tenant_1');
-  console.log('     • Username  : admin');
-  console.log('     • Password  : admin123');
+  console.log('   Default user credentials:');
+  console.log('     • Admin - Username: admin, Password: admin123, PIN: 1234');
+  console.log('     • Cashier - Username: cashier, Password: cashier123, PIN: 5678');
+  console.log('     • Tenant ID: tenant_1');
   console.log('\n   Start the application with: npm start');
 } catch (error) {
   console.error('\n❌ Setup failed:', error.message || error);

@@ -69,12 +69,21 @@ npm start
 
 4. **Sign in** using the default credentials created during setup:
 
+**Admin User:**
 ```
-Tenant ID : tenant_1
 Username  : admin
 Password  : admin123
 PIN       : 1234
 ```
+
+**Cashier User:**
+```
+Username  : cashier
+Password  : cashier123
+PIN       : 5678
+```
+
+**Tenant ID:** `tenant_1`
 
 Override these values by passing flags such as `--tenant-id`, `--admin-user`, `--admin-password`, etc., to `node scripts/init-sqlite.js`, or by defining environment variables before running `npm run setup`.
 
