@@ -235,12 +235,46 @@ Whichever method you pick, make sure the command runs inside the StockSage insta
 
 ### Database Issues
 
-#### "table users has no column named pin" Error
+#### Missing Columns or Tables Errors
 
-If you encounter this error when running `npm run setup` on a machine with an existing database, it means the database was created with an older schema version. To fix this:
+If you see errors like:
+- `SqliteError: no such column: image` (in product_categories table)
+- `SqliteError: no such table: stock_locations`
+- `SqliteError: no such column: order_date` (in purchase_orders table)
+- `SqliteError: no such column: pin` (in users table)
+
+These indicate your database schema is outdated or incomplete. **Run the database repair tool:**
 
 ```bash
-# Run the database repair tool
+npm run db:repair
+```
+
+This will:
+- Check all required tables and create missing ones
+- Add missing columns to existing tables (image, created_at, updated_at, etc.)
+- Create default stock location if missing
+- Preserve all existing data
+- Provide detailed feedback on what was fixed
+
+**Alternative: Fresh Database Setup**
+
+If repair doesn't work or you want to start fresh:
+
+```bash
+# Backup your data (if needed)
+cp data/stocksage.db data/stocksage-backup.db
+
+# Delete the database and recreate it
+rm data/stocksage.db
+npm run setup
+```
+
+#### "table users has no column named pin" Error
+
+If you encounter this error specifically for the users table:
+
+```bash
+# Run the legacy database fix tool
 npm run db:fix
 ```
 

@@ -65,18 +65,26 @@ export class ThermalReceiptPrinter {
       
       // Get the actual USB device
       const devices = await (navigator as any).usb.getDevices();
-      const device = devices.find((d: any) => 
+      let device = devices.find((d: any) => 
         d.vendorId === currentSettings.printerVendorId && 
         d.productId === currentSettings.printerProductId
       );
       
       if (!device) {
-        throw new Error('USB device not found');
+        throw new Error('USB device not found. Please reconnect the printer in Settings.');
       }
 
-      // Open device connection
+      // Open device connection - may require re-authorization
       if (!device.opened) {
-        await device.open();
+        try {
+          await device.open();
+        } catch (openError: any) {
+          // If access denied, user needs to re-authorize the device
+          if (openError.name === 'SecurityError' || openError.message.includes('Access denied')) {
+            throw new Error('USB access denied. Please click "Configure Printer" in Settings to re-authorize the device.');
+          }
+          throw openError;
+        }
       }
 
       // Select configuration (usually configuration 1)

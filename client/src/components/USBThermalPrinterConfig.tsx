@@ -146,9 +146,17 @@ export default function USBThermalPrinterConfig() {
         throw new Error('USB device not found');
       }
 
-      // Open device connection
+      // Open device connection - may require re-authorization
       if (!device.opened) {
-        await device.open();
+        try {
+          await device.open();
+        } catch (openError: any) {
+          // If access denied, user needs to re-authorize the device
+          if (openError.name === 'SecurityError' || openError.message.includes('Access denied')) {
+            throw new Error('USB access denied. Please click "Connect Printer" again to re-authorize the device.');
+          }
+          throw openError;
+        }
       }
 
       // Select configuration (usually configuration 1)
