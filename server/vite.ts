@@ -4,7 +4,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
-import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
 
 // Get current directory for ES modules
@@ -25,6 +24,17 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
+  // Dynamically import vite.config only in development mode
+  let viteConfig;
+  try {
+    const viteConfigModule = await import("../vite.config.js");
+    viteConfig = viteConfigModule.default;
+  } catch (error) {
+    // Fallback to empty config if vite.config doesn't exist
+    console.warn("Warning: vite.config.js not found, using default configuration");
+    viteConfig = {};
+  }
+
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
