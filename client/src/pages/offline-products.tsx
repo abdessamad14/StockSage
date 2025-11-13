@@ -264,11 +264,25 @@ export default function OfflineProducts() {
     return matchesSearch && matchesCategory;
   });
 
-  // Get category name by ID
-  const getCategoryName = (categoryId: string | null | undefined) => {
-    if (!categoryId) return t('uncategorized');
-    const category = categories.find(c => c.id === categoryId);
-    return category?.name || t('unknown_category');
+  // Get category name by ID or name
+  const getCategoryName = (categoryIdOrName: string | null | undefined) => {
+    if (!categoryIdOrName) return t('uncategorized');
+    
+    // First try to find by ID (for backward compatibility)
+    const categoryById = categories.find(c => c.id === categoryIdOrName);
+    if (categoryById) return categoryById.name;
+    
+    // Then try to find by name (new format)
+    const categoryByName = categories.find(c => c.name === categoryIdOrName);
+    if (categoryByName) return categoryByName.name;
+    
+    // If it's already a category name that exists, return it
+    if (categories.some(c => c.name === categoryIdOrName)) {
+      return categoryIdOrName;
+    }
+    
+    // Otherwise return the value as-is (it might be a valid category name not yet loaded)
+    return categoryIdOrName || t('unknown_category');
   };
 
   // Product handlers
