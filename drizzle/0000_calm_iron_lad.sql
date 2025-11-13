@@ -64,6 +64,9 @@ CREATE TABLE `product_categories` (
 	`tenant_id` text NOT NULL,
 	`name` text NOT NULL,
 	`description` text,
+	`image` text,
+	`created_at` text DEFAULT 'CURRENT_TIMESTAMP' NOT NULL,
+	`updated_at` text DEFAULT 'CURRENT_TIMESTAMP' NOT NULL,
 	`color` text DEFAULT '#A7C7E7',
 	`parent_id` integer,
 	`active` integer DEFAULT true NOT NULL
