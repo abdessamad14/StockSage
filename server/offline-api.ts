@@ -20,10 +20,19 @@ router.post('/products', async (req, res) => {
   try {
     console.log('POST /products received:', req.body);
     
+    // If categoryId is provided, look up the category name
+    let categoryName = req.body.category;
+    if (req.body.categoryId) {
+      const category = await db.select().from(productCategories)
+        .where(eq(productCategories.id, parseInt(req.body.categoryId)))
+        .limit(1);
+      categoryName = category[0]?.name || null;
+    }
+    
     // Map categoryId to category for database schema
     const productData = {
       ...req.body,
-      category: req.body.categoryId || null,
+      category: categoryName,
       categoryId: undefined // Remove categoryId as it doesn't exist in DB schema
     };
     
@@ -45,7 +54,7 @@ router.post('/products', async (req, res) => {
         .where(eq(stockLocations.isPrimary, true))
         .limit(1);
       
-      const warehouseId = principalWarehouse[0]?.id?.toString() || '1';
+      const warehouseId = String(principalWarehouse[0]?.id || 1);
       
       // Create product stock record in principal warehouse
       await db.insert(productStock).values({
@@ -121,11 +130,20 @@ router.put('/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
+    // If categoryId is provided, look up the category name
+    let categoryName = req.body.category;
+    if (req.body.categoryId) {
+      const category = await db.select().from(productCategories)
+        .where(eq(productCategories.id, parseInt(req.body.categoryId)))
+        .limit(1);
+      categoryName = category[0]?.name || null;
+    }
+    
     // Process the request body to handle undefined values properly and map categoryId to category
     const updateData = {
       ...req.body,
-      // Map categoryId to category for database schema
-      category: req.body.categoryId || null,
+      // Use the looked-up category name
+      category: categoryName,
       categoryId: undefined, // Remove categoryId as it doesn't exist in DB schema
       // Ensure other optional fields are handled properly
       barcode: req.body.barcode || null,

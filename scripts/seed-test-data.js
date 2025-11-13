@@ -31,7 +31,7 @@ try {
 
   // Get the principal warehouse location
   const principalLocation = db.prepare('SELECT id FROM stock_locations WHERE tenant_id = ? AND is_primary = 1').get(tenantId);
-  const locationId = principalLocation?.id || 1;
+  const locationId = String(principalLocation?.id || 1);
   console.log(`📍 Using principal warehouse (ID: ${locationId})\n`);
 
   console.log('📦 Creating test products...');
