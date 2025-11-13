@@ -17,6 +17,7 @@
     "db:fix": "node scripts/fix-database.js",
     "db:repair": "node scripts/repair-database.js",
     "db:test-users": "node scripts/test-user-creation.js",
+    "seed:test": "node scripts/seed-test-data.js",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "test": "vitest",
