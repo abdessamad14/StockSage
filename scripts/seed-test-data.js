@@ -29,6 +29,11 @@ try {
   const adminUser = db.prepare('SELECT id FROM users WHERE username = ? AND tenant_id = ?').get('admin', tenantId);
   const userId = adminUser?.id || 1;
 
+  // Get the principal warehouse location
+  const principalLocation = db.prepare('SELECT id FROM stock_locations WHERE tenant_id = ? AND is_primary = 1').get(tenantId);
+  const locationId = principalLocation?.id || 1;
+  console.log(`📍 Using principal warehouse (ID: ${locationId})\n`);
+
   console.log('📦 Creating test products...');
   
   // Sample product categories
@@ -111,11 +116,11 @@ try {
       
       const productId = result.lastInsertRowid;
       
-      // Create product stock record
+      // Create product stock record in principal warehouse
       db.prepare(`
         INSERT INTO product_stock (tenant_id, product_id, location_id, quantity, min_stock_level, created_at, updated_at)
-        VALUES (?, ?, 'main', ?, 10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      `).run(tenantId, productId, product.quantity);
+        VALUES (?, ?, ?, ?, 10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `).run(tenantId, productId, locationId, product.quantity);
       
       productsCreated++;
       console.log(`  ✓ Created: ${product.name} (${product.barcode})`);
