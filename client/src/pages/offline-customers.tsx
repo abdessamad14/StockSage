@@ -271,86 +271,105 @@ export default function OfflineCustomers() {
         />
       </div>
 
-      {/* Customers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredCustomers.map((customer) => (
-          <Card key={customer.id} className="p-4 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-semibold text-lg">{customer.name}</h3>
+      {/* Customers Table */}
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t('customer_name')}</TableHead>
+              <TableHead>{t('phone')}</TableHead>
+              <TableHead>{t('email')}</TableHead>
+              <TableHead>{t('address')}</TableHead>
+              <TableHead className="text-right">{t('credit_balance')}</TableHead>
+              <TableHead className="text-right">{t('actions')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredCustomers.map((customer) => (
+              <TableRow key={customer.id} className="hover:bg-gray-50">
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    {customer.name}
+                    {(customer.creditBalance || 0) > 0 && (
+                      <Badge variant="destructive" className="text-xs">
+                        {t('credit_badge_owed', { amount: formatCurrency(customer.creditBalance) })}
+                      </Badge>
+                    )}
+                  </div>
+                  {customer.notes && (
+                    <p className="text-xs text-gray-500 mt-1">{customer.notes}</p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {customer.phone && (
+                    <div className="flex items-center text-sm">
+                      <Phone className="w-3 h-3 mr-1 text-gray-400" />
+                      {customer.phone}
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {customer.email && (
+                    <div className="flex items-center text-sm">
+                      <Mail className="w-3 h-3 mr-1 text-gray-400" />
+                      {customer.email}
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {customer.address && (
+                    <div className="flex items-center text-sm">
+                      <MapPin className="w-3 h-3 mr-1 text-gray-400" />
+                      {customer.address}
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
                   {(customer.creditBalance || 0) > 0 ? (
-                    <Badge variant="destructive" className="text-xs">
-                      {t('credit_badge_owed', { amount: formatCurrency(customer.creditBalance) })}
-                    </Badge>
-                  ) : null}
-                </div>
-                {customer.phone && (
-                  <div className="flex items-center text-sm text-gray-600 mt-1">
-                    <Phone className="w-3 h-3 mr-1" />
-                    {customer.phone}
+                    <span className="font-medium text-red-600">
+                      {formatCurrency(customer.creditBalance)}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex gap-1 justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        setSelectedCustomer(customer);
+                        setIsCreditDialogOpen(true);
+                        await loadCreditInfo(customer);
+                      }}
+                      title={t('manage_credit')}
+                    >
+                      <CreditCard className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(customer)}
+                      title={t('edit')}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(customer)}
+                      title={t('delete')}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
-                )}
-                {customer.email && (
-                  <div className="flex items-center text-sm text-gray-600 mt-1">
-                    <Mail className="w-3 h-3 mr-1" />
-                    {customer.email}
-                  </div>
-                )}
-                {customer.address && (
-                  <div className="flex items-center text-sm text-gray-600 mt-1">
-                    <MapPin className="w-3 h-3 mr-1" />
-                    {customer.address}
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => {
-                    setSelectedCustomer(customer);
-                    setIsCreditDialogOpen(true);
-                    await loadCreditInfo(customer);
-                  }}
-                  title={t('manage_credit')}
-                >
-                  <CreditCard className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEdit(customer)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(customer)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-            
-            {(customer.creditBalance || 0) > 0 && (
-              <div className="space-y-1 pt-2 border-t">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">{t('credit_balance')}:</span>
-                  <span className="font-medium text-red-600">
-                    {formatCurrency(customer.creditBalance)}
-                  </span>
-                </div>
-              </div>
-            )}
-            
-            {customer.notes && (
-              <p className="text-sm text-gray-600 mt-2">{customer.notes}</p>
-            )}
-          </Card>
-        ))}
-      </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
 
       {filteredCustomers.length === 0 && (
         <div className="text-center py-12">
