@@ -290,14 +290,14 @@ export default function OfflineProducts() {
     try {
       createProduct({
         ...data,
-        categoryId: data.categoryId === "none" ? undefined : data.categoryId || undefined,
-        barcode: data.barcode || undefined,
-        description: data.description || undefined,
-        minStockLevel: data.minStockLevel || undefined,
-        unit: data.unit || undefined,
-        semiWholesalePrice: data.semiWholesalePrice || undefined,
-        wholesalePrice: data.wholesalePrice || undefined,
-        image: selectedImage || undefined,
+        categoryId: data.categoryId === "none" ? undefined : data.categoryId ?? undefined,
+        barcode: data.barcode ?? undefined,
+        description: data.description ?? undefined,
+        minStockLevel: data.minStockLevel ?? undefined,
+        unit: data.unit ?? undefined,
+        semiWholesalePrice: data.semiWholesalePrice ?? undefined,
+        wholesalePrice: data.wholesalePrice ?? undefined,
+        image: selectedImage ?? undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
@@ -333,13 +333,13 @@ export default function OfflineProducts() {
       updateProduct(editingProduct.id, {
         ...data,
         categoryId: data.categoryId === "none" ? undefined : data.categoryId,
-        barcode: data.barcode || undefined,
-        description: data.description || undefined,
-        minStockLevel: data.minStockLevel || undefined,
-        unit: data.unit || undefined,
-        semiWholesalePrice: data.semiWholesalePrice || undefined,
-        wholesalePrice: data.wholesalePrice || undefined,
-        image: selectedImage || undefined,
+        barcode: data.barcode ?? undefined,
+        description: data.description ?? undefined,
+        minStockLevel: data.minStockLevel ?? undefined,
+        unit: data.unit ?? undefined,
+        semiWholesalePrice: data.semiWholesalePrice ?? undefined,
+        wholesalePrice: data.wholesalePrice ?? undefined,
+        image: selectedImage ?? undefined,
         updatedAt: new Date().toISOString()
       });
 
