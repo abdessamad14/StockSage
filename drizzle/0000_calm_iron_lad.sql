@@ -166,6 +166,7 @@ CREATE TABLE `users` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`username` text NOT NULL,
 	`password` text NOT NULL,
+	`pin` text,
 	`name` text NOT NULL,
 	`business_name` text NOT NULL,
 	`email` text,
