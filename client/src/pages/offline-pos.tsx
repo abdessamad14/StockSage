@@ -1141,28 +1141,21 @@ export default function OfflinePOS() {
               </div>
             </div>
 
-            {cart.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
-                <Receipt className="h-12 w-12 mx-auto mb-2 opacity-30" />
-                <p className="text-sm font-medium">{t('offline_pos_no_items')}</p>
-                <p className="text-xs mt-1">{t('offline_pos_scan_or_search')}</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                {/* Invoice Table */}
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-[#0f866c]/10 via-[#f4a259]/10 to-[#c1121f]/10 border-b-2 border-[#0f866c]">
-                      <th className="text-left px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('barcode')}</th>
-                      <th className="text-left px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('product')}</th>
-                      <th className="text-center px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('quantity')}</th>
-                      <th className="text-right px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('price')}</th>
-                      <th className="text-right px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('total')}</th>
-                      <th className="text-center px-2 py-2 text-xs font-bold text-slate-700 uppercase w-16"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                {cart.map((item, index) => (
+            <div className="overflow-x-auto">
+              {/* Invoice Table - Always visible with empty rows */}
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gradient-to-r from-[#0f866c]/10 via-[#f4a259]/10 to-[#c1121f]/10 border-b-2 border-[#0f866c]">
+                    <th className="text-left px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('barcode')}</th>
+                    <th className="text-left px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('product')}</th>
+                    <th className="text-center px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('quantity')}</th>
+                    <th className="text-right px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('price')}</th>
+                    <th className="text-right px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('total')}</th>
+                    <th className="text-center px-2 py-2 text-xs font-bold text-slate-700 uppercase w-16"></th>
+                  </tr>
+                </thead>
+                <tbody>
+              {cart.map((item, index) => (
                   <tr key={item.product.id} className="border-b border-gray-200 hover:bg-[#fff4e3] transition-colors">
                     <td className="px-2 py-2 text-xs text-gray-600 font-mono">
                       {item.product.barcode || '-'}
@@ -1298,6 +1291,17 @@ export default function OfflinePOS() {
                     </td>
                   </tr>
                 ))}
+                {/* Empty rows to fill out invoice (show at least 5 empty rows) */}
+                {Array.from({ length: Math.max(5, 10 - cart.length) }).map((_, index) => (
+                  <tr key={`empty-${index}`} className="border-b border-gray-100">
+                    <td className="px-2 py-3 text-xs text-gray-300">-</td>
+                    <td className="px-2 py-3 text-xs text-gray-300"></td>
+                    <td className="px-2 py-3 text-center text-xs text-gray-300"></td>
+                    <td className="px-2 py-3 text-right text-xs text-gray-300"></td>
+                    <td className="px-2 py-3 text-right text-xs text-gray-300"></td>
+                    <td className="px-2 py-3"></td>
+                  </tr>
+                ))}
                   </tbody>
                 </table>
                 
@@ -1318,7 +1322,6 @@ export default function OfflinePOS() {
                   </div>
                 </div>
               </div>
-            )}
           </div>
         </div>
         
