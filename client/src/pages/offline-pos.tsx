@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ThermalReceiptPrinter, ReceiptData } from '@/lib/thermal-receipt-printer';
 import { useOfflineAuth } from '@/hooks/use-offline-auth';
 import { useI18n } from '@/lib/i18n';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { 
   ShoppingCart, 
   Plus, 
@@ -986,13 +987,20 @@ export default function OfflinePOS() {
 
   return (
     <>
-    <div className="flex h-screen bg-gradient-to-br from-[#fff3e6] via-[#f5f7ff] to-[#e8f6f0]">
-      {/* Left Panel - Thermal Printer Receipt */}
-      <div className="w-[520px] bg-white/95 backdrop-blur border-r-2 border-[#f1b24a] shadow-xl flex flex-col h-full">
-        {/* Receipt Header */}
+    <div className="h-screen bg-gradient-to-br from-[#fff3e6] via-[#f5f7ff] to-[#e8f6f0]">
+      <PanelGroup direction="horizontal">
+      {/* Left Panel - Invoice Table */}
+      <Panel defaultSize={50} minSize={30}>
+      <div className="bg-white/95 backdrop-blur shadow-xl flex flex-col h-full">
+        {/* Invoice Header */}
         <div className="bg-gradient-to-r from-[#c1121f] via-[#f4a259] to-[#0f866c] text-white p-4 flex-shrink-0">
-          <h2 className="text-lg font-bold">{t('offline_pos_receipt_title').toUpperCase()}</h2>
-          <div className="text-sm opacity-90">#{new Date().getTime().toString().slice(-6)}</div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold">{t('offline_pos_receipt_title').toUpperCase()}</h2>
+              <div className="text-sm opacity-90">#{new Date().getTime().toString().slice(-6)}</div>
+            </div>
+            <Receipt className="h-8 w-8 opacity-80" />
+          </div>
         </div>
 
         {/* Receipt Content - Scrollable */}
@@ -1134,16 +1142,33 @@ export default function OfflinePOS() {
             </div>
 
             {cart.length === 0 ? (
-              <div className="text-center text-gray-400 py-3">
-                <Receipt className="h-6 w-6 mx-auto mb-1 opacity-50" />
-                <p className="text-xs">{t('offline_pos_no_items')}</p>
+              <div className="text-center text-gray-400 py-8">
+                <Receipt className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                <p className="text-sm font-medium">{t('offline_pos_no_items')}</p>
+                <p className="text-xs mt-1">{t('offline_pos_scan_or_search')}</p>
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="overflow-x-auto">
+                {/* Invoice Table */}
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-[#0f866c]/10 via-[#f4a259]/10 to-[#c1121f]/10 border-b-2 border-[#0f866c]">
+                      <th className="text-left px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('barcode')}</th>
+                      <th className="text-left px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('product')}</th>
+                      <th className="text-center px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('quantity')}</th>
+                      <th className="text-right px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('price')}</th>
+                      <th className="text-right px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('total')}</th>
+                      <th className="text-center px-2 py-2 text-xs font-bold text-slate-700 uppercase w-16"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
                 {cart.map((item, index) => (
-                  <div key={item.product.id} className="flex justify-between text-xs border-b border-gray-100 pb-1">
-                    <div className="flex-1 pr-2">
-                      <div className="font-medium truncate flex items-center gap-1">
+                  <tr key={item.product.id} className="border-b border-gray-200 hover:bg-[#fff4e3] transition-colors">
+                    <td className="px-2 py-2 text-xs text-gray-600 font-mono">
+                      {item.product.barcode || '-'}
+                    </td>
+                    <td className="px-2 py-2">
+                      <div className="font-medium text-sm truncate flex items-center gap-1">
                         {item.product.name}
                         {item.unitPrice < item.product.costPrice && (
                           <span
@@ -1158,14 +1183,15 @@ export default function OfflinePOS() {
                         )}
                       </div>
                       {item.unitPrice < item.product.costPrice && (
-                        <div className="text-red-500 text-xs mt-0.5">
+                        <div className="text-red-500 text-[10px] mt-0.5">
                           {t('offline_pos_loss_per_unit', {
                             amount: (item.product.costPrice - item.unitPrice).toFixed(2),
                           })}
                         </div>
                       )}
-                      <div className="text-gray-500 text-xs flex items-center gap-1">
-                        <input
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <input
                           type="text"
                           value={quantityInputs[item.product.id] ?? item.quantity.toString()}
                           onChange={(e) => {
@@ -1213,11 +1239,12 @@ export default function OfflinePOS() {
                               e.currentTarget.blur();
                             }
                           }}
-                          className="w-16 px-1 py-0 text-xs border border-gray-300 rounded bg-white text-center"
-                          placeholder={t('offline_pos_qty_placeholder')}
+                          className="w-20 px-2 py-1 text-sm border border-[#0f866c]/30 rounded focus:border-[#0f866c] focus:ring-1 focus:ring-[#0f866c]/20 bg-white text-center font-medium"
+                          placeholder="Qty"
                         />
-                        x 
-                        <input
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      <input
                           type="text"
                           value={priceInputs[item.product.id] ?? item.unitPrice.toString()}
                           onChange={(e) => {
@@ -1247,21 +1274,34 @@ export default function OfflinePOS() {
                               e.currentTarget.blur();
                             }
                           }}
-                          className={`w-12 px-1 py-0 text-xs border rounded bg-white text-center ${
+                          className={`w-24 px-2 py-1 text-sm border rounded focus:ring-1 bg-white text-right font-medium ${
                             item.unitPrice < item.product.costPrice 
-                              ? 'border-red-500 bg-red-50 text-red-700' 
-                              : 'border-gray-300'
+                              ? 'border-red-500 bg-red-50 text-red-700 focus:border-red-600 focus:ring-red-200' 
+                              : 'border-[#0f866c]/30 focus:border-[#0f866c] focus:ring-[#0f866c]/20'
                           }`}
-                          placeholder={t('offline_pos_price_placeholder')}
+                          placeholder="Price"
                         />
-                        DH
-                      </div>
-                    </div>
-                    <div className="font-bold text-right">{item.totalPrice.toFixed(2)} DH</div>
-                  </div>
+                        <span className="ml-1 text-xs text-gray-500">DH</span>
+                    </td>
+                    <td className="px-2 py-2 text-right font-bold text-sm text-[#0f866c]">
+                      {item.totalPrice.toFixed(2)} DH
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFromCart(item.product.id)}
+                        className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  </tr>
                 ))}
+                  </tbody>
+                </table>
                 
-                <div className="border-t pt-2 mt-2 space-y-1">
+                <div className="border-t-2 border-[#0f866c] pt-3 mt-3 space-y-2 px-2">
                   <div className="flex justify-between text-xs">
                     <span>{t('subtotal')}:</span>
                     <span>{subtotal.toFixed(2)} DH</span>
@@ -1542,9 +1582,16 @@ export default function OfflinePOS() {
           
         </div>
       </div>
+      </Panel>
       
-      {/* Middle Panel - Products */}
-      <div className="flex-1 flex flex-col">
+      {/* Resize Handle */}
+      <PanelResizeHandle className="w-2 bg-gradient-to-r from-[#f4a259] to-[#0f866c] hover:w-3 transition-all cursor-col-resize flex items-center justify-center group">
+        <div className="w-1 h-8 bg-white/50 rounded-full group-hover:bg-white/80 transition-colors"></div>
+      </PanelResizeHandle>
+      
+      {/* Right Panel - Products */}
+      <Panel defaultSize={50} minSize={30}>
+      <div className="flex-1 flex flex-col h-full">
         {/* Top Bar with Search and Toggle */}
         <div className="bg-white/95 border-b border-[#f4c36a]/40 shadow-sm p-4 backdrop-blur">
           <div className="flex items-center space-x-4">
@@ -1914,6 +1961,8 @@ export default function OfflinePOS() {
           </div>
         </div>
       </div>
+      </Panel>
+      </PanelGroup>
     </div>
 
     {/* Receipt Dialog */}
