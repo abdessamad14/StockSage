@@ -45,6 +45,8 @@ export default function OfflineSalesHistory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [selectedSale, setSelectedSale] = useState<OfflineSale | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const formatCurrency = (value?: number) => `${(value ?? 0).toFixed(2)} ${t('currency')}`;
@@ -192,7 +194,12 @@ export default function OfflineSalesHistory() {
     const matchesStatus = statusFilter === "all" || sale.status === statusFilter;
     const matchesPayment = paymentMethodFilter === "all" || sale.paymentMethod === paymentMethodFilter;
     
-    return matchesSearch && matchesStatus && matchesPayment;
+    // Date filtering
+    const saleDate = new Date(sale.date);
+    const matchesStartDate = !startDate || saleDate >= new Date(startDate);
+    const matchesEndDate = !endDate || saleDate <= new Date(endDate + 'T23:59:59');
+    
+    return matchesSearch && matchesStatus && matchesPayment && matchesStartDate && matchesEndDate;
   });
 
   const totalSales = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
@@ -383,6 +390,38 @@ export default function OfflineSalesHistory() {
           />
         </div>
         <div className="flex flex-wrap gap-3">
+          {/* Date Range Filters */}
+          <div className="flex gap-2 items-center">
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-40 bg-white/80"
+              placeholder={t('start_date')}
+            />
+            <span className="text-gray-500">-</span>
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-40 bg-white/80"
+              placeholder={t('end_date')}
+            />
+            {(startDate || endDate) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                }}
+                className="text-xs"
+              >
+                {t('clear')}
+              </Button>
+            )}
+          </div>
+          
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-48 bg-white/80">
               <SelectValue placeholder={t('offline_sales_status_filter_placeholder')} />
