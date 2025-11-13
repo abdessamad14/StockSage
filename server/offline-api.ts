@@ -145,14 +145,14 @@ router.put('/products/:id', async (req, res) => {
       // Use the looked-up category name
       category: categoryName,
       categoryId: undefined, // Remove categoryId as it doesn't exist in DB schema
-      // Ensure other optional fields are handled properly
-      barcode: req.body.barcode || null,
-      description: req.body.description || null,
-      minStockLevel: req.body.minStockLevel || null,
-      unit: req.body.unit || null,
-      semiWholesalePrice: req.body.semiWholesalePrice || null,
-      wholesalePrice: req.body.wholesalePrice || null,
-      image: req.body.image || null,
+      // Ensure other optional fields are handled properly (use ?? instead of || to preserve 0 values)
+      barcode: req.body.barcode ?? null,
+      description: req.body.description ?? null,
+      minStockLevel: req.body.minStockLevel ?? null,
+      unit: req.body.unit ?? null,
+      semiWholesalePrice: req.body.semiWholesalePrice ?? null,
+      wholesalePrice: req.body.wholesalePrice ?? null,
+      image: req.body.image ?? null,
       updatedAt: new Date().toISOString()
     };
     
