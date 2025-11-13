@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Truck, Search, Plus, Edit, Trash2, Phone, Mail, MapPin, User, CreditCard, DollarSign, Receipt } from "lucide-react";
 
 type Translator = (key: string, params?: { [key: string]: string | number }) => string;
@@ -229,97 +230,113 @@ export default function OfflineSuppliers() {
         />
       </div>
 
-      {/* Suppliers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredSuppliers.map((supplier) => {
-          const balance = getSupplierBalance(supplier.id);
-          return (
-            <Card key={supplier.id} className="p-4 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <Truck className="w-4 h-4" />
-                  {supplier.name}
-                </h3>
-                {supplier.contactPerson && (
-                  <div className="flex items-center text-sm text-gray-600 mt-1">
-                    <User className="w-3 h-3 mr-1" />
-                    {supplier.contactPerson}
-                  </div>
-                )}
-                {supplier.phone && (
-                  <div className="flex items-center text-sm text-gray-600 mt-1">
-                    <Phone className="w-3 h-3 mr-1" />
-                    {supplier.phone}
-                  </div>
-                )}
-                {supplier.email && (
-                  <div className="flex items-center text-sm text-gray-600 mt-1">
-                    <Mail className="w-3 h-3 mr-1" />
-                    {supplier.email}
-                  </div>
-                )}
-                {supplier.address && (
-                  <div className="flex items-center text-sm text-gray-600 mt-1">
-                    <MapPin className="w-3 h-3 mr-1" />
-                    {supplier.address}
-                  </div>
-                )}
-                
-                {/* Credit Balance Information */}
-                <div className="mt-3 pt-3 border-t">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">{t('total_orders')}:</span>
-                      <span className="font-medium">{balance.orderCount}</span>
+      {/* Suppliers Table */}
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t('supplier_name')}</TableHead>
+              <TableHead>{t('contact_person')}</TableHead>
+              <TableHead>{t('phone')}</TableHead>
+              <TableHead>{t('email')}</TableHead>
+              <TableHead>{t('address')}</TableHead>
+              <TableHead className="text-right">{t('total_orders')}</TableHead>
+              <TableHead className="text-right">{t('outstanding')}</TableHead>
+              <TableHead className="text-right">{t('actions')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredSuppliers.map((supplier) => {
+              const balance = getSupplierBalance(supplier.id);
+              return (
+                <TableRow key={supplier.id} className="hover:bg-gray-50">
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-gray-400" />
+                      {supplier.name}
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">{t('total_value')}:</span>
-                      <span className="font-medium">{formatCurrency(balance.totalOrders)}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">{t('paid_amount')}:</span>
-                      <span className="font-medium text-green-600">{formatCurrency(balance.totalPaid)}</span>
-                    </div>
-                    {balance.totalOwed > 0 && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">{t('outstanding')}:</span>
-                        <span className="font-medium text-red-600">{formatCurrency(balance.totalOwed)}</span>
+                    {supplier.notes && (
+                      <p className="text-xs text-gray-500 mt-1">{supplier.notes}</p>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {supplier.contactPerson && (
+                      <div className="flex items-center text-sm">
+                        <User className="w-3 h-3 mr-1 text-gray-400" />
+                        {supplier.contactPerson}
                       </div>
                     )}
-                    {balance.totalOwed > 0 && (
-                      <Badge variant="destructive" className="text-xs">
-                        {t('credit_badge_owed', { amount: formatCurrency(balance.totalOwed) })}
-                      </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {supplier.phone && (
+                      <div className="flex items-center text-sm">
+                        <Phone className="w-3 h-3 mr-1 text-gray-400" />
+                        {supplier.phone}
+                      </div>
                     )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEdit(supplier)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(supplier)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-            
-            {supplier.notes && (
-              <p className="text-sm text-gray-600 mt-2 pt-2 border-t">{supplier.notes}</p>
-            )}
-          </Card>
-          );
-        })}
-      </div>
+                  </TableCell>
+                  <TableCell>
+                    {supplier.email && (
+                      <div className="flex items-center text-sm">
+                        <Mail className="w-3 h-3 mr-1 text-gray-400" />
+                        {supplier.email}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {supplier.address && (
+                      <div className="flex items-center text-sm">
+                        <MapPin className="w-3 h-3 mr-1 text-gray-400" />
+                        {supplier.address}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="text-sm">
+                      <div className="font-medium">{balance.orderCount}</div>
+                      <div className="text-xs text-gray-500">{formatCurrency(balance.totalOrders)}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {balance.totalOwed > 0 ? (
+                      <div>
+                        <div className="font-medium text-red-600">
+                          {formatCurrency(balance.totalOwed)}
+                        </div>
+                        <Badge variant="destructive" className="text-xs mt-1">
+                          {t('credit_badge_owed', { amount: formatCurrency(balance.totalOwed) })}
+                        </Badge>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex gap-1 justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(supplier)}
+                        title={t('edit')}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(supplier)}
+                        title={t('delete')}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </Card>
 
       {filteredSuppliers.length === 0 && (
         <div className="text-center py-12">
