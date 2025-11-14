@@ -88,6 +88,8 @@ CREATE TABLE `products` (
 	`category` text,
 	`cost_price` real NOT NULL,
 	`selling_price` real NOT NULL,
+	`semi_wholesale_price` real,
+	`wholesale_price` real,
 	`quantity` integer DEFAULT 0 NOT NULL,
 	`min_stock_level` integer DEFAULT 10,
 	`unit` text DEFAULT 'pièce',
