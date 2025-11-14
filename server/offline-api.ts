@@ -130,29 +130,45 @@ router.put('/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
+    // Get current product to preserve existing values
+    const currentProduct = await db.select().from(products)
+      .where(eq(products.id, parseInt(id)))
+      .limit(1);
+    
+    if (currentProduct.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    const existing = currentProduct[0];
+    
     // If categoryId is provided, look up the category name
-    let categoryName = req.body.category;
-    if (req.body.categoryId) {
-      const category = await db.select().from(productCategories)
-        .where(eq(productCategories.id, parseInt(req.body.categoryId)))
-        .limit(1);
-      categoryName = category[0]?.name || null;
+    let categoryName = existing.category; // Default to existing category
+    if (req.body.categoryId !== undefined) {
+      if (req.body.categoryId) {
+        const category = await db.select().from(productCategories)
+          .where(eq(productCategories.id, parseInt(req.body.categoryId)))
+          .limit(1);
+        categoryName = category[0]?.name || null;
+      } else {
+        categoryName = null;
+      }
     }
     
     // Process the request body to handle undefined values properly and map categoryId to category
     const updateData = {
-      ...req.body,
-      // Use the looked-up category name
+      name: req.body.name ?? existing.name,
+      barcode: req.body.barcode ?? existing.barcode,
+      description: req.body.description ?? existing.description,
       category: categoryName,
-      categoryId: undefined, // Remove categoryId as it doesn't exist in DB schema
-      // Ensure other optional fields are handled properly (use ?? instead of || to preserve 0 values)
-      barcode: req.body.barcode ?? null,
-      description: req.body.description ?? null,
-      minStockLevel: req.body.minStockLevel ?? null,
-      unit: req.body.unit ?? null,
-      semiWholesalePrice: req.body.semiWholesalePrice ?? null,
-      wholesalePrice: req.body.wholesalePrice ?? null,
-      image: req.body.image ?? null,
+      costPrice: req.body.costPrice ?? existing.costPrice,
+      sellingPrice: req.body.sellingPrice ?? existing.sellingPrice,
+      semiWholesalePrice: req.body.semiWholesalePrice ?? existing.semiWholesalePrice,
+      wholesalePrice: req.body.wholesalePrice ?? existing.wholesalePrice,
+      quantity: req.body.quantity ?? existing.quantity,
+      minStockLevel: req.body.minStockLevel ?? existing.minStockLevel,
+      unit: req.body.unit ?? existing.unit,
+      image: req.body.image ?? existing.image,
+      active: req.body.active ?? existing.active,
       updatedAt: new Date().toISOString()
     };
     

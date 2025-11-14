@@ -41,6 +41,8 @@ export const products = sqliteTable("products", {
   category: text("category"),
   costPrice: real("cost_price").notNull(),
   sellingPrice: real("selling_price").notNull(),
+  semiWholesalePrice: real("semi_wholesale_price"),
+  wholesalePrice: real("wholesale_price"),
   quantity: integer("quantity").notNull().default(0),
   minStockLevel: integer("min_stock_level").default(10),
   unit: text("unit").default("pièce"),

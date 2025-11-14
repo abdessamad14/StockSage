@@ -425,32 +425,24 @@ export const databaseProductStorage = {
   },
 
   async update(id: string, updates: Partial<OfflineProduct>): Promise<OfflineProduct> {
-    // Get current product to merge with updates
-    const currentProduct = await this.getById(id);
-    if (!currentProduct) {
-      throw new Error('Product not found');
-    }
-
-    // Merge current product with updates
-    const mergedData = {
-      name: updates.name ?? currentProduct.name,
-      description: updates.description ?? currentProduct.description,
-      barcode: updates.barcode ?? currentProduct.barcode,
-      categoryId: updates.categoryId ?? currentProduct.categoryId,
-      costPrice: updates.costPrice ?? currentProduct.costPrice,
-      sellingPrice: updates.sellingPrice ?? currentProduct.sellingPrice,
-      semiWholesalePrice: updates.semiWholesalePrice ?? currentProduct.semiWholesalePrice,
-      wholesalePrice: updates.wholesalePrice ?? currentProduct.wholesalePrice,
-      quantity: updates.quantity ?? currentProduct.quantity,
-      minStockLevel: updates.minStockLevel ?? currentProduct.minStockLevel,
-      unit: updates.unit ?? currentProduct.unit,
-      image: updates.image ?? currentProduct.image,
-      active: updates.active ?? currentProduct.active
-    };
-
+    // Send updates directly - the form already provides all fields
     const updated = await apiCall<any>(`/products/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(mergedData)
+      body: JSON.stringify({
+        name: updates.name,
+        description: updates.description,
+        barcode: updates.barcode,
+        categoryId: updates.categoryId,
+        costPrice: updates.costPrice,
+        sellingPrice: updates.sellingPrice,
+        semiWholesalePrice: updates.semiWholesalePrice,
+        wholesalePrice: updates.wholesalePrice,
+        quantity: updates.quantity,
+        minStockLevel: updates.minStockLevel,
+        unit: updates.unit,
+        image: updates.image,
+        active: updates.active
+      })
     });
 
     return {
