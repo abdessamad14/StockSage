@@ -474,11 +474,26 @@ export default function OfflineProducts() {
     if (product) {
       setEditingProduct(product);
       setSelectedImage(product.image || null);
+      
+      // Find category ID from category name (categoryId might contain the name instead of ID)
+      let categoryIdForForm = product.categoryId || "none";
+      if (product.categoryId) {
+        // Check if it's a category name (not a number)
+        const categoryByName = categories.find(c => c.name === product.categoryId);
+        if (categoryByName) {
+          categoryIdForForm = categoryByName.id;
+        } else {
+          // Check if it's already an ID
+          const categoryById = categories.find(c => c.id === product.categoryId);
+          categoryIdForForm = categoryById ? categoryById.id : "none";
+        }
+      }
+      
       productForm.reset({
         name: product.name,
         barcode: product.barcode || "",
         description: product.description || "",
-        categoryId: product.categoryId || "none",
+        categoryId: categoryIdForForm,
         costPrice: product.costPrice,
         sellingPrice: product.sellingPrice,
         semiWholesalePrice: product.semiWholesalePrice || 0,
