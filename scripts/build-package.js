@@ -86,8 +86,7 @@ try {
     cpSync(src, dest, { recursive: true });
   }
 
-  console.log(`📚 Copying node_modules for offline install...`);
-  cpSync(resolve('node_modules'), resolve('release', 'node_modules'), { recursive: true });
+  console.log(`⊙ Skipping node_modules (will be installed on target machine)...`);
 
   const releaseName = `stocksage-${timestamp}`;
   const releaseOutputDir = join(outDir, releaseName);

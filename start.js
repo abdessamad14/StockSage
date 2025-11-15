@@ -4,39 +4,69 @@ import { spawn } from 'child_process';
 import { join } from 'path';
 import { existsSync } from 'fs';
 
-console.log('🚀 Starting StockSage...');
+console.log('🚀 Starting igoodar...');
 
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
-// Ensure build assets exist
-const distPath = join(process.cwd(), 'dist', 'public');
-if (!existsSync(distPath)) {
-  console.error('❌ Build artefacts not found at dist/public. Run `npm run setup` first.');
-  process.exit(1);
-}
-
-// Check if database exists
-const dbPath = join(process.cwd(), 'data', 'stocksage.db');
-if (!existsSync(dbPath)) {
-  console.log('📦 Initializing database...');
+// Check if node_modules exists
+const nodeModulesPath = join(process.cwd(), 'node_modules');
+if (!existsSync(nodeModulesPath)) {
+  console.log('📦 Installing dependencies (first time setup)...');
+  console.log('⏳ This may take a few minutes...\n');
   
-  // Run database initialization
-  const initProcess = spawn('node', ['scripts/init-sqlite.js'], {
+  const installProcess = spawn(npmCmd, ['install'], {
     stdio: 'inherit',
     cwd: process.cwd()
   });
   
-  initProcess.on('close', (code) => {
+  installProcess.on('close', (code) => {
     if (code === 0) {
-      startServer();
+      console.log('\n✅ Dependencies installed successfully!\n');
+      checkBuildAndContinue();
     } else {
-      console.error('❌ Database initialization failed');
+      console.error('❌ Dependency installation failed');
       process.exit(1);
     }
   });
 } else {
-  console.log('✅ Database found, starting server...');
-  startServer();
+  checkBuildAndContinue();
+}
+
+function checkBuildAndContinue() {
+  // Ensure build assets exist
+  const distPath = join(process.cwd(), 'dist', 'public');
+  if (!existsSync(distPath)) {
+    console.error('❌ Build artefacts not found at dist/public. Run `npm run setup` first.');
+    process.exit(1);
+  }
+  
+  checkDatabase();
+}
+
+function checkDatabase() {
+  // Check if database exists
+  const dbPath = join(process.cwd(), 'data', 'stocksage.db');
+  if (!existsSync(dbPath)) {
+    console.log('📦 Initializing database...');
+    
+    // Run database initialization
+    const initProcess = spawn('node', ['scripts/init-sqlite.js'], {
+      stdio: 'inherit',
+      cwd: process.cwd()
+    });
+    
+    initProcess.on('close', (code) => {
+      if (code === 0) {
+        startServer();
+      } else {
+        console.error('❌ Database initialization failed');
+        process.exit(1);
+      }
+    });
+  } else {
+    console.log('✅ Database found, starting server...');
+    startServer();
+  }
 }
 
 function startServer() {

@@ -1,52 +1,19 @@
 # Windows Installation Guide for igoodar
 
-## ⚠️ Important: Windows-Specific Setup
+## 🚀 One-Command Installation
 
-If you see this error on Windows:
-```
-Error: better_sqlite3.node is not a valid Win32 application
-```
-
-This happens because the native module was built on macOS/Linux and needs to be rebuilt for Windows.
-
-## 🔧 Quick Fix
-
-### Option 1: Use the Fix Script (Easiest)
+Extract the ZIP file and run:
 
 ```bash
-fix-windows.bat
-```
-
-This will automatically rebuild the native modules for Windows.
-
-### Option 2: Manual Fix
-
-```bash
-# Remove the old build
-rmdir /s /q node_modules\better-sqlite3
-
-# Rebuild for Windows
-npm install better-sqlite3 --build-from-source
-
-# Start the app
 npm start
 ```
 
-### Option 3: Full Reinstall
+That's it! The first time you run `npm start`, it will:
+1. ✅ Automatically install all dependencies (built for Windows)
+2. ✅ Initialize the database
+3. ✅ Start the application
 
-```bash
-# Remove all node_modules
-rmdir /s /q node_modules
-
-# Clean npm cache
-npm cache clean --force
-
-# Reinstall everything
-npm install
-
-# Start the app
-npm start
-```
+**No manual setup required!**
 
 ## 📋 Prerequisites
 
