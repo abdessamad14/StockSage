@@ -88,7 +88,7 @@ export default function AppShell({ children }: AppShellProps) {
       </main>
       
       {/* Bottom Action Bar - Hidden on POS page */}
-      {location !== '/pos' && <BottomBar onScanClick={() => setScannerOpen(true)} />}
+      {location !== '/pos' && <BottomBar />}
       
       {/* Barcode Scanner Modal */}
       <BarcodeScannerModal isOpen={scannerOpen} onClose={handleCloseScanner} />

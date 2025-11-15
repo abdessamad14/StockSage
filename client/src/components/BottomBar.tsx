@@ -1,13 +1,9 @@
-import { Store, Package, Users, ShoppingBag } from 'lucide-react';
+import { Store, Package, Users } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useI18n } from '@/lib/i18n';
 import { useOfflineAuth } from '@/hooks/use-offline-auth';
 
-interface BottomBarProps {
-  onScanClick: () => void;
-}
-
-export default function BottomBar({ onScanClick }: BottomBarProps) {
+export default function BottomBar() {
   const [location] = useLocation();
   const { t } = useI18n();
   const { canUsePOS, canManageProducts, canManageCustomers } = useOfflineAuth();
@@ -26,15 +22,6 @@ export default function BottomBar({ onScanClick }: BottomBarProps) {
           </span>
         </Link>
       )}
-      
-      <div className="relative">
-        <button 
-          onClick={onScanClick}
-          className="w-14 h-14 rounded-full bg-primary flex items-center justify-center shadow-lg -mt-5 active:scale-95 transition-transform duration-150"
-        >
-          <ShoppingBag className="w-7 h-7 text-white" />
-        </button>
-      </div>
       
       {canManageProducts && (
         <Link href="/products" className="btn-bottom-nav">
