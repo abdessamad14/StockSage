@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import * as schema from "@shared/sqlite-schema";
+import * as schema from "../shared/sqlite-schema.js";
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 

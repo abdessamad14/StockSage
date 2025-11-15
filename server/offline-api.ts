@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from './db';
-import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems, productCategories, users } from '@shared/sqlite-schema';
+import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems, productCategories, users } from '../shared/sqlite-schema.js';
 import { eq } from 'drizzle-orm';
 
 const router = express.Router();

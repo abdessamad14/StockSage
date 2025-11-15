@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { users, products, customers, suppliers, sales, saleItems } from "@shared/sqlite-schema";
+import { users, products, customers, suppliers, sales, saleItems } from "../shared/sqlite-schema.js";
 import {
   loginSchema,
   InsertOrderItem,

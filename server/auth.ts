@@ -7,7 +7,7 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { users, User as SelectUser } from "@shared/sqlite-schema";
+import { users, User as SelectUser } from "../shared/sqlite-schema.js";
 
 declare global {
   namespace Express {
