@@ -47,7 +47,7 @@ import {
   ProductWithStockStatus,
   SaleItemWithProduct,
   OrderItemWithProduct
-} from '@shared/schema';
+} from '../shared/schema.js';
 
 const PostgresSessionStore = connectPg(session);
 

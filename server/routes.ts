@@ -25,7 +25,7 @@ import {
   insertSaleSchema,
   insertOrderSchema,
   insertInventoryAdjustmentSchema
-} from "@shared/schema";
+} from "../shared/schema.js";
 
 // Role-based access control middleware
 const authorize = (roles: string[]) => {

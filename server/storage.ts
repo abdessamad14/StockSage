@@ -12,7 +12,7 @@ import {
   syncLogs, type SyncLog,
   settings, type Settings, type InsertSettings,
   type ProductWithStockStatus, type SaleWithItems, type OrderWithItems
-} from "@shared/schema";
+} from "../shared/schema.js";
 
 // Interface for storage operations
 import session from "express-session";
