@@ -1787,7 +1787,7 @@ export default function OfflinePOS() {
                         ? 'bg-gradient-to-br from-[#f77f00] via-[#fcbf49] to-[#ff9f1c] border-[#f77f00]/50'
                         : 'bg-white/70 border-[#f4c36a]/40'
                     }`}>
-                      <span className={`text-2xl ${selectedCategory === 'all' ? 'text-white' : 'text-slate-500'}`}>🍽️</span>
+                      <span className={`text-2xl ${selectedCategory === 'all' ? 'text-white' : 'text-slate-500'}`}>📦</span>
                     </div>
                     <span className={`text-xs font-medium ${
                       selectedCategory === 'all' ? 'text-[#b3541e]' : 'text-slate-600'
@@ -1871,7 +1871,7 @@ export default function OfflinePOS() {
                               />
                             </div>
                           ) : (
-                            <div className="text-3xl mb-2">🍽️</div>
+                            <div className="text-3xl mb-2">📦</div>
                           )}
                           <h3 className="font-bold text-sm mb-2 line-clamp-2">
                             {product.name}
