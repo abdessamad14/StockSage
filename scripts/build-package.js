@@ -69,7 +69,6 @@ try {
     'start.sh',
     'start.bat',
     'fix-windows.bat',
-    'fix-windows-imports.js',
     'README.md',
     'README-WINDOWS.md',
     'package.json',
@@ -79,6 +78,11 @@ try {
   for (const item of filesToCopy) {
     const src = resolve(item);
     const dest = resolve('release', item);
+    // Skip if file doesn't exist (optional files)
+    if (!existsSync(src)) {
+      console.log(`⊙ Skipping ${item} (not found)`);
+      continue;
+    }
     cpSync(src, dest, { recursive: true });
   }
 
