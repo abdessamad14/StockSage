@@ -1125,7 +1125,10 @@ export default function OfflinePOS() {
                           }}
                         >
                           <div>
-                            <div className="font-semibold text-slate-800 line-clamp-1">{product.name}</div>
+                            <div className="font-semibold text-slate-800 line-clamp-1">
+                              {product.name}
+                              <span className="ml-2 text-xs font-normal text-slate-500">({product.quantity} {t('available')})</span>
+                            </div>
                             <div className="text-[10px] text-slate-500">
                               {product.barcode || t('offline_pos_barcode_missing')}
                             </div>
@@ -1877,6 +1880,9 @@ export default function OfflinePOS() {
                           <h3 className="font-bold text-sm mb-2 line-clamp-2">
                             {product.name}
                           </h3>
+                          <div className="text-xs text-white/80 mb-1">
+                            {product.quantity} {t('available')}
+                          </div>
                           <div className="bg-white bg-opacity-20 rounded-lg py-1 px-2">
                             <div className="font-bold text-lg">
                               {(product.sellingPrice || 0).toFixed(0)} DH
