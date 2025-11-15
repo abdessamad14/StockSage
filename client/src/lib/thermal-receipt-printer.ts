@@ -314,16 +314,35 @@ export class ThermalReceiptPrinter {
     // Set alignment to center and print header
     commands.push(ESC, 0x61, 0x01);
     
-    // Make header bold and double height
+    // Print logo/brand name in large bold text
     commands.push(ESC, 0x45, 0x01); // Bold on
     commands.push(GS, 0x21, 0x11);  // Double height and width
     
-    const header = settings?.receiptHeader || 'RECEIPT';
-    commands.push(...Array.from(new TextEncoder().encode(header)));
+    const brandName = settings?.businessName || 'igoodar';
+    commands.push(...Array.from(new TextEncoder().encode(brandName.toUpperCase())));
     commands.push(0x0A);
     
-    // Reset font size and bold
+    // Reset font size
     commands.push(GS, 0x21, 0x00);  // Normal size
+    
+    // Print business tagline/subtitle
+    const tagline = settings?.receiptHeader || 'Gestion de Stock';
+    commands.push(...Array.from(new TextEncoder().encode(tagline)));
+    commands.push(0x0A);
+    
+    // Print contact info if available
+    if (settings?.phone || settings?.address) {
+      commands.push(0x0A);
+      if (settings?.phone) {
+        commands.push(...Array.from(new TextEncoder().encode(`Tel: ${settings.phone}`)));
+        commands.push(0x0A);
+      }
+      if (settings?.address) {
+        commands.push(...Array.from(new TextEncoder().encode(settings.address)));
+        commands.push(0x0A);
+      }
+    }
+    
     commands.push(ESC, 0x45, 0x00); // Bold off
     commands.push(0x0A);
     
@@ -331,11 +350,20 @@ export class ThermalReceiptPrinter {
     commands.push(ESC, 0x61, 0x00);
     
     // Print invoice details with better spacing
+    const dateStr = receiptData.date.toLocaleDateString('fr-MA', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+    const timeStr = receiptData.date.toLocaleTimeString('fr-MA', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    
     const invoiceInfo = [
-      `Invoice: ${receiptData.invoiceNumber}`,
-      `Date: ${receiptData.date.toLocaleDateString()}`,
-      `Time: ${receiptData.date.toLocaleTimeString()}`,
-      receiptData.customerName ? `Customer: ${receiptData.customerName}` : 'Customer: Walk-in Customer',
+      `N° Facture: ${receiptData.invoiceNumber}`,
+      `Date: ${dateStr} ${timeStr}`,
+      receiptData.customerName ? `Client: ${receiptData.customerName}` : 'Client: Passage',
       ''
     ];
     
@@ -344,26 +372,44 @@ export class ThermalReceiptPrinter {
       commands.push(0x0A);
     });
     
-    // Print separator line
+    // Print decorative separator line
     const separator = '================================';
     commands.push(...Array.from(new TextEncoder().encode(separator)));
     commands.push(0x0A);
     
+    // Print items header
+    commands.push(ESC, 0x45, 0x01); // Bold on
+    const itemsHeader = 'ARTICLES';
+    commands.push(...Array.from(new TextEncoder().encode(itemsHeader)));
+    commands.push(0x0A);
+    commands.push(ESC, 0x45, 0x00); // Bold off
+    commands.push(...Array.from(new TextEncoder().encode(separator)));
+    commands.push(0x0A);
+    
     // Print items with better formatting
-    receiptData.items.forEach(item => {
-      // Item name
-      commands.push(...Array.from(new TextEncoder().encode(item.name)));
+    receiptData.items.forEach((item, index) => {
+      // Item number and name (bold)
+      commands.push(ESC, 0x45, 0x01); // Bold on
+      const itemLine = `${index + 1}. ${item.name}`;
+      commands.push(...Array.from(new TextEncoder().encode(itemLine)));
       commands.push(0x0A);
+      commands.push(ESC, 0x45, 0x00); // Bold off
       
       // Quantity and price line with proper alignment
-      const qtyPrice = `${item.quantity} x ${item.unitPrice.toFixed(2)} DH`;
+      const qtyPrice = `   ${item.quantity} x ${item.unitPrice.toFixed(2)} DH`;
       const total = `${item.totalPrice.toFixed(2)} DH`;
       const spacesNeeded = 32 - qtyPrice.length - total.length;
       const qtyPriceLine = qtyPrice + ' '.repeat(Math.max(1, spacesNeeded)) + total;
       
       commands.push(...Array.from(new TextEncoder().encode(qtyPriceLine)));
       commands.push(0x0A);
-      commands.push(0x0A); // Extra line between items
+      
+      // Thin separator between items
+      if (index < receiptData.items.length - 1) {
+        const thinSeparator = '- - - - - - - - - - - - - - - -';
+        commands.push(...Array.from(new TextEncoder().encode(thinSeparator)));
+        commands.push(0x0A);
+      }
     });
     
     // Print separator
@@ -377,9 +423,9 @@ export class ThermalReceiptPrinter {
     };
     
     const totalsInfo = [
-      formatTotalLine('Subtotal:', `${receiptData.subtotal.toFixed(2)} DH`),
-      ...(receiptData.discountAmount ? [formatTotalLine('Discount:', `-${receiptData.discountAmount.toFixed(2)} DH`)] : []),
-      ...(receiptData.taxAmount ? [formatTotalLine('Tax:', `${receiptData.taxAmount.toFixed(2)} DH`)] : []),
+      formatTotalLine('Sous-total:', `${receiptData.subtotal.toFixed(2)} DH`),
+      ...(receiptData.discountAmount ? [formatTotalLine('Remise:', `-${receiptData.discountAmount.toFixed(2)} DH`)] : []),
+      ...(receiptData.taxAmount ? [formatTotalLine('TVA:', `${receiptData.taxAmount.toFixed(2)} DH`)] : []),
     ];
     
     totalsInfo.forEach(line => {
@@ -407,9 +453,19 @@ export class ThermalReceiptPrinter {
     
     // Print payment details
     const paymentAmount = receiptData.paymentMethod === 'credit' ? receiptData.total : receiptData.paidAmount;
+    
+    // Translate payment method
+    const paymentMethodLabels: Record<string, string> = {
+      'cash': 'Espèces',
+      'credit': 'Crédit',
+      'card': 'Carte',
+      'check': 'Chèque'
+    };
+    const paymentLabel = paymentMethodLabels[receiptData.paymentMethod] || receiptData.paymentMethod;
+    
     const paymentInfo = [
-      formatTotalLine(`Payment (${receiptData.paymentMethod}):`, `${paymentAmount.toFixed(2)} DH`),
-      ...(receiptData.changeAmount ? [formatTotalLine('Change:', `${receiptData.changeAmount.toFixed(2)} DH`)] : [])
+      formatTotalLine(`Paiement (${paymentLabel}):`, `${paymentAmount.toFixed(2)} DH`),
+      ...(receiptData.changeAmount ? [formatTotalLine('Monnaie rendue:', `${receiptData.changeAmount.toFixed(2)} DH`)] : [])
     ];
     
     paymentInfo.forEach(line => {
@@ -420,16 +476,27 @@ export class ThermalReceiptPrinter {
     // Add spacing before footer
     commands.push(0x0A, 0x0A);
     
-    // Print footer centered
+    // Print decorative line
     commands.push(ESC, 0x61, 0x01); // Center align
-    const footer = settings?.receiptFooter || 'Thank you for your business!';
+    const decorativeLine = '* * * * * * * * * * * * * * * *';
+    commands.push(...Array.from(new TextEncoder().encode(decorativeLine)));
+    commands.push(0x0A, 0x0A);
+    
+    // Print footer message
+    commands.push(ESC, 0x45, 0x01); // Bold on
+    const footer = settings?.receiptFooter || 'Merci pour votre visite!';
     commands.push(...Array.from(new TextEncoder().encode(footer)));
     commands.push(0x0A);
+    commands.push(ESC, 0x45, 0x00); // Bold off
+    
+    // Print closing message
+    const closingMsg = 'A bientôt!';
+    commands.push(...Array.from(new TextEncoder().encode(closingMsg)));
+    commands.push(0x0A, 0x0A);
     
     // Add timestamp at bottom
-    commands.push(0x0A);
-    const timestamp = `Printed: ${new Date().toLocaleString()}`;
-    commands.push(...Array.from(new TextEncoder().encode(timestamp)));
+    const timestampLabel = `Imprimé le: ${new Date().toLocaleString('fr-MA')}`;
+    commands.push(...Array.from(new TextEncoder().encode(timestampLabel)));
     commands.push(0x0A, 0x0A, 0x0A);
     
     // Cut paper (if supported)
