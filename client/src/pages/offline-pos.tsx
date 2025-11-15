@@ -991,7 +991,7 @@ export default function OfflinePOS() {
       <PanelGroup direction="horizontal">
       {/* Left Panel - Invoice Table */}
       <Panel defaultSize={50} minSize={30}>
-      <div className="bg-white/95 backdrop-blur shadow-xl flex flex-col h-full">
+      <div className="bg-white/85 backdrop-blur shadow-xl flex flex-col h-full">
         {/* Invoice Header */}
         <div className="bg-gradient-to-r from-[#c1121f] via-[#f4a259] to-[#0f866c] text-white p-4 flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -1599,7 +1599,7 @@ export default function OfflinePOS() {
       <Panel defaultSize={50} minSize={30}>
       <div className="flex-1 flex flex-col h-full">
         {/* Top Bar with Search and Toggle */}
-        <div className="bg-white/95 border-b border-[#f4c36a]/40 shadow-sm p-4 backdrop-blur">
+        <div className="bg-white/85 border-b border-[#f4c36a]/40 shadow-sm p-4 backdrop-blur">
           <div className="flex items-center space-x-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#0f866c] h-5 w-5" />
