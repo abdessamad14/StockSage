@@ -5,13 +5,13 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 98% / 0.95;
+  --background: 0 0% 98% / 0.98;
   --foreground: 20 14.3% 4.1%;
-  --muted: 60 4.8% 95.9% / 0.9;
+  --muted: 60 4.8% 95.9% / 0.95;
   --muted-foreground: 25 5.3% 44.7%;
-  --popover: 0 0% 100% / 0.98;
+  --popover: 0 0% 100% / 0.99;
   --popover-foreground: 20 14.3% 4.1%;
-  --card: 0 0% 100% / 0.95;
+  --card: 0 0% 100% / 0.98;
   --card-foreground: 20 14.3% 4.1%;
   --border: 20 5.9% 90%;
   --input: 20 5.9% 90%;
@@ -81,6 +81,9 @@
     background-repeat: repeat;
     background-size: 300px 300px;
     background-attachment: fixed;
+    background-color: #f5f5f5;
+    background-blend-mode: overlay;
+    opacity: 1;
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
