@@ -18,7 +18,7 @@ const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
 const tempDir = mkdtempSync(join(tmpdir(), 'stocksage-build-'));
 
 const repoPath = resolve('.');
-const archiveName = `stocksage-${timestamp}.tgz`;
+const archiveName = `stocksage-${timestamp}.zip`;
 
 console.log(`📦 Creating deployment package ${archiveName}`);
 console.log(`🔧 Using temp dir ${tempDir}`);
@@ -97,14 +97,15 @@ try {
   rmSync(releaseOutputDir, { recursive: true, force: true });
   cpSync(resolve('release'), releaseOutputDir, { recursive: true });
 
-  console.log('🗜️ Creating archive...');
+  console.log('🗜️ Creating ZIP archive...');
   const archivePath = join(outDir, archiveName);
-  const tarResult = spawnSync('tar', ['-czf', archivePath, '-C', outDir, releaseName], {
+  const zipResult = spawnSync('zip', ['-r', '-q', archivePath, releaseName], {
+    cwd: outDir,
     stdio: 'inherit'
   });
 
-  if (tarResult.status !== 0) {
-    throw new Error('tar command failed');
+  if (zipResult.status !== 0) {
+    throw new Error('zip command failed');
   }
 
   console.log(`✅ Package ready: ${archivePath}`);
