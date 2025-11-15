@@ -95,7 +95,7 @@ export default function OfflineDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {settings?.currency || '$'}{totalRevenue.toFixed(2)}
+              {totalRevenue.toFixed(2)} MAD
             </div>
             <p className="text-xs text-muted-foreground">
               {t('total_sales_revenue')}

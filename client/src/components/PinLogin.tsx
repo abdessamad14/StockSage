@@ -158,7 +158,7 @@ export default function PinLogin({ onLogin }: PinLoginProps) {
           <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
             <Lock className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">StockSage POS</h1>
+          <h1 className="text-2xl font-bold text-gray-900">igoodar POS</h1>
           <p className="text-gray-600">Connexion Caissier</p>
         </div>
 

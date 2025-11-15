@@ -1007,7 +1007,7 @@ export default function OfflinePOS() {
         <div className="flex-1 flex flex-col bg-[#fdf5ec] font-mono text-xs overflow-hidden">
           <div className="bg-white/90 rounded-t-xl shadow-md border border-[#f4c36a]/60 p-3 overflow-y-auto flex-1">
             <div className="text-center border-b pb-1 mb-2">
-              <div className="font-bold text-sm">STOCKSAGE POS</div>
+              <div className="font-bold text-sm">IGOODAR POS</div>
               <div className="text-xs text-gray-500">{new Date().toLocaleString('fr-MA')}</div>
             </div>
             
@@ -1979,7 +1979,7 @@ export default function OfflinePOS() {
           {lastSale && (
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="font-bold">StockSage POS</h3>
+                <h3 className="font-bold">igoodar POS</h3>
                 <p className="text-sm text-gray-500">{t('offline_pos_sale_number', { id: lastSale.id })}</p>
                 <p className="text-sm text-gray-500">{new Date(lastSale.date).toLocaleString()}</p>
               </div>

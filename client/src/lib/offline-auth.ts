@@ -18,7 +18,7 @@ const defaultUsers: OfflineUser[] = [
     name: 'Admin User',
     username: 'admin',
     email: 'admin@stocksage.com',
-    businessName: 'StockSage Demo Store',
+    businessName: 'igoodar',
     role: 'admin'
   },
   {
@@ -26,7 +26,7 @@ const defaultUsers: OfflineUser[] = [
     name: 'Manager User',
     username: 'manager',
     email: 'manager@stocksage.com',
-    businessName: 'StockSage Demo Store',
+    businessName: 'igoodar',
     role: 'manager'
   },
   {
@@ -34,7 +34,7 @@ const defaultUsers: OfflineUser[] = [
     name: 'Cashier User',
     username: 'cashier',
     email: 'cashier@stocksage.com',
-    businessName: 'StockSage Demo Store',
+    businessName: 'igoodar',
     role: 'cashier'
   }
 ];

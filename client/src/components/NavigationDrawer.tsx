@@ -58,7 +58,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           </svg>
         </div>
         <div>
-          <p className="text-white font-bold text-lg">{settings?.businessName || 'StockSage'}</p>
+          <p className="text-white font-bold text-lg">{settings?.businessName || 'igoodar'}</p>
           <p className="text-white text-sm opacity-80">{t('offline_mode')}</p>
         </div>
       </div>

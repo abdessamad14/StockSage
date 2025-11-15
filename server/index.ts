@@ -61,6 +61,6 @@ app.use((req, res, next) => {
   const PORT = 5003;
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`✅ Server running on http://localhost:${PORT}`);
-    console.log(`🎉 StockSage is ready!`);
+    console.log(`🎉 igoodar is ready!`);
   });
 })();

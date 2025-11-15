@@ -716,7 +716,7 @@ export default function OfflineInventory() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalValue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{totalValue.toFixed(2)} MAD</div>
             <p className="text-xs text-muted-foreground">
               {t('total_cost_value_of_stock')}
             </p>
@@ -827,10 +827,10 @@ export default function OfflineInventory() {
                       {product.minStockLevel || 10}
                     </TableCell>
                     <TableCell className="text-right">
-                      ${product.costPrice.toFixed(2)}
+                      {product.costPrice.toFixed(2)} MAD
                     </TableCell>
                     <TableCell className="text-right">
-                      ${stockValue.toFixed(2)}
+                      {stockValue.toFixed(2)} MAD
                     </TableCell>
                     <TableCell>
                       <Badge 
@@ -1588,7 +1588,7 @@ export default function OfflineInventory() {
                   <div className="flex items-center justify-between text-sm mt-1">
                     <span>Total stock value:</span>
                     <span className="font-medium text-green-600">
-                      ${(() => {
+                      {(() => {
                         const locationStocks = productStocks.filter(stock => stock.locationId === editingLocation.id);
                         const totalValue = locationStocks.reduce((total, stock) => {
                           const product = products.find(p => p.id === stock.productId);

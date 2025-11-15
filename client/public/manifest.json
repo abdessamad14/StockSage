@@ -1,6 +1,6 @@
 {
-  "name": "StockSage - Inventory Management",
-  "short_name": "StockSage",
+  "name": "igoodar - Inventory Management",
+  "short_name": "igoodar",
   "description": "Offline-first inventory and POS management system",
   "start_url": "/",
   "display": "standalone",
