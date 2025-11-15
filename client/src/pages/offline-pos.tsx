@@ -1413,9 +1413,18 @@ export default function OfflinePOS() {
                   <span>-{discountValue.toFixed(2)} DH</span>
                 </div>
               )}
-              <div className="flex justify-between font-bold text-sm border-t pt-1 bg-gradient-to-r from-[#06d6a0]/20 via-[#118ab2]/20 to-[#4cc9f0]/20 px-2 py-1 rounded-lg border-[#0f866c]/20">
-                <span>{t('total').toUpperCase()}:</span>
-                <span>{total.toFixed(2)} DH</span>
+              <div className="space-y-1">
+                {/* Product count */}
+                <div className="flex justify-between text-xs text-slate-600 bg-slate-50 px-2 py-1 rounded">
+                  <span>{t('items_in_cart')}:</span>
+                  <span className="font-semibold">{cart.reduce((sum, item) => sum + item.quantity, 0)} {t('items')}</span>
+                </div>
+                
+                {/* Total */}
+                <div className="flex justify-between font-bold text-sm border-t pt-1 bg-gradient-to-r from-[#06d6a0]/20 via-[#118ab2]/20 to-[#4cc9f0]/20 px-2 py-1 rounded-lg border-[#0f866c]/20">
+                  <span>{t('total').toUpperCase()}:</span>
+                  <span>{total.toFixed(2)} DH</span>
+                </div>
               </div>
             </div>
           </div>
