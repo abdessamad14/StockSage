@@ -795,14 +795,14 @@ export default function OfflineProducts() {
 
       {/* Product Dialog */}
       <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>
               {editingProduct ? t('edit_product') : t('add_product')}
             </DialogTitle>
           </DialogHeader>
           <Form {...productForm}>
-            <form onSubmit={productForm.handleSubmit(editingProduct ? handleUpdateProduct : handleCreateProduct)} className="space-y-4">
+            <form onSubmit={productForm.handleSubmit(editingProduct ? handleUpdateProduct : handleCreateProduct)} className="space-y-4 overflow-y-auto flex-1 pr-2">
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={productForm.control}
@@ -1065,17 +1065,16 @@ export default function OfflineProducts() {
                   </FormItem>
                 )}
               />
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsProductDialogOpen(false)}>
-                  {t('cancel')}
-                </Button>
-                <Button type="submit">
-                  {editingProduct ? t('update') : t('create')} {t('product')}
-                </Button>
-              </DialogFooter>
             </form>
           </Form>
+          <DialogFooter className="flex-shrink-0 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={() => setIsProductDialogOpen(false)}>
+              {t('cancel')}
+            </Button>
+            <Button type="submit" onClick={() => productForm.handleSubmit(editingProduct ? handleUpdateProduct : handleCreateProduct)()}>
+              {editingProduct ? t('update') : t('create')} {t('product')}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
