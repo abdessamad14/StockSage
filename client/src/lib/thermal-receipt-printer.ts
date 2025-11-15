@@ -356,8 +356,8 @@ export class ThermalReceiptPrinter {
       commands.push(0x0A);
       
       // Quantity and price line with proper alignment
-      const qtyPrice = `${item.quantity} x $${item.unitPrice.toFixed(2)}`;
-      const total = `$${item.totalPrice.toFixed(2)}`;
+      const qtyPrice = `${item.quantity} x ${item.unitPrice.toFixed(2)} DH`;
+      const total = `${item.totalPrice.toFixed(2)} DH`;
       const spacesNeeded = 32 - qtyPrice.length - total.length;
       const qtyPriceLine = qtyPrice + ' '.repeat(Math.max(1, spacesNeeded)) + total;
       
@@ -377,9 +377,9 @@ export class ThermalReceiptPrinter {
     };
     
     const totalsInfo = [
-      formatTotalLine('Subtotal:', `$${receiptData.subtotal.toFixed(2)}`),
-      ...(receiptData.discountAmount ? [formatTotalLine('Discount:', `-$${receiptData.discountAmount.toFixed(2)}`)] : []),
-      ...(receiptData.taxAmount ? [formatTotalLine('Tax:', `$${receiptData.taxAmount.toFixed(2)}`)] : []),
+      formatTotalLine('Subtotal:', `${receiptData.subtotal.toFixed(2)} DH`),
+      ...(receiptData.discountAmount ? [formatTotalLine('Discount:', `-${receiptData.discountAmount.toFixed(2)} DH`)] : []),
+      ...(receiptData.taxAmount ? [formatTotalLine('Tax:', `${receiptData.taxAmount.toFixed(2)} DH`)] : []),
     ];
     
     totalsInfo.forEach(line => {
@@ -396,7 +396,7 @@ export class ThermalReceiptPrinter {
     commands.push(ESC, 0x45, 0x01); // Bold on
     commands.push(GS, 0x21, 0x01);  // Double height
     
-    const totalLine = formatTotalLine('TOTAL:', `$${receiptData.total.toFixed(2)}`);
+    const totalLine = formatTotalLine('TOTAL:', `${receiptData.total.toFixed(2)} DH`);
     commands.push(...Array.from(new TextEncoder().encode(totalLine)));
     commands.push(0x0A);
     
@@ -408,8 +408,8 @@ export class ThermalReceiptPrinter {
     // Print payment details
     const paymentAmount = receiptData.paymentMethod === 'credit' ? receiptData.total : receiptData.paidAmount;
     const paymentInfo = [
-      formatTotalLine(`Payment (${receiptData.paymentMethod}):`, `$${paymentAmount.toFixed(2)}`),
-      ...(receiptData.changeAmount ? [formatTotalLine('Change:', `$${receiptData.changeAmount.toFixed(2)}`)] : [])
+      formatTotalLine(`Payment (${receiptData.paymentMethod}):`, `${paymentAmount.toFixed(2)} DH`),
+      ...(receiptData.changeAmount ? [formatTotalLine('Change:', `${receiptData.changeAmount.toFixed(2)} DH`)] : [])
     ];
     
     paymentInfo.forEach(line => {
