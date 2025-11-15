@@ -143,7 +143,7 @@ export default function OfflineDashboard() {
                     </div>
                     <div className="text-right">
                       <p className="font-bold">
-                        {settings?.currency || '$'}{sale.totalAmount.toFixed(2)}
+                        {sale.totalAmount.toFixed(2)} DH
                       </p>
                       <p className="text-sm text-gray-600">{sale.paymentMethod}</p>
                     </div>
