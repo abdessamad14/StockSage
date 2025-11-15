@@ -1716,14 +1716,7 @@ export default function OfflinePOS() {
               {t('offline_pos_system_functions').toUpperCase()}
             </span>
           </div>
-          <div className="grid grid-cols-4 gap-3">
-            <Button
-              onClick={() => window.location.href = '/dashboard'}
-              className="h-12 bg-gradient-to-br from-[#d90429] via-[#ff6b6b] to-[#c9184a] text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg border border-[#c9184a]/40"
-            >
-              <Home className="h-4 w-4" />
-              {t('dashboard').toUpperCase()}
-            </Button>
+          <div className="grid grid-cols-3 gap-3">
             <Button
               onClick={() => window.location.href = '/products'}
               className="h-12 bg-gradient-to-br from-[#06d6a0] via-[#1b998b] to-[#0f866c] text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg border border-[#0f866c]/40"

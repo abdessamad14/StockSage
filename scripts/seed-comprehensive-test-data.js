@@ -63,9 +63,10 @@ try {
 
   const categoryMap = {};
   for (const cat of categories) {
-    const existing = db.prepare('SELECT id FROM product_categories WHERE name = ? AND tenant_id = ?').get(cat.name, tenantId);
+    const existing = db.prepare('SELECT id, image FROM product_categories WHERE name = ? AND tenant_id = ?').get(cat.name, tenantId);
+    const image = generatePlaceholderImage(cat.icon, cat.color);
+    
     if (!existing) {
-      const image = generatePlaceholderImage(cat.icon, cat.color);
       const result = db.prepare(`
         INSERT INTO product_categories (tenant_id, name, description, image, created_at, updated_at)
         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -74,7 +75,16 @@ try {
       console.log(`  ✓ Created category: ${cat.name} with image`);
     } else {
       categoryMap[cat.name] = existing.id;
-      console.log(`  ⊙ Category exists: ${cat.name}`);
+      // Update category with image if it doesn't have one
+      if (!existing.image) {
+        db.prepare(`
+          UPDATE product_categories SET image = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(image, existing.id);
+        console.log(`  ✓ Updated category: ${cat.name} - added image`);
+      } else {
+        console.log(`  ⊙ Category exists: ${cat.name}`);
+      }
     }
   }
 
@@ -115,9 +125,10 @@ try {
 
   const productIds = [];
   for (const product of products) {
-    const existing = db.prepare('SELECT id FROM products WHERE barcode = ? AND tenant_id = ?').get(product.barcode, tenantId);
+    const existing = db.prepare('SELECT id, image FROM products WHERE barcode = ? AND tenant_id = ?').get(product.barcode, tenantId);
+    const image = generatePlaceholderImage(product.icon, product.color);
+    
     if (!existing) {
-      const image = generatePlaceholderImage(product.icon, product.color);
       const result = db.prepare(`
         INSERT INTO products (
           tenant_id, name, barcode, category, cost_price, selling_price,
@@ -141,7 +152,16 @@ try {
       console.log(`  ✓ Created: ${product.name} with image`);
     } else {
       productIds.push(existing.id);
-      console.log(`  ⊙ Exists: ${product.name}`);
+      // Update product with image if it doesn't have one
+      if (!existing.image) {
+        db.prepare(`
+          UPDATE products SET image = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(image, existing.id);
+        console.log(`  ✓ Updated: ${product.name} - added image`);
+      } else {
+        console.log(`  ⊙ Exists: ${product.name}`);
+      }
     }
   }
 
