@@ -1003,9 +1003,9 @@ export default function OfflinePOS() {
           </div>
         </div>
 
-        {/* Receipt Content - Scrollable */}
-        <div className="p-2 bg-[#fdf5ec] font-mono text-xs overflow-y-auto" style={{height: 'calc(100vh - 160px - 280px)'}}>
-          <div className="bg-white/90 rounded-xl shadow-md border border-[#f4c36a]/60 p-3">
+        {/* Receipt Content - Scrollable Items Only */}
+        <div className="flex-1 flex flex-col bg-[#fdf5ec] font-mono text-xs overflow-hidden">
+          <div className="bg-white/90 rounded-t-xl shadow-md border border-[#f4c36a]/60 p-3 overflow-y-auto flex-1">
             <div className="text-center border-b pb-1 mb-2">
               <div className="font-bold text-sm">STOCKSAGE POS</div>
               <div className="text-xs text-gray-500">{new Date().toLocaleString('fr-MA')}</div>
@@ -1307,24 +1307,27 @@ export default function OfflinePOS() {
                 ))}
                   </tbody>
                 </table>
-                
-                <div className="border-t-2 border-[#0f866c] pt-3 mt-3 space-y-2 px-2">
-                  <div className="flex justify-between text-xs">
-                    <span>{t('subtotal')}:</span>
-                    <span>{subtotal.toFixed(2)} DH</span>
-                  </div>
-                  {discountValue > 0 && (
-                    <div className="flex justify-between text-red-600 text-xs">
-                      <span>{t('discount')}:</span>
-                      <span>-{discountValue.toFixed(2)} DH</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between font-bold text-sm border-t pt-1 bg-gradient-to-r from-[#06d6a0]/20 via-[#118ab2]/20 to-[#4cc9f0]/20 px-2 py-1 rounded-lg border-[#0f866c]/20">
-                    <span>{t('total').toUpperCase()}:</span>
-                    <span>{total.toFixed(2)} DH</span>
-                  </div>
-                </div>
               </div>
+          </div>
+          
+          {/* Fixed Totals Section at Bottom */}
+          <div className="bg-white/90 rounded-b-xl shadow-md border border-t-0 border-[#f4c36a]/60 p-3 flex-shrink-0">
+            <div className="border-t-2 border-[#0f866c] pt-3 space-y-2">
+              <div className="flex justify-between text-xs">
+                <span>{t('subtotal')}:</span>
+                <span>{subtotal.toFixed(2)} DH</span>
+              </div>
+              {discountValue > 0 && (
+                <div className="flex justify-between text-red-600 text-xs">
+                  <span>{t('discount')}:</span>
+                  <span>-{discountValue.toFixed(2)} DH</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-sm border-t pt-1 bg-gradient-to-r from-[#06d6a0]/20 via-[#118ab2]/20 to-[#4cc9f0]/20 px-2 py-1 rounded-lg border-[#0f866c]/20">
+                <span>{t('total').toUpperCase()}:</span>
+                <span>{total.toFixed(2)} DH</span>
+              </div>
+            </div>
           </div>
         </div>
         
