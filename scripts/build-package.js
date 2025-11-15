@@ -68,6 +68,10 @@ try {
     'start.js',
     'start.sh',
     'start.bat',
+    'fix-windows.bat',
+    'fix-windows-imports.js',
+    'README.md',
+    'README-WINDOWS.md',
     'package.json',
     'package-lock.json'
   ];
