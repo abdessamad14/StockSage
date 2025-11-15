@@ -69,7 +69,7 @@ export default function AppShell({ children }: AppShellProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col">
       {/* Drawer Overlay */}
       <div 
         className={`fixed inset-0 bg-black bg-opacity-50 z-40 overlay ${drawerOpen ? '' : 'hidden'}`}
