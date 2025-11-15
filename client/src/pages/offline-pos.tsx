@@ -436,8 +436,22 @@ export default function OfflinePOS() {
   }, [barcodeBuffer, lastKeyTime, products]);
 
   // Handle barcode scan result
-  const handleBarcodeScanned = (barcode: string) => {
+  const handleBarcodeScanned = async (barcode: string) => {
     console.log('Barcode scanned:', barcode);
+    
+    // Check if it's an invoice barcode (format: INVOICE:invoice_number)
+    if (barcode.startsWith('INVOICE:')) {
+      const invoiceNumber = barcode.replace('INVOICE:', '');
+      await loadInvoiceToCart(invoiceNumber);
+      return;
+    }
+    
+    // Check if it's just an invoice number (from barcode)
+    const sale = todaysOrders.find(s => s.invoiceNumber === barcode);
+    if (sale) {
+      await loadInvoiceToCart(barcode);
+      return;
+    }
     
     // Find product by barcode
     const product = products.find(p => 
@@ -456,6 +470,82 @@ export default function OfflinePOS() {
       toast({
         title: t('product_not_found'),
         description: t('barcode_not_found', { barcode }),
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Load invoice to cart by scanning receipt barcode
+  const loadInvoiceToCart = async (invoiceNumber: string) => {
+    try {
+      // Find the sale by invoice number
+      const sale = todaysOrders.find(s => s.invoiceNumber === invoiceNumber);
+      
+      if (!sale) {
+        toast({
+          title: t('invoice_not_found'),
+          description: `Facture ${invoiceNumber} introuvable`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Clear current cart
+      setCart([]);
+      
+      // Load sale items into cart
+      const cartItems: CartItem[] = sale.items.map(item => ({
+        product: {
+          id: item.productId,
+          name: item.productName,
+          sellingPrice: item.unitPrice,
+          categoryId: '',
+          barcode: '',
+          costPrice: 0,
+          minStockLevel: 0,
+          description: '',
+          quantity: 0,
+          unit: '',
+          semiWholesalePrice: undefined,
+          wholesalePrice: undefined,
+          image: undefined,
+          active: true,
+          tenantId: '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice
+      }));
+      
+      setCart(cartItems);
+      
+      // Set customer if available
+      if (sale.customerId) {
+        const customer = customers.find(c => parseInt(c.id) === sale.customerId);
+        if (customer) {
+          setSelectedCustomer(customer);
+        }
+      }
+      
+      // Set discount if available
+      if (sale.discountAmount) {
+        setDiscountAmount(sale.discountAmount);
+        setDiscountType('amount');
+      }
+      
+      toast({
+        title: t('invoice_loaded'),
+        description: `Facture ${invoiceNumber} chargée avec ${sale.items.length} articles`,
+        duration: 3000,
+      });
+      
+    } catch (error) {
+      console.error('Error loading invoice:', error);
+      toast({
+        title: t('error'),
+        description: t('failed_to_load_invoice'),
         variant: "destructive",
       });
     }

@@ -497,6 +497,52 @@ export class ThermalReceiptPrinter {
     // Add timestamp at bottom
     const timestampLabel = `Imprimé le: ${new Date().toLocaleString('fr-MA')}`;
     commands.push(...Array.from(new TextEncoder().encode(timestampLabel)));
+    commands.push(0x0A, 0x0A);
+    
+    // Print QR Code with invoice number for scanning
+    commands.push(ESC, 0x61, 0x01); // Center align
+    
+    // QR Code label
+    const qrLabel = 'Scannez pour recharger:';
+    commands.push(...Array.from(new TextEncoder().encode(qrLabel)));
+    commands.push(0x0A);
+    
+    // Generate QR Code (ESC/POS QR Code command)
+    // Format: INVOICE:invoice_number
+    const qrData = `INVOICE:${receiptData.invoiceNumber}`;
+    
+    // QR Code model (GS ( k pL pH cn fn n1 n2)
+    commands.push(GS, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00); // Set QR model to 2
+    commands.push(GS, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, 0x05); // Set QR size to 5
+    commands.push(GS, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 0x30); // Set error correction to L
+    
+    // Store QR data
+    const qrDataLength = qrData.length + 3;
+    const pL = qrDataLength & 0xFF;
+    const pH = (qrDataLength >> 8) & 0xFF;
+    commands.push(GS, 0x28, 0x6B, pL, pH, 0x31, 0x50, 0x30);
+    commands.push(...Array.from(new TextEncoder().encode(qrData)));
+    
+    // Print QR code
+    commands.push(GS, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30);
+    
+    commands.push(0x0A, 0x0A);
+    
+    // Print barcode as backup (Code128)
+    // Barcode height
+    commands.push(GS, 0x68, 0x50); // Height = 80 dots
+    
+    // HRI position (print text below barcode)
+    commands.push(GS, 0x48, 0x02); // Below barcode
+    
+    // Barcode width
+    commands.push(GS, 0x77, 0x02); // Width = 2
+    
+    // Print Code128 barcode
+    const barcodeData = receiptData.invoiceNumber;
+    commands.push(GS, 0x6B, 0x49, barcodeData.length);
+    commands.push(...Array.from(new TextEncoder().encode(barcodeData)));
+    
     commands.push(0x0A, 0x0A, 0x0A);
     
     // Cut paper (if supported)
