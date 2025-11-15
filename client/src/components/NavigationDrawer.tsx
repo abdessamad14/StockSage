@@ -3,7 +3,6 @@ import { Link, useLocation } from 'wouter';
 import { useOfflineSettings } from '@/hooks/use-offline-settings';
 import { useOfflineAuth } from '@/hooks/use-offline-auth';
 import { 
-  LayoutDashboard, 
   Store, 
   Package, 
   Database, 
@@ -66,12 +65,6 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
       
       <div className="overflow-y-auto h-[calc(100%-144px)]">
         <div className="py-2">
-          {/* Dashboard */}
-          <Link href="/" className={linkClasses('/')}>
-            <LayoutDashboard className="w-6 h-6 mr-3" />
-            <span>{t('dashboard')}</span>
-          </Link>
-          
           {/* POS */}
           {canUsePOS && (
             <Link href="/pos" className={linkClasses('/pos')}>

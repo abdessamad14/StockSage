@@ -1,4 +1,4 @@
-import { LayoutDashboard, Store, Package, Users, ShoppingBag } from 'lucide-react';
+import { Store, Package, Users, ShoppingBag } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useI18n } from '@/lib/i18n';
 import { useOfflineAuth } from '@/hooks/use-offline-auth';
@@ -18,13 +18,6 @@ export default function BottomBar({ onScanClick }: BottomBarProps) {
 
   return (
     <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-around items-center px-2 py-1 z-30 safe-area-inset-bottom">
-      <Link href="/" className="btn-bottom-nav">
-        <LayoutDashboard className={`bottom-nav-icon ${isActive('/') ? 'text-primary' : 'text-textSecondary'}`} />
-        <span className={`bottom-nav-text ${isActive('/') ? 'text-primary font-medium' : 'text-textSecondary'}`}>
-          {t('dashboard')}
-        </span>
-      </Link>
-      
       {canUsePOS && (
         <Link href="/pos" className="btn-bottom-nav">
           <Store className={`bottom-nav-icon ${isActive('/pos') ? 'text-primary' : 'text-textSecondary'}`} />
