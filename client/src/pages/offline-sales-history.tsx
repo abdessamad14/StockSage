@@ -212,8 +212,12 @@ export default function OfflineSalesHistory() {
     return customer?.name || t('unknown_customer');
   }
 
-  function getProductName(productId: string) {
-    const product = products.find(p => p.id === productId);
+  function getProductName(productId: string, productName?: string) {
+    // If productName is already provided in the item, use it
+    if (productName) return productName;
+    
+    // Otherwise, look up the product by ID (handle both string and number IDs)
+    const product = products.find(p => p.id === productId || p.id === String(productId));
     return product?.name || t('unknown_product');
   }
 
@@ -243,7 +247,7 @@ export default function OfflineSalesHistory() {
         date: new Date(sale.date),
         customerName,
         items: sale.items.map(item => ({
-          name: getProductName(item.productId),
+          name: getProductName(String(item.productId), item.productName),
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           totalPrice: item.totalPrice
@@ -597,7 +601,7 @@ export default function OfflineSalesHistory() {
                   <TableBody>
                     {selectedSale.items.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell>{getProductName(item.productId)}</TableCell>
+                        <TableCell>{getProductName(String(item.productId), item.productName)}</TableCell>
                         <TableCell className="text-center">{item.quantity}</TableCell>
                         <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(item.totalPrice)}</TableCell>
