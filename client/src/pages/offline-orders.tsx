@@ -90,7 +90,6 @@ function OrderItemsDisplay({ orderId, products }: { orderId: string, products: a
               <TableHead>{t('quantity')}</TableHead>
               <TableHead>{t('unit_cost')}</TableHead>
               <TableHead>{t('total')}</TableHead>
-              <TableHead>{t('received_quantity')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -102,7 +101,6 @@ function OrderItemsDisplay({ orderId, products }: { orderId: string, products: a
                   <TableCell>{item.quantity}</TableCell>
                   <TableCell>{formatCurrency(item.unitCost || item.unitPrice || 0)}</TableCell>
                   <TableCell>{formatCurrency(item.totalCost || item.totalPrice || 0)}</TableCell>
-                  <TableCell>{item.receivedQuantity || 0}</TableCell>
                 </TableRow>
               );
             })}
