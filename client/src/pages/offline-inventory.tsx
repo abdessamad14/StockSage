@@ -7,7 +7,8 @@ import {
   OfflineProduct, 
   OfflineStockLocation, 
   offlineStockLocationStorage,
-  offlineProductStockStorage 
+  offlineProductStockStorage,
+  databaseProductStorage
 } from "@/lib/offline-storage";
 import { OfflineStockTransaction } from "../../../shared/schema";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,8 @@ import {
   History,
   TrendingUp,
   ShoppingCart,
-  FileText
+  FileText,
+  Loader2
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -83,6 +85,19 @@ export default function OfflineInventory() {
   const [historyProduct, setHistoryProduct] = useState<OfflineProduct | null>(null);
   const [productTransactions, setProductTransactions] = useState<OfflineStockTransaction[]>([]);
   const [productStocks, setProductStocks] = useState<any[]>([]);
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [isAddingStock, setIsAddingStock] = useState(false);
+  const [isRemovingStock, setIsRemovingStock] = useState(false);
+
+  // Function to reload product stocks
+  const reloadProductStocks = async () => {
+    try {
+      const stocks = await offlineProductStockStorage.getAll();
+      setProductStocks(stocks);
+    } catch (error) {
+      console.error('Error reloading product stocks:', error);
+    }
+  };
 
   // Load stock locations and set primary as default
   useEffect(() => {
@@ -98,8 +113,7 @@ export default function OfflineInventory() {
         }
 
         // Load product stock data
-        const stocks = await offlineProductStockStorage.getAll();
-        setProductStocks(stocks);
+        await reloadProductStocks();
 
         // Automatically ensure stock records exist for all products
         if (products.length > 0) {
@@ -355,7 +369,7 @@ export default function OfflineInventory() {
     setIsTransferOpen(true);
   };
 
-  const applyStockTransfer = () => {
+  const applyStockTransfer = async () => {
     if (!selectedProduct || !fromLocation || !toLocation || transferQuantity <= 0) {
       toast({
         title: "Error",
@@ -374,53 +388,67 @@ export default function OfflineInventory() {
       return;
     }
 
-    const fromPreviousQuantity = getProductStockInLocation(selectedProduct.id, fromLocation);
-    const toPreviousQuantity = getProductStockInLocation(selectedProduct.id, toLocation);
+    setIsTransferring(true);
+    try {
+      const fromPreviousQuantity = getProductStockInLocation(selectedProduct.id, fromLocation);
+      const toPreviousQuantity = getProductStockInLocation(selectedProduct.id, toLocation);
 
-    const result = offlineProductStockStorage.transferStock(
-      selectedProduct.id,
-      fromLocation,
-      toLocation,
-      transferQuantity
-    );
+      const result = await offlineProductStockStorage.transferStock(
+        selectedProduct.id,
+        fromLocation,
+        toLocation,
+        transferQuantity
+      );
 
-    if (result.success) {
-      // Record transfer out transaction
-      createTransaction({
-        productId: selectedProduct.id,
-        warehouseId: fromLocation,
-        type: 'transfer',
-        quantity: -transferQuantity,
-        previousQuantity: fromPreviousQuantity,
-        newQuantity: fromPreviousQuantity - transferQuantity,
-        reason: `Transfer to ${stockLocations.find(l => l.id === toLocation)?.name}`,
-        reference: `TRANSFER-OUT-${toLocation}`
-      });
+      if (result.success) {
+        // Record transfer out transaction
+        createTransaction({
+          productId: selectedProduct.id,
+          warehouseId: fromLocation,
+          type: 'transfer',
+          quantity: -transferQuantity,
+          previousQuantity: fromPreviousQuantity,
+          newQuantity: fromPreviousQuantity - transferQuantity,
+          reason: `Transfer to ${stockLocations.find(l => l.id === toLocation)?.name}`,
+          reference: `TRANSFER-OUT-${toLocation}`
+        });
 
-      // Record transfer in transaction
-      createTransaction({
-        productId: selectedProduct.id,
-        warehouseId: toLocation,
-        type: 'transfer',
-        quantity: transferQuantity,
-        previousQuantity: toPreviousQuantity,
-        newQuantity: toPreviousQuantity + transferQuantity,
-        reason: `Transfer from ${stockLocations.find(l => l.id === fromLocation)?.name}`,
-        reference: `TRANSFER-IN-${fromLocation}`
-      });
+        // Record transfer in transaction
+        createTransaction({
+          productId: selectedProduct.id,
+          warehouseId: toLocation,
+          type: 'transfer',
+          quantity: transferQuantity,
+          previousQuantity: toPreviousQuantity,
+          newQuantity: toPreviousQuantity + transferQuantity,
+          reason: `Transfer from ${stockLocations.find(l => l.id === fromLocation)?.name}`,
+          reference: `TRANSFER-IN-${fromLocation}`
+        });
 
-      toast({
-        title: "Success",
-        description: result.message
-      });
-      setIsTransferOpen(false);
-      setSelectedProduct(null);
-    } else {
+        // Reload product stocks to show updated quantities immediately
+        await reloadProductStocks();
+
+        toast({
+          title: "Success",
+          description: result.message
+        });
+        setIsTransferOpen(false);
+        setSelectedProduct(null);
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
       toast({
         title: "Error",
-        description: result.message,
+        description: "Failed to transfer stock",
         variant: "destructive"
       });
+    } finally {
+      setIsTransferring(false);
     }
   };
 
@@ -469,7 +497,7 @@ export default function OfflineInventory() {
     }
   };
 
-  const applyStockEntry = () => {
+  const applyStockEntry = async () => {
     if (!selectedProduct || !selectedLocationForEntry || entryQuantity <= 0) {
       toast({
         title: "Error",
@@ -479,15 +507,24 @@ export default function OfflineInventory() {
       return;
     }
 
-    const previousQuantity = getProductStockInLocation(selectedProduct.id, selectedLocationForEntry);
-    const result = offlineProductStockStorage.addStock(
-      selectedProduct.id,
-      selectedLocationForEntry,
-      entryQuantity,
-      entryReason
-    );
+    setIsAddingStock(true);
+    try {
+      const previousQuantity = getProductStockInLocation(selectedProduct.id, selectedLocationForEntry);
+      
+      // Add stock to the selected location
+      await offlineProductStockStorage.addStock(
+        selectedProduct.id,
+        selectedLocationForEntry,
+        entryQuantity
+      );
 
-    if (result.success) {
+      // If this is the primary warehouse, also update the products table
+      const primaryLocation = stockLocations.find(loc => loc.isPrimary);
+      if (primaryLocation && selectedLocationForEntry === primaryLocation.id) {
+        const newQuantity = previousQuantity + entryQuantity;
+        await databaseProductStorage.updateQuantity(selectedProduct.id, newQuantity);
+      }
+
       // Record stock transaction
       createTransaction({
         productId: selectedProduct.id,
@@ -499,22 +536,27 @@ export default function OfflineInventory() {
         reason: entryReason || 'Stock entry'
       });
 
+      // Reload product stocks to show updated quantities immediately
+      await reloadProductStocks();
+
       toast({
         title: "Success",
-        description: result.message
+        description: "Stock added successfully"
       });
       setIsStockEntryOpen(false);
       setSelectedProduct(null);
-    } else {
+    } catch (error) {
       toast({
         title: "Error",
-        description: result.message,
+        description: "Failed to add stock",
         variant: "destructive"
       });
+    } finally {
+      setIsAddingStock(false);
     }
   };
 
-  const applyStockExit = () => {
+  const applyStockExit = async () => {
     if (!selectedProduct || !selectedLocationForEntry || exitQuantity <= 0) {
       toast({
         title: "Error",
@@ -524,15 +566,24 @@ export default function OfflineInventory() {
       return;
     }
 
-    const previousQuantity = getProductStockInLocation(selectedProduct.id, selectedLocationForEntry);
-    const result = offlineProductStockStorage.removeStock(
-      selectedProduct.id,
-      selectedLocationForEntry,
-      exitQuantity,
-      exitReason
-    );
+    setIsRemovingStock(true);
+    try {
+      const previousQuantity = getProductStockInLocation(selectedProduct.id, selectedLocationForEntry);
+      
+      // Remove stock from the selected location
+      await offlineProductStockStorage.removeStock(
+        selectedProduct.id,
+        selectedLocationForEntry,
+        exitQuantity
+      );
 
-    if (result.success) {
+      // If this is the primary warehouse, also update the products table
+      const primaryLocation = stockLocations.find(loc => loc.isPrimary);
+      if (primaryLocation && selectedLocationForEntry === primaryLocation.id) {
+        const newQuantity = Math.max(0, previousQuantity - exitQuantity);
+        await databaseProductStorage.updateQuantity(selectedProduct.id, newQuantity);
+      }
+
       // Record stock transaction
       createTransaction({
         productId: selectedProduct.id,
@@ -544,18 +595,23 @@ export default function OfflineInventory() {
         reason: exitReason || 'Stock exit'
       });
 
+      // Reload product stocks to show updated quantities immediately
+      await reloadProductStocks();
+
       toast({
         title: "Success",
-        description: result.message
+        description: "Stock removed successfully"
       });
       setIsStockExitOpen(false);
       setSelectedProduct(null);
-    } else {
+    } catch (error) {
       toast({
         title: "Error",
-        description: result.message,
+        description: "Failed to remove stock",
         variant: "destructive"
       });
+    } finally {
+      setIsRemovingStock(false);
     }
   };
 
@@ -1110,10 +1166,19 @@ export default function OfflineInventory() {
             </Button>
             <Button 
               onClick={applyStockTransfer}
-              disabled={!fromLocation || !toLocation || transferQuantity <= 0}
+              disabled={!fromLocation || !toLocation || transferQuantity <= 0 || isTransferring}
             >
-              <ArrowRightLeft className="w-4 h-4 mr-2" />
-              Transfer Stock
+              {isTransferring ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Transferring...
+                </>
+              ) : (
+                <>
+                  <ArrowRightLeft className="w-4 h-4 mr-2" />
+                  Transfer Stock
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1222,10 +1287,19 @@ export default function OfflineInventory() {
             </Button>
             <Button 
               onClick={applyStockEntry}
-              disabled={!selectedLocationForEntry || entryQuantity <= 0}
+              disabled={!selectedLocationForEntry || entryQuantity <= 0 || isAddingStock}
             >
-              <PackagePlus className="w-4 h-4 mr-2" />
-              Add Stock
+              {isAddingStock ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <PackagePlus className="w-4 h-4 mr-2" />
+                  Add Stock
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1343,10 +1417,19 @@ export default function OfflineInventory() {
             </Button>
             <Button 
               onClick={applyStockExit}
-              disabled={!selectedLocationForEntry || exitQuantity <= 0}
+              disabled={!selectedLocationForEntry || exitQuantity <= 0 || isRemovingStock}
             >
-              <PackageMinus className="w-4 h-4 mr-2" />
-              Remove Stock
+              {isRemovingStock ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Removing...
+                </>
+              ) : (
+                <>
+                  <PackageMinus className="w-4 h-4 mr-2" />
+                  Remove Stock
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

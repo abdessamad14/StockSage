@@ -826,6 +826,62 @@ export const databaseProductStockStorage = {
   async getTotalQuantity(productId: string): Promise<number> {
     const stocks = await this.getByProduct(productId);
     return stocks.reduce((total, stock) => total + stock.quantity, 0);
+  },
+
+  async addStock(productId: string, locationId: string, quantityToAdd: number): Promise<OfflineProductStock> {
+    const existing = await this.getByProductAndLocation(productId, locationId);
+    const currentQuantity = existing?.quantity || 0;
+    const newQuantity = currentQuantity + quantityToAdd;
+    
+    return await this.upsert({
+      productId,
+      locationId,
+      quantity: newQuantity,
+      minStockLevel: existing?.minStockLevel || 0
+    });
+  },
+
+  async removeStock(productId: string, locationId: string, quantityToRemove: number): Promise<OfflineProductStock> {
+    const existing = await this.getByProductAndLocation(productId, locationId);
+    const currentQuantity = existing?.quantity || 0;
+    const newQuantity = Math.max(0, currentQuantity - quantityToRemove);
+    
+    return await this.upsert({
+      productId,
+      locationId,
+      quantity: newQuantity,
+      minStockLevel: existing?.minStockLevel || 0
+    });
+  },
+
+  async transferStock(productId: string, fromLocationId: string, toLocationId: string, quantity: number): Promise<{ success: boolean; message: string }> {
+    try {
+      // Get stock from source location
+      const fromStock = await this.getByProductAndLocation(productId, fromLocationId);
+      if (!fromStock || fromStock.quantity < quantity) {
+        return {
+          success: false,
+          message: 'Insufficient stock in source location'
+        };
+      }
+
+      // Remove from source location
+      await this.removeStock(productId, fromLocationId, quantity);
+
+      // Add to destination location
+      await this.addStock(productId, toLocationId, quantity);
+
+      return {
+        success: true,
+        message: 'Stock transferred successfully'
+      };
+    } catch (error) {
+      console.error('Error transferring stock:', error);
+      return {
+        success: false,
+        message: 'Failed to transfer stock'
+      };
+    }
   }
 };
 
