@@ -372,14 +372,14 @@ export default function OfflinePOS() {
       
       for (const item of sale.items) {
         console.log('Processing item:', item);
-        // Try to find the actual product
-        let product = products.find(p => p.id === item.productId);
+        // Try to find the actual product (handle both string and number IDs)
+        let product = products.find(p => p.id === String(item.productId));
         
         if (!product) {
           console.log('Product not found, creating minimal product for:', item.productId);
           // Create a minimal product object if not found
           product = {
-            id: item.productId,
+            id: String(item.productId),
             name: item.productName,
             sellingPrice: item.unitPrice,
             categoryId: '',
@@ -394,7 +394,7 @@ export default function OfflinePOS() {
             quantity: 0
           };
         } else {
-          console.log('Found existing product:', product.name);
+          console.log('Found existing product:', product.name, 'with barcode:', product.barcode);
         }
         
         const cartItem: CartItem = {
@@ -469,39 +469,62 @@ export default function OfflinePOS() {
 
   // Handle barcode scan result
   const handleBarcodeScanned = async (barcode: string) => {
-    console.log('Barcode scanned:', barcode);
+    const trimmedBarcode = barcode.trim();
+    console.log('Barcode scanned:', trimmedBarcode, 'Length:', trimmedBarcode.length);
     
-    // Check if it's an invoice barcode (format: INVOICE:invoice_number)
-    if (barcode.startsWith('INVOICE:')) {
-      const invoiceNumber = barcode.replace('INVOICE:', '');
+    // Extract invoice number from various formats
+    let invoiceNumber = trimmedBarcode;
+    
+    // Check if it's an invoice barcode (format: INVOICE:invoice_number or INVOICEINV-xxx)
+    if (trimmedBarcode.startsWith('INVOICE:')) {
+      invoiceNumber = trimmedBarcode.replace('INVOICE:', '');
+      console.log('Detected INVOICE: format, extracted invoice:', invoiceNumber);
       await loadInvoiceToCart(invoiceNumber);
       return;
     }
     
-    // Check if it's just an invoice number (from barcode)
-    const sale = todaysOrders.find(s => s.invoiceNumber === barcode);
+    // Handle INVOICEINV- format (thermal printer adds INVOICE prefix)
+    if (trimmedBarcode.startsWith('INVOICEINV-')) {
+      invoiceNumber = trimmedBarcode.replace('INVOICE', '');
+      console.log('Detected INVOICEINV- format, extracted invoice:', invoiceNumber);
+      await loadInvoiceToCart(invoiceNumber);
+      return;
+    }
+    
+    // Check if it's an invoice number (starts with INV- or contains INV-)
+    if (trimmedBarcode.startsWith('INV-') || trimmedBarcode.includes('INV-')) {
+      console.log('Detected invoice number format, loading invoice:', trimmedBarcode);
+      await loadInvoiceToCart(trimmedBarcode);
+      return;
+    }
+    
+    // Check if it's just an invoice number (from barcode) in today's orders
+    const sale = todaysOrders.find(s => s.invoiceNumber === trimmedBarcode);
     if (sale) {
-      await loadInvoiceToCart(barcode);
+      console.log('Found sale in todays orders, loading invoice:', trimmedBarcode);
+      await loadInvoiceToCart(trimmedBarcode);
       return;
     }
     
     // Find product by barcode
     const product = products.find(p => 
-      p.barcode === barcode || 
-      p.barcode === barcode.trim() ||
-      p.id === barcode
+      p.barcode === trimmedBarcode || 
+      p.barcode === barcode ||
+      p.id === trimmedBarcode
     );
     
     if (product) {
+      console.log('Found product by barcode:', product.name);
       addToCart(product);
       toast({
         title: t('product_added'),
         description: t('product_added_to_cart', { name: product.name }),
       });
     } else {
+      console.log('No product or invoice found for barcode:', trimmedBarcode);
       toast({
         title: t('product_not_found'),
-        description: t('barcode_not_found', { barcode }),
+        description: t('barcode_not_found', { barcode: trimmedBarcode }),
         variant: "destructive",
       });
     }
@@ -510,13 +533,36 @@ export default function OfflinePOS() {
   // Load invoice to cart by scanning receipt barcode
   const loadInvoiceToCart = async (invoiceNumber: string) => {
     try {
-      // Find the sale by invoice number
-      const sale = todaysOrders.find(s => s.invoiceNumber === invoiceNumber);
+      const trimmedInvoice = invoiceNumber.trim();
+      console.log('Loading invoice to cart:', trimmedInvoice);
+      console.log('Today\'s orders count:', todaysOrders.length);
+      
+      // First check in today's orders
+      let sale = todaysOrders.find(s => s.invoiceNumber === trimmedInvoice);
+      console.log('Found in today\'s orders:', !!sale);
+      
+      // If not found in today's orders, fetch from database
+      if (!sale) {
+        try {
+          console.log('Fetching all sales from database...');
+          const allSales = await databaseSalesStorage.getAll();
+          console.log('Total sales in database:', allSales.length);
+          sale = allSales.find(s => s.invoiceNumber === trimmedInvoice);
+          console.log('Found in database:', !!sale);
+          
+          if (sale) {
+            console.log('Sale found:', sale.invoiceNumber, 'Items:', sale.items?.length);
+          }
+        } catch (error) {
+          console.error('Error fetching sales from database:', error);
+        }
+      }
       
       if (!sale) {
+        console.log('Invoice not found:', trimmedInvoice);
         toast({
           title: t('invoice_not_found'),
-          description: `Facture ${invoiceNumber} introuvable`,
+          description: `Facture ${trimmedInvoice} introuvable`,
           variant: "destructive",
         });
         return;
@@ -525,31 +571,36 @@ export default function OfflinePOS() {
       // Clear current cart
       setCart([]);
       
-      // Load sale items into cart
-      const cartItems: CartItem[] = sale.items.map(item => ({
-        product: {
-          id: item.productId,
-          name: item.productName,
-          sellingPrice: item.unitPrice,
-          categoryId: '',
-          barcode: '',
-          costPrice: 0,
-          minStockLevel: 0,
-          description: '',
-          quantity: 0,
-          unit: '',
-          semiWholesalePrice: undefined,
-          wholesalePrice: undefined,
-          image: undefined,
-          active: true,
-          tenantId: '',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice
-      }));
+      // Load sale items into cart with full product data
+      const cartItems: CartItem[] = sale.items.map(item => {
+        // Find the actual product to get all its data including barcode
+        const actualProduct = products.find(p => p.id === String(item.productId));
+        
+        return {
+          product: actualProduct || {
+            id: String(item.productId),
+            name: item.productName,
+            sellingPrice: item.unitPrice,
+            categoryId: '',
+            barcode: '',
+            costPrice: 0,
+            minStockLevel: 0,
+            description: '',
+            quantity: 0,
+            unit: '',
+            semiWholesalePrice: undefined,
+            wholesalePrice: undefined,
+            image: undefined,
+            active: true,
+            tenantId: '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice
+        };
+      });
       
       setCart(cartItems);
       
