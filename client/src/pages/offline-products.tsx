@@ -4,7 +4,7 @@ import { useOfflineStockLocations } from "@/hooks/use-offline-stock-locations";
 import { useOfflineStockTransactions } from "@/hooks/use-offline-stock-transactions";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { OfflineProduct, OfflineCategory, offlineCategoryStorage } from "@/lib/database-storage";
+import { OfflineProduct, OfflineCategory, OfflineProductStock, offlineCategoryStorage, offlineProductStockStorage } from "@/lib/database-storage";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -62,9 +62,37 @@ export default function OfflineProducts() {
   const [selectedCategoryImage, setSelectedCategoryImage] = useState<string | null>(null);
   const [barcodeBuffer, setBarcodeBuffer] = useState('');
   const [lastKeyTime, setLastKeyTime] = useState(0);
+  const [productStocks, setProductStocks] = useState<Record<string, number>>({});
 
   // Get primary warehouse
   const primaryWarehouse = stockLocations.find(loc => loc.isPrimary) || stockLocations[0];
+
+  // Function to refresh product stocks
+  const refreshProductStocks = async () => {
+    if (!primaryWarehouse) return;
+    
+    const stockMap: Record<string, number> = {};
+    
+    for (const product of products) {
+      try {
+        const stock = await offlineProductStockStorage.getByProductAndLocation(
+          product.id,
+          String(primaryWarehouse.id)
+        );
+        stockMap[product.id] = stock?.quantity || 0;
+      } catch (error) {
+        console.warn(`Failed to fetch stock for product ${product.id}:`, error);
+        stockMap[product.id] = 0;
+      }
+    }
+    
+    setProductStocks(stockMap);
+  };
+
+  // Fetch product stocks from primary warehouse
+  useEffect(() => {
+    refreshProductStocks();
+  }, [products, primaryWarehouse]);
 
   const formatPrice = (value?: number | null) => {
     const safeValue = typeof value === 'number' ? value : 0;
@@ -73,11 +101,8 @@ export default function OfflineProducts() {
 
   // Function to get warehouse-specific stock quantity
   const getWarehouseStock = (productId: string): number => {
-    if (!primaryWarehouse) return 0;
-    // This will be updated to use primary warehouse stock in real-time
-    // For now, return the product quantity which should match primary warehouse
-    const product = products.find(p => p.id === productId);
-    return product?.quantity || 0;
+    // Return stock from primary warehouse (from product_stock table)
+    return productStocks[productId] || 0;
   };
 
   // Image handling functions
@@ -286,9 +311,9 @@ export default function OfflineProducts() {
   };
 
   // Product handlers
-  const handleCreateProduct = (data: ProductFormData) => {
+  const handleCreateProduct = async (data: ProductFormData) => {
     try {
-      createProduct({
+      await createProduct({
         ...data,
         categoryId: data.categoryId === "none" ? undefined : data.categoryId ?? undefined,
         barcode: data.barcode ?? undefined,
@@ -301,6 +326,10 @@ export default function OfflineProducts() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
+      
+      // Refresh stock data after creating product
+      await refreshProductStocks();
+      
       toast({
         title: t('success'),
         description: t('product_created_successfully')
@@ -317,7 +346,7 @@ export default function OfflineProducts() {
     }
   };
 
-  const handleUpdateProduct = (data: ProductFormData) => {
+  const handleUpdateProduct = async (data: ProductFormData) => {
     if (!editingProduct) return;
     
     try {
@@ -330,7 +359,7 @@ export default function OfflineProducts() {
       console.log('Selected image:', selectedImage);
       
       // Update product information
-      updateProduct(editingProduct.id, {
+      await updateProduct(editingProduct.id, {
         ...data,
         categoryId: data.categoryId === "none" ? undefined : data.categoryId,
         barcode: data.barcode ?? undefined,
@@ -342,6 +371,9 @@ export default function OfflineProducts() {
         image: selectedImage ?? undefined,
         updatedAt: new Date().toISOString()
       });
+
+      // Refresh stock data after updating product
+      await refreshProductStocks();
 
       toast({
         title: t('success'),

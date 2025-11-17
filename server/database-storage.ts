@@ -17,6 +17,8 @@ import {
   inventoryAdjustmentItems,
   syncLogs,
   settings,
+  productStock,
+  stockLocations,
   User,
   Product,
   ProductCategory,
@@ -575,6 +577,14 @@ export class DatabaseStorage implements IStorage {
 
   async updateOrderStatus(id: number, tenantId: string, status: string): Promise<Order | undefined> {
     return await db.transaction(async (tx) => {
+      // Get order details first to get warehouse ID
+      const [order] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.id, id), eq(orders.tenantId, tenantId)));
+      
+      if (!order) return undefined;
+
       // Update order status
       const [updatedOrder] = await tx
         .update(orders)
@@ -584,12 +594,14 @@ export class DatabaseStorage implements IStorage {
       
       if (!updatedOrder) return undefined;
 
-      // If status is 'received', update product quantities
+      // If status is 'received', update product quantities in both products table and product_stock table
       if (status === 'received') {
         const items = await tx
           .select()
           .from(orderItems)
           .where(and(eq(orderItems.orderId, id), eq(orderItems.tenantId, tenantId)));
+
+        const warehouseId = order.warehouseId ? String(order.warehouseId) : 'main';
 
         for (const item of items) {
           const [product] = await tx
@@ -598,10 +610,71 @@ export class DatabaseStorage implements IStorage {
             .where(and(eq(products.id, item.productId), eq(products.tenantId, tenantId)));
 
           if (product) {
+            const newProductQuantity = product.quantity + item.quantity;
+            
+            // Update product table quantity (this represents primary warehouse stock)
             await tx
               .update(products)
-              .set({ quantity: product.quantity + item.quantity })
+              .set({ quantity: newProductQuantity })
               .where(eq(products.id, item.productId));
+
+            // Update or create warehouse-specific stock record
+            const [existingStock] = await tx
+              .select()
+              .from(productStock)
+              .where(and(
+                eq(productStock.productId, item.productId),
+                eq(productStock.locationId, warehouseId)
+              ));
+
+            if (existingStock) {
+              // Update existing stock record
+              await tx
+                .update(productStock)
+                .set({ 
+                  quantity: existingStock.quantity + item.quantity,
+                  updatedAt: new Date().toISOString()
+                })
+                .where(eq(productStock.id, existingStock.id));
+            } else {
+              // Create new stock record for this warehouse
+              await tx
+                .insert(productStock)
+                .values({
+                  tenantId: tenantId,
+                  productId: item.productId,
+                  locationId: warehouseId,
+                  quantity: item.quantity,
+                  minStockLevel: product.minStockLevel || 0
+                });
+            }
+
+            // If this is the primary warehouse, ensure product quantity matches
+            const locationIdNum = parseInt(warehouseId);
+            if (!isNaN(locationIdNum)) {
+              const [location] = await tx
+                .select()
+                .from(stockLocations)
+                .where(eq(stockLocations.id, locationIdNum));
+
+              if (location?.isPrimary) {
+                // Sync product quantity with primary warehouse stock
+                const [primaryStock] = await tx
+                  .select()
+                  .from(productStock)
+                  .where(and(
+                    eq(productStock.productId, item.productId),
+                    eq(productStock.locationId, warehouseId)
+                  ));
+
+                if (primaryStock) {
+                  await tx
+                    .update(products)
+                    .set({ quantity: primaryStock.quantity })
+                    .where(eq(products.id, item.productId));
+                }
+              }
+            }
           }
         }
       }

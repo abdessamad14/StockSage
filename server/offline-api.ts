@@ -101,6 +101,7 @@ router.post('/products', async (req, res) => {
 router.patch('/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const productId = parseInt(id);
     
     // Only update the fields provided in the request body
     const updateData = {
@@ -112,11 +113,43 @@ router.patch('/products/:id', async (req, res) => {
     
     const updatedProduct = await db.update(products)
       .set(updateData)
-      .where(eq(products.id, parseInt(id)))
+      .where(eq(products.id, productId))
       .returning();
     
     if (updatedProduct.length === 0) {
       return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    // If quantity was updated, sync with primary warehouse stock
+    if (req.body.quantity !== undefined) {
+      const primaryWarehouse = await db.select().from(stockLocations)
+        .where(eq(stockLocations.isPrimary, true))
+        .limit(1);
+      
+      if (primaryWarehouse.length > 0) {
+        const warehouseId = String(primaryWarehouse[0].id);
+        
+        // Update or create stock record for primary warehouse
+        const existingStock = await db.select().from(productStock)
+          .where(eq(productStock.productId, productId) && eq(productStock.locationId, warehouseId));
+        
+        if (existingStock.length > 0) {
+          await db.update(productStock)
+            .set({ 
+              quantity: req.body.quantity,
+              updatedAt: new Date().toISOString()
+            })
+            .where(eq(productStock.id, existingStock[0].id));
+        } else {
+          await db.insert(productStock).values({
+            tenantId: 'default',
+            productId: productId,
+            locationId: warehouseId,
+            quantity: req.body.quantity,
+            minStockLevel: updatedProduct[0].minStockLevel || 0
+          });
+        }
+      }
     }
     
     res.json(updatedProduct[0]);
@@ -181,6 +214,39 @@ router.put('/products/:id', async (req, res) => {
     
     if (updatedProduct.length === 0) {
       return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    // If quantity was updated, sync with primary warehouse stock
+    if (req.body.quantity !== undefined) {
+      const primaryWarehouse = await db.select().from(stockLocations)
+        .where(eq(stockLocations.isPrimary, true))
+        .limit(1);
+      
+      if (primaryWarehouse.length > 0) {
+        const warehouseId = String(primaryWarehouse[0].id);
+        const productId = parseInt(id);
+        
+        // Update or create stock record for primary warehouse
+        const existingStock = await db.select().from(productStock)
+          .where(eq(productStock.productId, productId) && eq(productStock.locationId, warehouseId));
+        
+        if (existingStock.length > 0) {
+          await db.update(productStock)
+            .set({ 
+              quantity: req.body.quantity,
+              updatedAt: new Date().toISOString()
+            })
+            .where(eq(productStock.id, existingStock[0].id));
+        } else {
+          await db.insert(productStock).values({
+            tenantId: 'default',
+            productId: productId,
+            locationId: warehouseId,
+            quantity: req.body.quantity,
+            minStockLevel: updatedProduct[0].minStockLevel || 0
+          });
+        }
+      }
     }
     
     res.json(updatedProduct[0]);

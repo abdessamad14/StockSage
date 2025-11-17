@@ -88,6 +88,7 @@ export default function OfflinePOS() {
   const [customers, setCustomers] = useState<OfflineCustomer[]>([]);
   const [categories, setCategories] = useState<OfflineCategory[]>([]);
   const [stockLocations, setStockLocations] = useState<OfflineStockLocation[]>([]);
+  const [productStocks, setProductStocks] = useState<Record<string, number>>({});
   const [currentSalesPeriod, setCurrentSalesPeriod] = useState<OfflineSalesPeriod | null>(null);
   const [salesPeriodStats, setSalesPeriodStats] = useState({
     totalSales: 0,
@@ -152,6 +153,29 @@ export default function OfflinePOS() {
       .slice(0, 8);
   }, [quickSearchTerm, products]);
 
+  // Function to refresh product stocks from primary warehouse
+  const refreshProductStocks = async (productsData: OfflineProduct[], locations: OfflineStockLocation[]) => {
+    const primaryWarehouse = locations.find(loc => loc.isPrimary) || locations[0];
+    if (!primaryWarehouse) return;
+    
+    const stockMap: Record<string, number> = {};
+    
+    for (const product of productsData) {
+      try {
+        const stock = await offlineProductStockStorage.getByProductAndLocation(
+          product.id,
+          String(primaryWarehouse.id)
+        );
+        stockMap[product.id] = stock?.quantity || 0;
+      } catch (error) {
+        console.warn(`Failed to fetch stock for product ${product.id}:`, error);
+        stockMap[product.id] = 0;
+      }
+    }
+    
+    setProductStocks(stockMap);
+  };
+
   // Load data on component mount
   useEffect(() => {
     const loadData = async () => {
@@ -167,6 +191,9 @@ export default function OfflinePOS() {
         setCustomers(customersData);
         setCategories(categoriesData);
         setStockLocations(stockLocationsData);
+        
+        // Fetch product stocks from primary warehouse
+        await refreshProductStocks(productsData, stockLocationsData);
         
         // Debug logging
         console.log('Loaded products:', productsData.length);
@@ -233,6 +260,11 @@ export default function OfflinePOS() {
       setCreditInfo(null);
     }
   }, [selectedCustomer]);
+
+  // Helper function to get product stock quantity
+  const getProductStock = (productId: string): number => {
+    return productStocks[productId] || 0;
+  };
 
   // Load customer credit info
   const loadCustomerCreditInfo = async (customerId: string) => {
@@ -915,51 +947,51 @@ export default function OfflinePOS() {
       for (const item of cart) {
         try {
           console.log('Processing inventory update for item:', item);
-          const currentProduct = products.find(p => p.id === item.product.id);
-          if (currentProduct) {
-            const previousQuantity = currentProduct.quantity;
-            const newQuantity = previousQuantity - item.quantity;
-            
-            console.log(`Updating product ${item.product.id} quantity from ${previousQuantity} to ${newQuantity}`);
-            
-            // Update only product quantity, not all fields
-            await databaseProductStorage.updateQuantity(item.product.id, newQuantity);
-            console.log('Product quantity updated successfully');
+          
+          // Get current stock from single source of truth (product_stock table)
+          const previousQuantity = getProductStock(item.product.id);
+          const newQuantity = previousQuantity - item.quantity;
+          
+          console.log(`Updating product ${item.product.id} quantity from ${previousQuantity} to ${newQuantity}`);
+          
+          // Update only product quantity, not all fields
+          await databaseProductStorage.updateQuantity(item.product.id, newQuantity);
+          console.log('Product quantity updated successfully');
 
-            // Update primary warehouse stock to keep in sync
-            if (primaryWarehouse) {
-              console.log('Updating warehouse stock for primary warehouse:', primaryWarehouse.id);
-              await offlineProductStockStorage.upsert({
-                productId: item.product.id,
-                locationId: primaryWarehouse.id,
-                quantity: newQuantity,
-                minStockLevel: 0
-              });
-              console.log('Warehouse stock updated successfully');
-            }
+          // Update primary warehouse stock to keep in sync
+          if (primaryWarehouse) {
+            console.log('Updating warehouse stock for primary warehouse:', primaryWarehouse.id);
+            await offlineProductStockStorage.upsert({
+              productId: item.product.id,
+              locationId: primaryWarehouse.id,
+              quantity: newQuantity,
+              minStockLevel: 0
+            });
+            console.log('Warehouse stock updated successfully');
+          }
 
-            // Create stock transaction entry for sale
-            try {
-              console.log('Creating stock transaction entry');
-              const response = await fetch('http://localhost:5003/api/offline/stock-transactions', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  tenantId: 'offline',
-                  productId: parseInt(item.product.id),
-                  warehouseId: primaryWarehouse?.id || 'main',
-                  type: 'sale',
-                  quantity: -item.quantity, // Negative for stock decrease
-                  previousQuantity: previousQuantity,
-                  newQuantity: newQuantity,
-                  reason: 'POS Sale',
-                  reference: createdSale.invoiceNumber,
-                  relatedId: createdSale.id?.toString(),
-                  createdAt: new Date().toISOString()
-                }),
-              });
+          // Create stock transaction entry for sale
+          try {
+            console.log('Creating stock transaction entry');
+            const response = await fetch('http://localhost:5003/api/offline/stock-transactions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                tenantId: 'offline',
+                productId: parseInt(item.product.id),
+                warehouseId: primaryWarehouse?.id || 'main',
+                type: 'sale',
+                quantity: -item.quantity, // Negative for stock decrease
+                previousQuantity: previousQuantity,
+                newQuantity: newQuantity,
+                reason: 'POS Sale',
+                reference: createdSale.invoiceNumber,
+                relatedId: createdSale.id?.toString(),
+                createdAt: new Date().toISOString()
+              }),
+            });
 
               if (!response.ok) {
                 console.error('Failed to create stock transaction for product:', item.product.id);
@@ -969,9 +1001,6 @@ export default function OfflinePOS() {
             } catch (stockError) {
               console.error('Error creating stock transaction:', stockError);
             }
-          } else {
-            console.warn('Product not found in products list:', item.product.id);
-          }
         } catch (itemError) {
           console.error('Error processing inventory update for item:', item, itemError);
           throw itemError; // Re-throw to catch in main error handler
@@ -999,6 +1028,11 @@ export default function OfflinePOS() {
       console.log('Reloading todays orders');
       await loadTodaysOrders();
       console.log('Todays orders reloaded successfully');
+      
+      // Refresh product stocks to show updated quantities
+      console.log('Refreshing product stocks');
+      await refreshProductStocks(products, stockLocations);
+      console.log('Product stocks refreshed successfully');
 
       // Auto-print thermal receipt after successful payment
       try {
@@ -1217,7 +1251,7 @@ export default function OfflinePOS() {
                           <div>
                             <div className="font-semibold text-slate-800 line-clamp-1">
                               {product.name}
-                              <span className="ml-2 text-xs font-normal text-slate-500">({product.quantity} {t('available')})</span>
+                              <span className="ml-2 text-xs font-normal text-slate-500">({getProductStock(product.id)} {t('available')})</span>
                             </div>
                             <div className="text-[10px] text-slate-500">
                               {product.barcode || t('offline_pos_barcode_missing')}
@@ -1972,11 +2006,11 @@ export default function OfflinePOS() {
                           ) : (
                             <div className="text-3xl mb-2">📦</div>
                           )}
-                          <h3 className="font-bold text-sm mb-2 line-clamp-2">
+                          <h3 className="font-bold text-sm mb-1 line-clamp-2 leading-tight">
                             {product.name}
                           </h3>
                           <div className="text-xs text-white/80 mb-1">
-                            {product.quantity} {t('available')}
+                            {getProductStock(product.id)} {t('available')}
                           </div>
                           <div className="bg-white bg-opacity-20 rounded-lg py-1 px-2">
                             <div className="font-bold text-lg">
