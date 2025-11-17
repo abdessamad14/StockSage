@@ -228,19 +228,8 @@ export default function OfflineSalesHistory() {
 
   const handlePrintReceipt = async (sale: OfflineSale) => {
     try {
-      // Check if printer is ready
-      const printerReady = await ThermalReceiptPrinter.isPrinterReady();
-      if (!printerReady) {
-        toast({
-          title: t('offline_sales_printer_not_ready_title'),
-          description: t('offline_sales_printer_not_ready_desc'),
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Prepare receipt data
-      const customerName = sale.customerId ? getCustomerName(sale.customerId) : undefined;
+      // Prepare receipt data (same as POS implementation)
+      const customerName = sale.customerId ? getCustomerName(String(sale.customerId)) : undefined;
 
       const receiptData: ReceiptData = {
         invoiceNumber: sale.invoiceNumber,
@@ -261,18 +250,18 @@ export default function OfflineSalesHistory() {
         paymentMethod: sale.paymentMethod
       };
 
-      // Print receipt
+      // Print receipt directly (same as POS)
       await ThermalReceiptPrinter.printReceipt(receiptData);
       
       toast({
         title: t('success'),
-        description: t('offline_sales_print_success')
+        description: t('offline_pos_receipt_auto_printed')
       });
     } catch (error) {
       console.error('Print error:', error);
       toast({
-        title: t('offline_sales_print_error_title'),
-        description: t('offline_sales_print_error_desc'),
+        title: t('error'),
+        description: t('offline_pos_sale_completed_print_error'),
         variant: "destructive"
       });
     }
