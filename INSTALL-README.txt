@@ -14,10 +14,17 @@ QUICK INSTALL:
 1. Right-click "start.bat"
 2. Select "Run as Administrator"
 3. Wait 2-5 minutes for installation
-4. App will start automatically
+4. Service installs automatically
+5. Done! App runs forever
 
 ACCESS:
 Open browser: http://localhost:5003
+
+IMPORTANT:
+✓ App installs as Windows Service
+✓ Auto-starts when PC boots
+✓ Survives PC restarts
+✓ Runs forever in background
 
 DEFAULT LOGIN:
 • Admin: admin / admin123 (PIN: 1234)
@@ -26,20 +33,24 @@ DEFAULT LOGIN:
 ⚠️ IMPORTANT: Change passwords after first login!
 
 ========================================
-   AUTO-START ON BOOT (Optional)
+   SERVICE MANAGEMENT
 ========================================
 
-To make the app start automatically when PC boots:
+The app is installed as a Windows Service.
 
-1. Right-click "start.bat"
-2. Select "Run as Administrator"
-3. Run this command:
-   start.bat --install-service
+CHECK STATUS:
+   sc query Igoodar
 
-The app will now start automatically every time you turn on your PC!
+STOP SERVICE:
+   sc stop Igoodar
 
-UNINSTALL AUTO-START:
-Open Command Prompt as Administrator and run:
+START SERVICE:
+   sc start Igoodar
+
+RESTART SERVICE:
+   sc stop Igoodar && sc start Igoodar
+
+UNINSTALL SERVICE:
    sc delete Igoodar
 
 ========================================
