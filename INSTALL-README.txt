@@ -2,6 +2,14 @@
    IGOODAR - Installation Instructions
 ========================================
 
+⚠️  IMPORTANT: This is proprietary software
+    Read LICENSE.txt before installing
+    Unauthorized distribution is prohibited
+
+Copyright (c) 2025 Igoodar. All rights reserved.
+
+========================================
+
 QUICK INSTALL:
 1. Right-click "start.bat"
 2. Select "Run as Administrator"

@@ -3,6 +3,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic } from "./vite";
 import { offlineApiRouter } from "./offline-api";
+import licenseRouter from "./license-routes.js";
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
@@ -39,6 +40,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Add license API routes
+  app.use('/api/license', licenseRouter);
+  
   // Add offline API routes
   app.use('/api/offline', offlineApiRouter);
   
