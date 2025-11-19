@@ -68,6 +68,7 @@ try {
     'start.js',
     'start.sh',
     'start.bat',
+    'start-background.vbs',
     'update.bat',
     'fix-windows.bat',
     'README.md',

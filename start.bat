@@ -1,24 +1,6 @@
 @echo off
-setlocal enabledelayedexpansion
-
-echo Starting StockSage Inventory System...
-echo.
-
-:: Check if --install-service flag is passed
-if "%1"=="--install-service" goto install_service
-
-if not exist node_modules goto setup
-if not exist dist\public goto setup
-goto launch
-
-:setup
-echo Running initial setup (this may take a moment)...
-call npm run setup || goto error
-
-:launch
-echo.
 echo ========================================
-echo    Installing as Windows Service
+echo    Starting Igoodar
 echo ========================================
 echo.
 
@@ -27,82 +9,68 @@ net session >nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] Administrator rights required!
     echo.
-    echo Please close this window and:
-    echo 1. Right-click start.bat
-    echo 2. Select "Run as Administrator"
+    echo Please right-click start.bat and select "Run as Administrator"
     echo.
     pause
     exit /b 1
 )
 
-goto install_service
+:: Check if node_modules exists
+if not exist "node_modules\" (
+    echo Running initial setup...
+    call npm run setup
+    if %errorlevel% neq 0 goto error
+)
 
-:install_service
-:: Get full path to this script and Node.js
-set "SCRIPT_PATH=%~f0"
+:: Setup auto-start
+echo Setting up auto-start...
+
+:: Get startup folder path
+set "STARTUP_FOLDER=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
+
+:: Get current directory
 set "APP_DIR=%~dp0"
-set "NODE_PATH=%APP_DIR%node.exe"
 
-:: Use system Node.js if local doesn't exist
-if not exist "%NODE_PATH%" (
-    set "NODE_PATH=node"
-)
+:: Create shortcut to start-background.vbs in Startup folder
+echo Set oWS = WScript.CreateObject("WScript.Shell") > CreateShortcut.vbs
+echo sLinkFile = "%STARTUP_FOLDER%\Igoodar.lnk" >> CreateShortcut.vbs
+echo Set oLink = oWS.CreateShortcut(sLinkFile) >> CreateShortcut.vbs
+echo oLink.TargetPath = "%APP_DIR%start-background.vbs" >> CreateShortcut.vbs
+echo oLink.WorkingDirectory = "%APP_DIR%" >> CreateShortcut.vbs
+echo oLink.Description = "Igoodar POS & Inventory" >> CreateShortcut.vbs
+echo oLink.Save >> CreateShortcut.vbs
 
-:: Check if service already exists
-sc query "Igoodar" >nul 2>&1
-if %errorlevel% equ 0 (
-    echo Service already exists. Stopping and removing old service...
-    sc stop "Igoodar" >nul 2>&1
-    timeout /t 2 /nobreak >nul
-    sc delete "Igoodar" >nul 2>&1
-    timeout /t 2 /nobreak >nul
-)
+cscript //nologo CreateShortcut.vbs
+del CreateShortcut.vbs
 
-echo Creating Windows Service...
-sc create "Igoodar" binPath= "\"%NODE_PATH%\" \"%APP_DIR%start.js\"" start= auto DisplayName= "Igoodar POS & Inventory" >nul
+echo ✓ Auto-start configured
 
-if %errorlevel% neq 0 (
-    echo [ERROR] Failed to create service!
-    echo.
-    pause
-    exit /b 1
-)
+:: Start the app now
+echo.
+echo Starting Igoodar...
+start /B "" node start.js
 
-sc description "Igoodar" "Igoodar POS and Inventory Management System - Auto-starts on boot" >nul
-sc failure "Igoodar" reset= 86400 actions= restart/5000/restart/10000/restart/30000 >nul
-
-echo Starting service...
-sc start "Igoodar" >nul
-
-timeout /t 3 /nobreak >nul
+:: Wait a moment for server to start
+timeout /t 5 /nobreak >nul
 
 echo.
 echo ========================================
-echo    Service Installed Successfully!
+echo    Igoodar Started Successfully!
 echo ========================================
 echo.
-echo ✓ Igoodar will now start automatically when PC boots
-echo ✓ Service will restart automatically if it crashes
+echo ✓ Igoodar is now running in background
+echo ✓ Will auto-start when you log in to Windows
 echo ✓ Access at: http://localhost:5003
 echo.
-echo Service Management Commands:
-echo   • Check status:  sc query Igoodar
-echo   • Stop service:  sc stop Igoodar
-echo   • Start service: sc start Igoodar
-echo   • Uninstall:     sc delete Igoodar
-echo.
-echo You can close this window now.
+echo To stop: Open Task Manager and end "node.exe" process
+echo To uninstall auto-start: Delete shortcut from Startup folder
+echo   Location: %STARTUP_FOLDER%\Igoodar.lnk
 echo.
 pause
 exit /b 0
 
 :error
 echo.
-echo An error occurred while starting StockSage.
+echo [ERROR] Setup failed!
 pause
 exit /b 1
-
-:end
-echo.
-echo StockSage exited.
-pause
