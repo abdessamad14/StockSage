@@ -68,9 +68,13 @@ try {
     'start.js',
     'start.sh',
     'start.bat',
+    'update.bat',
     'fix-windows.bat',
     'README.md',
     'README-WINDOWS.md',
+    'INSTALL-README.txt',
+    'UPDATE-GUIDE.md',
+    'LICENSE.txt',
     'package.json',
     'package-lock.json'
   ];
