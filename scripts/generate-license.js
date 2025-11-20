@@ -15,6 +15,11 @@ import crypto from 'crypto';
 
 const SECRET = 'IGOODAR-2025-PROTECT-YOUR-BUSINESS'; // Must match server/license.js
 
+/**
+ * Generate a license key for a customer
+ * Note: Machine ID should be obtained from the customer's activation screen
+ * The machine ID is based on primary physical network adapter + hostname
+ */
 function generateLicenseKey(customerName, machineId, expiryDate = null) {
   const data = {
     customer: customerName,

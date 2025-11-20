@@ -17,21 +17,32 @@ const SECRET = 'IGOODAR-2025-PROTECT-YOUR-BUSINESS'; // Change this to your own 
 
 /**
  * Get unique machine ID (hardware fingerprint)
+ * Uses only physical network adapters for stability
  */
 function getMachineId() {
   const networkInterfaces = os.networkInterfaces();
   const macs = [];
   
+  // Get all MAC addresses from physical interfaces (skip virtual adapters)
   for (const name of Object.keys(networkInterfaces)) {
+    // Skip virtual/temporary adapters
+    if (name.includes('vEthernet') || name.includes('VMware') || name.includes('VirtualBox')) {
+      continue;
+    }
+    
     for (const net of networkInterfaces[name]) {
-      if (net.mac && net.mac !== '00:00:00:00:00:00') {
+      if (net.mac && net.mac !== '00:00:00:00:00:00' && !net.internal) {
         macs.push(net.mac);
       }
     }
   }
   
-  // Combine MAC addresses and hostname for unique ID
-  const uniqueString = macs.sort().join('-') + os.hostname();
+  // Sort and use only the first MAC (most stable physical adapter)
+  macs.sort();
+  const primaryMac = macs[0] || 'no-mac-found';
+  
+  // Use primary MAC + hostname for unique ID
+  const uniqueString = primaryMac + os.hostname();
   return crypto.createHash('sha256').update(uniqueString).digest('hex').substring(0, 16);
 }
 

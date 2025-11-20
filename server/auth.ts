@@ -8,6 +8,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { users, User as SelectUser } from "../shared/sqlite-schema.js";
+import { checkLicense } from "./license.js";
 
 declare global {
   namespace Express {
@@ -217,6 +218,17 @@ export function setupAuth(app: Express) {
           if (password === userFromSql.password) {
             console.log('User authenticated with direct password comparison');
             
+            // Check license before allowing login
+            const license = checkLicense();
+            if (!license.licensed) {
+              console.log('Login blocked: No valid license');
+              return res.status(403).json({ 
+                message: 'License required',
+                requiresActivation: true,
+                machineId: license.machineId
+              });
+            }
+            
             // Log in the user
             req.login(userFromSql, (err) => {
               if (err) {
@@ -243,6 +255,17 @@ export function setupAuth(app: Express) {
           // Simple password check
           if (password === user.password) {
             console.log('User authenticated via ORM with direct password comparison');
+            
+            // Check license before allowing login
+            const license = checkLicense();
+            if (!license.licensed) {
+              console.log('Login blocked: No valid license');
+              return res.status(403).json({ 
+                message: 'License required',
+                requiresActivation: true,
+                machineId: license.machineId
+              });
+            }
             
             // Log in the user
             req.login(user, (err) => {
@@ -271,6 +294,17 @@ export function setupAuth(app: Express) {
         
         if (!user) {
           return res.status(401).json({ message: info?.message || 'Authentication failed' });
+        }
+        
+        // Check license before allowing login
+        const license = checkLicense();
+        if (!license.licensed) {
+          console.log('Login blocked: No valid license');
+          return res.status(403).json({ 
+            message: 'License required',
+            requiresActivation: true,
+            machineId: license.machineId
+          });
         }
         
         req.login(user, (err) => {

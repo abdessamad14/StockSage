@@ -114,6 +114,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const userFromSql = result[0];
           console.log('User found via direct SQL. Logging in...');
           
+          // Check license before allowing login
+          const { checkLicense } = await import('./license.js');
+          const license = checkLicense();
+          if (!license.licensed) {
+            console.log('Login blocked: No valid license');
+            return res.status(403).json({ 
+              message: 'License required',
+              requiresActivation: true,
+              machineId: license.machineId
+            });
+          }
+          
           // Log in using the result from SQL
           req.login(userFromSql, (err) => {
             if (err) {
@@ -146,6 +158,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (user.tenantId !== tenantId) {
             console.log(`TenantId mismatch: User: ${user.tenantId}, Provided: ${tenantId}`);
             return res.status(401).json({ message: 'Invalid tenant ID' });
+          }
+          
+          // Check license before allowing login
+          const { checkLicense } = await import('./license.js');
+          const license = checkLicense();
+          if (!license.licensed) {
+            console.log('Login blocked: No valid license');
+            return res.status(403).json({ 
+              message: 'License required',
+              requiresActivation: true,
+              machineId: license.machineId
+            });
           }
           
           // Log in the user directly
