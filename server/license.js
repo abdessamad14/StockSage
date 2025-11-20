@@ -17,32 +17,39 @@ const SECRET = 'IGOODAR-2025-PROTECT-YOUR-BUSINESS'; // Change this to your own 
 
 /**
  * Get unique machine ID (hardware fingerprint)
- * Uses only physical network adapters for stability
+ * Uses all physical network adapters for stability (online/offline)
  */
 function getMachineId() {
   const networkInterfaces = os.networkInterfaces();
   const macs = [];
   
-  // Get all MAC addresses from physical interfaces (skip virtual adapters)
+  // Get ALL MAC addresses from all interfaces (even if disconnected)
   for (const name of Object.keys(networkInterfaces)) {
-    // Skip virtual/temporary adapters
-    if (name.includes('vEthernet') || name.includes('VMware') || name.includes('VirtualBox')) {
+    // Skip known virtual adapters but keep physical ones
+    const isVirtual = name.toLowerCase().includes('vethernet') || 
+                      name.toLowerCase().includes('vmware') || 
+                      name.toLowerCase().includes('virtualbox') ||
+                      name.toLowerCase().includes('vboxnet') ||
+                      name.toLowerCase().includes('docker');
+    
+    if (isVirtual) {
       continue;
     }
     
     for (const net of networkInterfaces[name]) {
-      if (net.mac && net.mac !== '00:00:00:00:00:00' && !net.internal) {
+      // Include ALL valid MACs (even from disconnected adapters)
+      if (net.mac && net.mac !== '00:00:00:00:00:00') {
         macs.push(net.mac);
       }
     }
   }
   
-  // Sort and use only the first MAC (most stable physical adapter)
+  // Sort and use ALL physical MACs (stable whether online or offline)
   macs.sort();
-  const primaryMac = macs[0] || 'no-mac-found';
+  const allMacs = macs.join('-') || 'no-mac-found';
   
-  // Use primary MAC + hostname for unique ID
-  const uniqueString = primaryMac + os.hostname();
+  // Use all MACs + hostname for unique ID
+  const uniqueString = allMacs + os.hostname();
   return crypto.createHash('sha256').update(uniqueString).digest('hex').substring(0, 16);
 }
 
