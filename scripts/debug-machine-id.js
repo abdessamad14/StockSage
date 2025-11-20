@@ -5,13 +5,46 @@
 
 import os from 'os';
 import crypto from 'crypto';
+import { execSync } from 'child_process';
 
 console.log('\n🔍 Network Interfaces Debug\n');
+console.log('Platform:', process.platform);
 console.log('Hostname:', os.hostname());
-console.log('\n📡 All Network Interfaces:\n');
+
+// Try Windows registry first (works offline)
+let registryMacs = [];
+if (process.platform === 'win32') {
+  console.log('\n🪟 Windows Registry Check:\n');
+  try {
+    const output = execSync(
+      'reg query "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}" /s /v NetworkAddress',
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
+    );
+    
+    const lines = output.split('\n');
+    for (const line of lines) {
+      if (line.includes('NetworkAddress') && line.includes('REG_SZ')) {
+        const match = line.match(/REG_SZ\s+([0-9A-Fa-f]{12})/);
+        if (match) {
+          const mac = match[1].match(/.{1,2}/g).join(':').toLowerCase();
+          registryMacs.push(mac);
+          console.log(`  ✓ Found permanent MAC in registry: ${mac}`);
+        }
+      }
+    }
+    
+    if (registryMacs.length === 0) {
+      console.log('  ⚠️ No MACs found in registry');
+    }
+  } catch (error) {
+    console.log('  ❌ Registry query failed:', error.message);
+  }
+}
+
+console.log('\n📡 Current Network Interfaces:\n');
 
 const networkInterfaces = os.networkInterfaces();
-const permanentMacs = [];
+const permanentMacs = [...registryMacs]; // Start with registry MACs
 
 for (const [name, interfaces] of Object.entries(networkInterfaces)) {
   const nameLower = name.toLowerCase();

@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
+import { execSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,14 +17,57 @@ const LICENSE_FILE = path.join(__dirname, '..', 'data', 'license.key');
 const SECRET = 'IGOODAR-2025-PROTECT-YOUR-BUSINESS'; // Change this to your own secret!
 
 /**
+ * Get MAC addresses from Windows registry (works even when offline)
+ * Windows stores permanent MAC addresses in registry
+ */
+function getWindowsRegistryMacs() {
+  try {
+    // Query Windows registry for network adapters
+    const output = execSync(
+      'reg query "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}" /s /v NetworkAddress',
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
+    );
+    
+    const macs = [];
+    const lines = output.split('\n');
+    
+    for (const line of lines) {
+      // Look for NetworkAddress registry value (permanent MAC)
+      if (line.includes('NetworkAddress') && line.includes('REG_SZ')) {
+        const match = line.match(/REG_SZ\s+([0-9A-Fa-f]{12})/);
+        if (match) {
+          // Convert to standard MAC format (XX:XX:XX:XX:XX:XX)
+          const mac = match[1].match(/.{1,2}/g).join(':').toLowerCase();
+          macs.push(mac);
+        }
+      }
+    }
+    
+    return macs;
+  } catch (error) {
+    // Registry query failed, return empty array
+    return [];
+  }
+}
+
+/**
  * Get unique machine ID (hardware fingerprint)
- * Uses only permanent physical Ethernet/WiFi adapters for stability
+ * Uses permanent physical adapters - works online and offline
  */
 function getMachineId() {
-  const networkInterfaces = os.networkInterfaces();
   const permanentMacs = [];
   
-  // Only get MAC addresses from permanent physical adapters
+  // On Windows, try registry first (works offline)
+  if (process.platform === 'win32') {
+    const registryMacs = getWindowsRegistryMacs();
+    if (registryMacs.length > 0) {
+      permanentMacs.push(...registryMacs);
+    }
+  }
+  
+  // Also check current network interfaces (works when online)
+  const networkInterfaces = os.networkInterfaces();
+  
   for (const [name, interfaces] of Object.entries(networkInterfaces)) {
     const nameLower = name.toLowerCase();
     
