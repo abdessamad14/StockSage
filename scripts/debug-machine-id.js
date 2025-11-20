@@ -11,41 +11,67 @@ console.log('Hostname:', os.hostname());
 console.log('\n📡 All Network Interfaces:\n');
 
 const networkInterfaces = os.networkInterfaces();
-const physicalMacs = [];
+const permanentMacs = [];
 
 for (const [name, interfaces] of Object.entries(networkInterfaces)) {
+  const nameLower = name.toLowerCase();
+  
+  // Check if virtual/temporary
+  const isVirtualOrTemporary = 
+    nameLower.includes('vethernet') || 
+    nameLower.includes('vmware') || 
+    nameLower.includes('virtualbox') ||
+    nameLower.includes('vboxnet') ||
+    nameLower.includes('docker') ||
+    nameLower.includes('utun') ||
+    nameLower.includes('awdl') ||
+    nameLower.includes('llw') ||
+    nameLower.includes('bridge') ||
+    nameLower.includes('tap') ||
+    nameLower.includes('tun') ||
+    nameLower.startsWith('lo');
+  
+  // Check if permanent physical
+  const isPermanentPhysical = 
+    nameLower.includes('ethernet') ||
+    nameLower.includes('eth') ||
+    nameLower.includes('en') ||
+    nameLower.includes('wi-fi') ||
+    nameLower.includes('wifi') ||
+    nameLower.includes('wlan');
+  
   console.log(`Interface: ${name}`);
   
-  const isVirtual = name.toLowerCase().includes('vethernet') || 
-                    name.toLowerCase().includes('vmware') || 
-                    name.toLowerCase().includes('virtualbox') ||
-                    name.toLowerCase().includes('vboxnet') ||
-                    name.toLowerCase().includes('docker');
-  
   for (const net of interfaces) {
-    const status = net.internal ? '(internal)' : 
-                   net.mac === '00:00:00:00:00:00' ? '(null MAC)' : 
-                   isVirtual ? '(virtual - SKIPPED)' : 
-                   '(physical - USED ✓)';
+    let status;
+    if (net.internal) {
+      status = '(internal - SKIPPED)';
+    } else if (net.mac === '00:00:00:00:00:00') {
+      status = '(null MAC - SKIPPED)';
+    } else if (isVirtualOrTemporary) {
+      status = '(virtual/temporary - SKIPPED)';
+    } else if (!isPermanentPhysical) {
+      status = '(not permanent physical - SKIPPED)';
+    } else {
+      status = '(permanent physical - USED ✓)';
+      permanentMacs.push(net.mac);
+    }
     
     console.log(`  - MAC: ${net.mac} ${status}`);
     console.log(`    Family: ${net.family}, Address: ${net.address}`);
-    
-    if (!isVirtual && net.mac && net.mac !== '00:00:00:00:00:00') {
-      physicalMacs.push(net.mac);
-    }
   }
   console.log('');
 }
 
 // Calculate machine ID
-physicalMacs.sort();
-const allMacs = physicalMacs.join('-') || 'no-mac-found';
-const uniqueString = allMacs + os.hostname();
+const uniqueMacs = [...new Set(permanentMacs)].sort();
+const macString = uniqueMacs.join('-') || 'no-mac-found';
+const uniqueString = macString + os.hostname();
 const machineId = crypto.createHash('sha256').update(uniqueString).digest('hex').substring(0, 16);
 
 console.log('📋 Machine ID Calculation:');
-console.log('  Physical MACs used:', physicalMacs.join(', '));
+console.log('  Permanent Physical MACs used:', uniqueMacs.join(', '));
 console.log('  Combined string:', uniqueString);
 console.log('  \n✅ Machine ID:', machineId);
-console.log('\n💡 This ID should be the same whether online or offline!\n');
+console.log('\n💡 This ID should be STABLE whether online or offline!');
+console.log('💡 Only uses permanent Ethernet/WiFi adapters (no VPN, tunnels, etc.)\n');

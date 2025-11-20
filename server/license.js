@@ -17,39 +17,62 @@ const SECRET = 'IGOODAR-2025-PROTECT-YOUR-BUSINESS'; // Change this to your own 
 
 /**
  * Get unique machine ID (hardware fingerprint)
- * Uses all physical network adapters for stability (online/offline)
+ * Uses only permanent physical Ethernet/WiFi adapters for stability
  */
 function getMachineId() {
   const networkInterfaces = os.networkInterfaces();
-  const macs = [];
+  const permanentMacs = [];
   
-  // Get ALL MAC addresses from all interfaces (even if disconnected)
-  for (const name of Object.keys(networkInterfaces)) {
-    // Skip known virtual adapters but keep physical ones
-    const isVirtual = name.toLowerCase().includes('vethernet') || 
-                      name.toLowerCase().includes('vmware') || 
-                      name.toLowerCase().includes('virtualbox') ||
-                      name.toLowerCase().includes('vboxnet') ||
-                      name.toLowerCase().includes('docker');
+  // Only get MAC addresses from permanent physical adapters
+  for (const [name, interfaces] of Object.entries(networkInterfaces)) {
+    const nameLower = name.toLowerCase();
     
-    if (isVirtual) {
+    // Skip ALL virtual/temporary adapters
+    const isVirtualOrTemporary = 
+      nameLower.includes('vethernet') || 
+      nameLower.includes('vmware') || 
+      nameLower.includes('virtualbox') ||
+      nameLower.includes('vboxnet') ||
+      nameLower.includes('docker') ||
+      nameLower.includes('utun') ||      // Tunnel interfaces
+      nameLower.includes('awdl') ||      // Apple Wireless Direct Link
+      nameLower.includes('llw') ||       // Low Latency WLAN
+      nameLower.includes('bridge') ||    // Network bridges
+      nameLower.includes('tap') ||       // TAP interfaces
+      nameLower.includes('tun') ||       // TUN interfaces
+      nameLower.startsWith('lo');        // Loopback
+    
+    if (isVirtualOrTemporary) {
       continue;
     }
     
-    for (const net of networkInterfaces[name]) {
-      // Include ALL valid MACs (even from disconnected adapters)
-      if (net.mac && net.mac !== '00:00:00:00:00:00') {
-        macs.push(net.mac);
+    // Only accept permanent physical adapters (Ethernet, WiFi)
+    const isPermanentPhysical = 
+      nameLower.includes('ethernet') ||
+      nameLower.includes('eth') ||
+      nameLower.includes('en') ||        // macOS: en0, en1
+      nameLower.includes('wi-fi') ||
+      nameLower.includes('wifi') ||
+      nameLower.includes('wlan');
+    
+    if (!isPermanentPhysical) {
+      continue;
+    }
+    
+    for (const net of interfaces) {
+      // Only use valid, non-internal MACs
+      if (net.mac && net.mac !== '00:00:00:00:00:00' && !net.internal) {
+        permanentMacs.push(net.mac);
       }
     }
   }
   
-  // Sort and use ALL physical MACs (stable whether online or offline)
-  macs.sort();
-  const allMacs = macs.join('-') || 'no-mac-found';
+  // Remove duplicates and sort
+  const uniqueMacs = [...new Set(permanentMacs)].sort();
+  const macString = uniqueMacs.join('-') || 'no-mac-found';
   
-  // Use all MACs + hostname for unique ID
-  const uniqueString = allMacs + os.hostname();
+  // Use permanent MACs + hostname for unique ID
+  const uniqueString = macString + os.hostname();
   return crypto.createHash('sha256').update(uniqueString).digest('hex').substring(0, 16);
 }
 
