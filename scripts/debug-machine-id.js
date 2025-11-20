@@ -11,40 +11,62 @@ console.log('\n🔍 Network Interfaces Debug\n');
 console.log('Platform:', process.platform);
 console.log('Hostname:', os.hostname());
 
-// Try Windows registry first (works offline)
-let registryMacs = [];
+// Try Windows getmac command (works offline)
+let windowsMacs = [];
 if (process.platform === 'win32') {
-  console.log('\n🪟 Windows Registry Check:\n');
+  console.log('\n🪟 Windows getmac Command:\n');
   try {
-    const output = execSync(
-      'reg query "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}" /s /v NetworkAddress',
-      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
-    );
+    const output = execSync('getmac /v /fo csv', { 
+      encoding: 'utf8', 
+      stdio: ['pipe', 'pipe', 'ignore'] 
+    });
     
     const lines = output.split('\n');
     for (const line of lines) {
-      if (line.includes('NetworkAddress') && line.includes('REG_SZ')) {
-        const match = line.match(/REG_SZ\s+([0-9A-Fa-f]{12})/);
-        if (match) {
-          const mac = match[1].match(/.{1,2}/g).join(':').toLowerCase();
-          registryMacs.push(mac);
-          console.log(`  ✓ Found permanent MAC in registry: ${mac}`);
+      if (!line || line.startsWith('Connection') || line.startsWith('"Connection')) {
+        continue;
+      }
+      
+      const match = line.match(/"([^"]+)","([^"]+)","([0-9A-Fa-f-]+)"/);
+      if (match) {
+        const connectionName = match[1];
+        const adapterName = match[2];
+        const macWithDashes = match[3];
+        
+        if (!macWithDashes || macWithDashes === 'N/A' || macWithDashes.includes('Disabled')) {
+          continue;
         }
+        
+        const isVirtual = 
+          adapterName.toLowerCase().includes('virtual') ||
+          adapterName.toLowerCase().includes('vmware') ||
+          adapterName.toLowerCase().includes('virtualbox') ||
+          adapterName.toLowerCase().includes('hyper-v') ||
+          connectionName.toLowerCase().includes('virtual');
+        
+        if (isVirtual) {
+          console.log(`  ⊘ Skipped virtual: ${adapterName} (${macWithDashes})`);
+          continue;
+        }
+        
+        const mac = macWithDashes.replace(/-/g, ':').toLowerCase();
+        windowsMacs.push(mac);
+        console.log(`  ✓ Found permanent MAC: ${mac} (${adapterName})`);
       }
     }
     
-    if (registryMacs.length === 0) {
-      console.log('  ⚠️ No MACs found in registry');
+    if (windowsMacs.length === 0) {
+      console.log('  ⚠️ No physical MACs found via getmac');
     }
   } catch (error) {
-    console.log('  ❌ Registry query failed:', error.message);
+    console.log('  ❌ getmac command failed:', error.message);
   }
 }
 
 console.log('\n📡 Current Network Interfaces:\n');
 
 const networkInterfaces = os.networkInterfaces();
-const permanentMacs = [...registryMacs]; // Start with registry MACs
+const permanentMacs = [...windowsMacs]; // Start with Windows getmac MACs
 
 for (const [name, interfaces] of Object.entries(networkInterfaces)) {
   const nameLower = name.toLowerCase();

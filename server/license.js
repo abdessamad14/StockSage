@@ -17,35 +17,59 @@ const LICENSE_FILE = path.join(__dirname, '..', 'data', 'license.key');
 const SECRET = 'IGOODAR-2025-PROTECT-YOUR-BUSINESS'; // Change this to your own secret!
 
 /**
- * Get MAC addresses from Windows registry (works even when offline)
- * Windows stores permanent MAC addresses in registry
+ * Get MAC addresses using Windows getmac command (works even when offline)
+ * This is more reliable than registry for getting permanent MAC addresses
  */
-function getWindowsRegistryMacs() {
+function getWindowsPermanentMacs() {
   try {
-    // Query Windows registry for network adapters
-    const output = execSync(
-      'reg query "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}" /s /v NetworkAddress',
-      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }
-    );
+    // Use getmac command which shows physical addresses even when offline
+    const output = execSync('getmac /v /fo csv', { 
+      encoding: 'utf8', 
+      stdio: ['pipe', 'pipe', 'ignore'] 
+    });
     
     const macs = [];
     const lines = output.split('\n');
     
     for (const line of lines) {
-      // Look for NetworkAddress registry value (permanent MAC)
-      if (line.includes('NetworkAddress') && line.includes('REG_SZ')) {
-        const match = line.match(/REG_SZ\s+([0-9A-Fa-f]{12})/);
-        if (match) {
-          // Convert to standard MAC format (XX:XX:XX:XX:XX:XX)
-          const mac = match[1].match(/.{1,2}/g).join(':').toLowerCase();
-          macs.push(mac);
+      // Skip header and empty lines
+      if (!line || line.startsWith('Connection') || line.startsWith('"Connection')) {
+        continue;
+      }
+      
+      // Parse CSV: "Connection Name","Network Adapter","Physical Address","Transport Name"
+      const match = line.match(/"([^"]+)","([^"]+)","([0-9A-Fa-f-]+)"/);
+      if (match) {
+        const connectionName = match[1];
+        const adapterName = match[2];
+        const macWithDashes = match[3];
+        
+        // Skip if no MAC or disabled/disconnected
+        if (!macWithDashes || macWithDashes === 'N/A' || macWithDashes.includes('Disabled')) {
+          continue;
         }
+        
+        // Skip virtual adapters
+        const isVirtual = 
+          adapterName.toLowerCase().includes('virtual') ||
+          adapterName.toLowerCase().includes('vmware') ||
+          adapterName.toLowerCase().includes('virtualbox') ||
+          adapterName.toLowerCase().includes('hyper-v') ||
+          connectionName.toLowerCase().includes('virtual');
+        
+        if (isVirtual) {
+          continue;
+        }
+        
+        // Convert to standard format (XX:XX:XX:XX:XX:XX)
+        const mac = macWithDashes.replace(/-/g, ':').toLowerCase();
+        macs.push(mac);
       }
     }
     
     return macs;
   } catch (error) {
-    // Registry query failed, return empty array
+    // getmac command failed, return empty array
     return [];
   }
 }
@@ -57,11 +81,11 @@ function getWindowsRegistryMacs() {
 function getMachineId() {
   const permanentMacs = [];
   
-  // On Windows, try registry first (works offline)
+  // On Windows, use getmac command (works offline)
   if (process.platform === 'win32') {
-    const registryMacs = getWindowsRegistryMacs();
-    if (registryMacs.length > 0) {
-      permanentMacs.push(...registryMacs);
+    const windowsMacs = getWindowsPermanentMacs();
+    if (windowsMacs.length > 0) {
+      permanentMacs.push(...windowsMacs);
     }
   }
   
