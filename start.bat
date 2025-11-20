@@ -45,10 +45,10 @@ del CreateShortcut.vbs
 
 echo ✓ Auto-start configured
 
-:: Start the app now
+:: Start the app now using the VBS script (runs hidden)
 echo.
-echo Starting Igoodar...
-start /B "" node start.js
+echo Starting Igoodar in background...
+wscript //nologo "%APP_DIR%start-background.vbs"
 
 :: Wait a moment for server to start
 timeout /t 5 /nobreak >nul
@@ -62,11 +62,15 @@ echo ✓ Igoodar is now running in background
 echo ✓ Will auto-start when you log in to Windows
 echo ✓ Access at: http://localhost:5003
 echo.
+echo IMPORTANT: You can now close this window!
+echo           The app will keep running in the background.
+echo.
 echo To stop: Open Task Manager and end "node.exe" process
 echo To uninstall auto-start: Delete shortcut from Startup folder
 echo   Location: %STARTUP_FOLDER%\Igoodar.lnk
 echo.
-pause
+echo Press any key to close this window...
+pause >nul
 exit /b 0
 
 :error
