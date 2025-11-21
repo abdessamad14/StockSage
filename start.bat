@@ -19,22 +19,50 @@ if %errorlevel% neq 0 (
 where node >nul 2>&1
 if %errorlevel% neq 0 (
     echo.
+    echo [INFO] Node.js not found. Installing automatically...
+    echo.
+    
+    :: Download Node.js installer (LTS version)
+    echo Downloading Node.js installer (this may take 1-2 minutes)...
+    powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.11.0/node-v20.11.0-x64.msi' -OutFile '%TEMP%\nodejs-installer.msi'}"
+    
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to download Node.js installer
+        echo.
+        echo Please install Node.js manually from: https://nodejs.org/
+        echo Then run start.bat again.
+        pause
+        exit /b 1
+    )
+    
+    :: Install Node.js silently with ADDLOCAL=ALL to ensure proper PATH setup
+    echo Installing Node.js (this may take 2-3 minutes)...
+    echo Please wait, do not close this window...
+    msiexec /i "%TEMP%\nodejs-installer.msi" /qn /norestart ADDLOCAL=ALL
+    
+    :: Wait for installation to complete
+    timeout /t 10 /nobreak >nul
+    
+    :: Clean up installer
+    del "%TEMP%\nodejs-installer.msi" >nul 2>&1
+    
+    echo.
     echo ========================================
-    echo    Node.js Not Found!
+    echo    Node.js Installation Complete!
     echo ========================================
     echo.
-    echo Node.js is required to run Igoodar.
+    echo IMPORTANT: You must RESTART your computer now!
     echo.
-    echo Please follow these steps:
-    echo   1. Download Node.js from: https://nodejs.org/
-    echo   2. Install Node.js (use default settings)
-    echo   3. Restart your computer
-    echo   4. Run start.bat again
+    echo After restart:
+    echo   1. Right-click start.bat again
+    echo   2. Select "Run as Administrator"
+    echo   3. Igoodar will start automatically
     echo.
     echo ========================================
     echo.
-    pause
-    exit /b 1
+    echo Press any key to close this window, then restart your computer...
+    pause >nul
+    exit /b 0
 )
 
 :: Check if node_modules exists
