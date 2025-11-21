@@ -22,9 +22,23 @@ if %errorlevel% neq 0 (
     echo [INFO] Node.js not found. Installing automatically...
     echo.
     
-    :: Download Node.js installer (LTS version)
+    :: Detect Windows version
+    for /f "tokens=4-5 delims=. " %%i in ('ver') do set VERSION=%%i.%%j
+    
+    :: Choose Node.js version based on Windows version
+    if "%VERSION%" == "6.1" (
+        :: Windows 7
+        set NODE_VERSION=13.14.0
+        echo Detected Windows 7 - using Node.js v13.14.0
+    ) else (
+        :: Windows 8.1, 10, 11
+        set NODE_VERSION=20.11.0
+        echo Detected Windows 8.1+ - using Node.js v20.11.0
+    )
+    
+    :: Download Node.js installer
     echo Downloading Node.js installer (this may take 1-2 minutes)...
-    powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.11.0/node-v20.11.0-x64.msi' -OutFile '%TEMP%\nodejs-installer.msi'}"
+    powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v%NODE_VERSION%/node-v%NODE_VERSION%-x64.msi' -OutFile '%TEMP%\nodejs-installer.msi'}"
     
     if %errorlevel% neq 0 (
         echo [ERROR] Failed to download Node.js installer
