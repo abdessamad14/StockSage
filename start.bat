@@ -15,6 +15,50 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+:: Check if Node.js is installed
+where node >nul 2>&1
+if %errorlevel% neq 0 (
+    echo.
+    echo [INFO] Node.js not found. Installing Node.js...
+    echo.
+    
+    :: Download Node.js installer (LTS version)
+    echo Downloading Node.js installer...
+    powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.11.0/node-v20.11.0-x64.msi' -OutFile '%TEMP%\nodejs-installer.msi'}"
+    
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to download Node.js installer
+        echo.
+        echo Please install Node.js manually from: https://nodejs.org/
+        echo Then run start.bat again.
+        pause
+        exit /b 1
+    )
+    
+    :: Install Node.js silently
+    echo Installing Node.js (this may take a few minutes)...
+    msiexec /i "%TEMP%\nodejs-installer.msi" /qn /norestart
+    
+    :: Clean up installer
+    del "%TEMP%\nodejs-installer.msi" >nul 2>&1
+    
+    :: Refresh PATH environment variable
+    call refreshenv >nul 2>&1
+    
+    :: Check if installation succeeded
+    where node >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo.
+        echo [WARNING] Node.js installed but not found in PATH
+        echo Please restart your computer and run start.bat again.
+        pause
+        exit /b 1
+    )
+    
+    echo ✓ Node.js installed successfully
+    echo.
+)
+
 :: Check if node_modules exists
 if not exist "node_modules\" (
     echo Running initial setup...
