@@ -23,15 +23,13 @@ if %errorlevel% neq 0 (
     echo.
     
     :: Detect Windows version
-    for /f "tokens=4-5 delims=. " %%i in ('ver') do set VERSION=%%i.%%j
+    for /f "tokens=4-5 delims=. " %%i in ('"ver"') do set VERSION=%%i.%%j
     
     :: Choose Node.js version based on Windows version
     if "%VERSION%" == "6.1" (
-        :: Windows 7
         set NODE_VERSION=13.14.0
         echo Detected Windows 7 - using Node.js v13.14.0
     ) else (
-        :: Windows 8.1, 10, 11
         set NODE_VERSION=20.11.0
         echo Detected Windows 8.1+ - using Node.js v20.11.0
     )
