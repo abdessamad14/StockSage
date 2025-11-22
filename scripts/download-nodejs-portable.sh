@@ -3,7 +3,9 @@
 # Download Node.js portable for Windows (offline installation)
 # This script should be run BEFORE creating the package
 
-NODE_VERSION="20.11.0"
+# Use Node.js v13.14.0 for Windows 7 compatibility
+# v20+ requires Windows 8.1 or later
+NODE_VERSION="13.14.0"
 NODE_URL="https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-win-x64.zip"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
