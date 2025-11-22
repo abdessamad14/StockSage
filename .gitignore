@@ -64,3 +64,6 @@ postgres_data
 packages/
 *.tgz
 *.tar.gz
+
+# Node.js portable (for offline packages)
+nodejs/

@@ -69,6 +69,7 @@ try {
     'start.sh',
     'start.bat',
     'start-background.vbs',
+    'uninstall.bat',
     'update.bat',
     'fix-windows.bat',
     'README.md',
@@ -92,6 +93,18 @@ try {
   }
 
   console.log(`⊙ Skipping node_modules (will be installed on target machine)...`);
+
+  // Check if nodejs portable exists in source repo and copy it
+  const nodejsPortableSource = join(repoPath, 'nodejs');
+  if (existsSync(nodejsPortableSource)) {
+    console.log('📦 Including Node.js portable for offline installation...');
+    const nodejsPortableDest = resolve('release', 'nodejs');
+    cpSync(nodejsPortableSource, nodejsPortableDest, { recursive: true });
+    console.log('✅ Node.js portable included');
+  } else {
+    console.log('⚠️  Node.js portable not found - package will require internet or system Node.js');
+    console.log('   Run: ./scripts/download-nodejs-portable.sh to include Node.js portable');
+  }
 
   const releaseName = `stocksage-${timestamp}`;
   const releaseOutputDir = join(outDir, releaseName);

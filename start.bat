@@ -15,67 +15,47 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Check if Node.js is installed
-where node >nul 2>&1
-if %errorlevel% neq 0 (
-    echo.
-    echo [INFO] Node.js not found. Installing automatically...
-    echo.
-    
-    :: Detect Windows version
-    for /f "tokens=4-5 delims=. " %%i in ('"ver"') do set VERSION=%%i.%%j
-    
-    :: Choose Node.js version based on Windows version
-    if "%VERSION%" == "6.1" (
-        set NODE_VERSION=13.14.0
-        echo Detected Windows 7 - using Node.js v13.14.0
-    ) else (
-        set NODE_VERSION=20.11.0
-        echo Detected Windows 8.1+ - using Node.js v20.11.0
-    )
-    
-    :: Download Node.js installer
-    echo Downloading Node.js installer (this may take 1-2 minutes)...
-    powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v%NODE_VERSION%/node-v%NODE_VERSION%-x64.msi' -OutFile '%TEMP%\nodejs-installer.msi'}"
-    
-    if %errorlevel% neq 0 (
-        echo [ERROR] Failed to download Node.js installer
-        echo.
-        echo Please install Node.js manually from: https://nodejs.org/
-        echo Then run start.bat again.
-        pause
-        exit /b 1
-    )
-    
-    :: Install Node.js silently with ADDLOCAL=ALL to ensure proper PATH setup
-    echo Installing Node.js (this may take 2-3 minutes)...
-    echo Please wait, do not close this window...
-    msiexec /i "%TEMP%\nodejs-installer.msi" /qn /norestart ADDLOCAL=ALL
-    
-    :: Wait for installation to complete
-    timeout /t 10 /nobreak >nul
-    
-    :: Clean up installer
-    del "%TEMP%\nodejs-installer.msi" >nul 2>&1
-    
-    echo.
-    echo ========================================
-    echo    Node.js Installation Complete!
-    echo ========================================
-    echo.
-    echo IMPORTANT: You must RESTART your computer now!
-    echo.
-    echo After restart:
-    echo   1. Right-click start.bat again
-    echo   2. Select "Run as Administrator"
-    echo   3. Igoodar will start automatically
-    echo.
-    echo ========================================
-    echo.
-    echo Press any key to close this window, then restart your computer...
-    pause >nul
-    exit /b 0
+:: Get current directory
+set "APP_DIR=%~dp0"
+
+:: Check for embedded Node.js portable (offline mode)
+set "PORTABLE_NODE=%APP_DIR%nodejs\node.exe"
+set "PORTABLE_NPM=%APP_DIR%nodejs\npm.cmd"
+
+if exist "%PORTABLE_NODE%" (
+    echo ✓ Using embedded Node.js portable
+    set "PATH=%APP_DIR%nodejs;%PATH%"
+    goto setup
 )
+
+:: Check if Node.js is installed on system
+where node >nul 2>&1
+if %errorlevel% equ 0 (
+    echo ✓ Using system Node.js
+    goto setup
+)
+
+:: Node.js not found - show error
+echo.
+echo ========================================
+echo    Node.js Not Found!
+echo ========================================
+echo.
+echo This package requires Node.js portable.
+echo.
+echo Please download the complete offline package that includes:
+echo   - Node.js portable (no installation needed)
+echo   - All dependencies pre-bundled
+echo.
+echo Or install Node.js manually from: https://nodejs.org/
+echo.
+echo ========================================
+echo.
+pause
+exit /b 1
+
+:setup
+:: Node.js is available, continue with setup
 
 :: Check if node_modules exists
 if not exist "node_modules\" (
