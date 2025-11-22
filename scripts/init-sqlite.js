@@ -314,7 +314,7 @@ function ensureProductCategories(db, config) {
     .prepare('SELECT COUNT(*) as count FROM product_categories WHERE tenant_id = ?')
     .get(config.tenantId);
 
-  if (result?.count > 0) {
+  if (result && result.count > 0) {
     return;
   }
 

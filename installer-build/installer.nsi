@@ -19,25 +19,48 @@ Section "Install"
   SetOutPath "$INSTDIR"
   
   ; Copy all files
-  File /r "/Users/abdessamadabba/repos/StockSage/installer-build/stocksage-20251122145141\*.*"
+  File /r "/Users/abdessamadabba/repos/StockSage/installer-build/stocksage-20251122232833\*.*"
   
   ; Create shortcuts
   CreateDirectory "$SMPROGRAMS\Igoodar"
-  CreateShortcut "$SMPROGRAMS\Igoodar\Igoodar.lnk" "$INSTDIR\start-background.vbs"
-  CreateShortcut "$DESKTOP\Igoodar.lnk" "$INSTDIR\start-background.vbs"
+  
+  ; Desktop shortcut - opens browser to app
+  CreateShortcut "$DESKTOP\Igoodar.lnk" "http://localhost:5003" "" "$INSTDIR\favicon.ico" 0 SW_SHOWNORMAL "" "Open Igoodar POS"
+  
+  ; Start Menu shortcuts
+  CreateShortcut "$SMPROGRAMS\Igoodar\Igoodar.lnk" "http://localhost:5003" "" "$INSTDIR\favicon.ico" 0 SW_SHOWNORMAL "" "Open Igoodar POS"
+  CreateShortcut "$SMPROGRAMS\Igoodar\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
   
   ; Create uninstaller
   WriteUninstaller "$INSTDIR\Uninstall.exe"
-  CreateShortcut "$SMPROGRAMS\Igoodar\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
   
   ; Install dependencies
+  DetailPrint "Installing dependencies (this may take a few minutes)..."
   ExecWait '"$INSTDIR\nodejs\npm.cmd" install --production' $0
   
   ; Initialize database
+  DetailPrint "Initializing database..."
   ExecWait '"$INSTDIR\nodejs\node.exe" "$INSTDIR\scripts\init-sqlite.js"' $0
   
-  ; Start application
-  Exec 'wscript.exe "$INSTDIR\start-background.vbs"'
+  ; Create startup batch file to run app in background
+  FileOpen $0 "$INSTDIR\start-service.bat" w
+  FileWrite $0 '@echo off$\r$\n'
+  FileWrite $0 'cd /d "$INSTDIR"$\r$\n'
+  FileWrite $0 'start /B "$INSTDIR\nodejs\node.exe" start.js$\r$\n'
+  FileClose $0
+  
+  ; Add to startup
+  CreateShortcut "$SMSTARTUP\Igoodar.lnk" "$INSTDIR\start-service.bat" "" "$INSTDIR\favicon.ico" 0 SW_SHOWMINIMIZED "" "Start Igoodar Service"
+  
+  ; Start application now
+  DetailPrint "Starting Igoodar..."
+  Exec '"$INSTDIR\start-service.bat"'
+  
+  ; Wait a moment for server to start
+  Sleep 3000
+  
+  ; Open browser
+  ExecShell "open" "http://localhost:5003"
 SectionEnd
 
 Section "Uninstall"

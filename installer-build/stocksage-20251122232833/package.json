@@ -10,6 +10,7 @@
     "build": "vite build",
     "build:package": "node scripts/build-package.js",
     "build:zip": "node scripts/build-zip.js",
+    "build:installer": "node scripts/build-windows-installer.js",
     "start": "node start.js",
     "start:local": "cross-env NODE_ENV=production tsx server/index.ts",
     "setup": "node scripts/install.js",

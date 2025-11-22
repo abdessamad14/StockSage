@@ -69,12 +69,18 @@ exit /b 1
 :setup
 :: Node.js is available, continue with setup
 
-:: Check if node_modules exists
+:: Check if node_modules exists (should be included in package)
 if not exist "node_modules\" (
-    echo Running initial setup...
-    call npm run setup
-    if %errorlevel% neq 0 goto error
+    echo [ERROR] node_modules folder missing!
+    echo This package should include node_modules for offline installation.
+    echo.
+    echo If you extracted from ZIP, make sure you extracted the COMPLETE file.
+    echo.
+    pause
+    goto error
 )
+
+echo ✓ Dependencies found
 
 :: Create startup batch file
 echo Creating auto-start script...
