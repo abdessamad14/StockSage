@@ -22,11 +22,20 @@ set "APP_DIR=%~dp0"
 set "PORTABLE_NODE=%APP_DIR%nodejs\node.exe"
 set "PORTABLE_NPM=%APP_DIR%nodejs\npm.cmd"
 
+echo Checking for Node.js...
+echo Looking in: %APP_DIR%nodejs\
+
 if exist "%PORTABLE_NODE%" (
-    echo ✓ Using embedded Node.js portable
+    echo ✓ Found embedded Node.js portable
     set "PATH=%APP_DIR%nodejs;%PATH%"
     goto setup
 )
+
+echo ✗ Node.js portable not found at: %PORTABLE_NODE%
+echo.
+echo Checking current directory contents:
+dir "%APP_DIR%" | findstr /i "nodejs"
+echo.
 
 :: Check if Node.js is installed on system
 where node >nul 2>&1
@@ -43,11 +52,14 @@ echo ========================================
 echo.
 echo This package requires Node.js portable.
 echo.
-echo Please download the complete offline package that includes:
-echo   - Node.js portable (no installation needed)
-echo   - All dependencies pre-bundled
+echo TROUBLESHOOTING:
+echo   1. Make sure you extracted the COMPLETE ZIP file
+echo   2. Check if 'nodejs' folder exists in the same folder as start.bat
+echo   3. Try extracting with 7-Zip or WinRAR instead of Windows extractor
+echo   4. Make sure the path doesn't have special characters
 echo.
 echo Or install Node.js manually from: https://nodejs.org/
+echo   Then run start.bat again
 echo.
 echo ========================================
 echo.
