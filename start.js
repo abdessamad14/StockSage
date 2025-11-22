@@ -1,12 +1,24 @@
 #!/usr/bin/env node
 
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import { join } from 'path';
 import { existsSync } from 'fs';
 
 console.log('🚀 Starting igoodar...');
 
-const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+// Detect npm command - try npm.cmd first, fallback to npm
+let npmCmd = 'npm';
+if (process.platform === 'win32') {
+  // Check if npm.cmd exists, otherwise use npm (for portable Node.js)
+  try {
+    execSync('where npm.cmd', { stdio: 'ignore' });
+    npmCmd = 'npm.cmd';
+  } catch {
+    // npm.cmd not found, use npm directly
+    console.log('ℹ️  Using npm (portable mode)');
+    npmCmd = 'npm';
+  }
+}
 
 // Check if node_modules exists
 const nodeModulesPath = join(process.cwd(), 'node_modules');
