@@ -6,10 +6,8 @@
  */
 
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, writeFileSync, cpSync, rmSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
-import archiver from 'archiver';
-import { createWriteStream } from 'fs';
 
 const projectRoot = process.cwd();
 
@@ -81,10 +79,11 @@ Section "Install"
   ; Copy all files
   File /r "${extractedDir}\\*.*"
   
-  ; Create shortcuts
+  ; Create shortcuts (use wscript to run VBS hidden)
   CreateDirectory "$SMPROGRAMS\\Igoodar"
-  CreateShortcut "$SMPROGRAMS\\Igoodar\\Igoodar.lnk" "$INSTDIR\\start-background.vbs"
-  CreateShortcut "$DESKTOP\\Igoodar.lnk" "$INSTDIR\\start-background.vbs"
+  CreateShortcut "$SMPROGRAMS\\Igoodar\\Igoodar.lnk" "wscript.exe" '"$INSTDIR\\start-background.vbs"' "$INSTDIR" "" SW_SHOWNORMAL
+  CreateShortcut "$SMPROGRAMS\\Igoodar\\Open Igoodar.lnk" "http://localhost:5003"
+  ; Don't create desktop shortcut by default - user can create from Start Menu if needed
   
   ; Create uninstaller
   WriteUninstaller "$INSTDIR\\Uninstall.exe"
