@@ -76,21 +76,23 @@ if not exist "node_modules\" (
     if %errorlevel% neq 0 goto error
 )
 
-:: Setup auto-start
-echo Setting up auto-start...
-
-:: Get startup folder path
+:: Create startup batch file
+echo Creating auto-start script...
 set "STARTUP_FOLDER=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
+set "STARTUP_SCRIPT=%APP_DIR%start-service.bat"
 
-:: Get current directory
-set "APP_DIR=%~dp0"
+:: Create start-service.bat
+echo @echo off > "%STARTUP_SCRIPT%"
+echo cd /d "%APP_DIR%" >> "%STARTUP_SCRIPT%"
+echo start /B "%APP_DIR%nodejs\node.exe" start.js >> "%STARTUP_SCRIPT%"
 
-:: Create shortcut to start-background.vbs in Startup folder
+:: Create shortcut in Startup folder
 echo Set oWS = WScript.CreateObject("WScript.Shell") > CreateShortcut.vbs
 echo sLinkFile = "%STARTUP_FOLDER%\Igoodar.lnk" >> CreateShortcut.vbs
 echo Set oLink = oWS.CreateShortcut(sLinkFile) >> CreateShortcut.vbs
-echo oLink.TargetPath = "%APP_DIR%start-background.vbs" >> CreateShortcut.vbs
+echo oLink.TargetPath = "%STARTUP_SCRIPT%" >> CreateShortcut.vbs
 echo oLink.WorkingDirectory = "%APP_DIR%" >> CreateShortcut.vbs
+echo oLink.WindowStyle = 7 >> CreateShortcut.vbs
 echo oLink.Description = "Igoodar POS & Inventory" >> CreateShortcut.vbs
 echo oLink.Save >> CreateShortcut.vbs
 
@@ -99,32 +101,46 @@ del CreateShortcut.vbs
 
 echo ✓ Auto-start configured
 
-:: Start the app now using the VBS script (runs hidden)
-echo.
-echo Starting Igoodar in background...
-wscript //nologo "%APP_DIR%start-background.vbs"
+:: Create desktop shortcut (opens browser)
+echo Creating desktop shortcut...
+set "DESKTOP=%USERPROFILE%\Desktop"
+echo Set oWS = WScript.CreateObject("WScript.Shell") > CreateShortcut.vbs
+echo sLinkFile = "%DESKTOP%\Igoodar.lnk" >> CreateShortcut.vbs
+echo Set oLink = oWS.CreateShortcut(sLinkFile) >> CreateShortcut.vbs
+echo oLink.TargetPath = "http://localhost:5003" >> CreateShortcut.vbs
+echo oLink.Description = "Open Igoodar POS" >> CreateShortcut.vbs
+echo oLink.Save >> CreateShortcut.vbs
 
-:: Wait a moment for server to start
+cscript //nologo CreateShortcut.vbs
+del CreateShortcut.vbs
+
+echo ✓ Desktop shortcut created
+
+:: Start the app in background
+echo.
+echo Starting Igoodar...
+start /B "" "%APP_DIR%nodejs\node.exe" start.js
+
+:: Wait for server to start
 timeout /t 5 /nobreak >nul
+
+:: Open browser
+echo Opening browser...
+start http://localhost:5003
 
 echo.
 echo ========================================
 echo    Igoodar Started Successfully!
 echo ========================================
 echo.
-echo ✓ Igoodar is now running in background
+echo ✓ Igoodar is now running
 echo ✓ Will auto-start when you log in to Windows
-echo ✓ Access at: http://localhost:5003
+echo ✓ Desktop shortcut created
+echo ✓ Browser opened to: http://localhost:5003
 echo.
-echo IMPORTANT: You can now close this window!
-echo           The app will keep running in the background.
+echo You can close this window now!
 echo.
-echo To stop: Open Task Manager and end "node.exe" process
-echo To uninstall auto-start: Delete shortcut from Startup folder
-echo   Location: %STARTUP_FOLDER%\Igoodar.lnk
-echo.
-echo Press any key to close this window...
-pause >nul
+pause
 exit /b 0
 
 :error
