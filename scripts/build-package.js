@@ -100,6 +100,41 @@ try {
     const nodeModulesDest = resolve('release', 'node_modules');
     cpSync(nodeModulesSource, nodeModulesDest, { recursive: true });
     console.log('✅ node_modules included');
+    
+    // Remove Mac-compiled better-sqlite3 binary and download Windows version
+    console.log('🔧 Downloading Windows binaries for better-sqlite3...');
+    const betterSqlitePath = resolve('release', 'node_modules', 'better-sqlite3');
+    const buildPath = join(betterSqlitePath, 'build');
+    
+    // Remove Mac build
+    if (existsSync(buildPath)) {
+      rmSync(buildPath, { recursive: true, force: true });
+      console.log('   Removed Mac binaries');
+    }
+    
+    // Download Windows prebuild using npm
+    try {
+      execSync('npm rebuild better-sqlite3 --platform=win32 --arch=x64', {
+        cwd: resolve('release'),
+        stdio: 'inherit'
+      });
+      console.log('✅ Windows binaries downloaded');
+    } catch (error) {
+      console.log('⚠️  Failed to download Windows binaries automatically');
+      console.log('   Will try alternative method...');
+      
+      // Alternative: use prebuild-install
+      try {
+        execSync('npx prebuild-install --platform=win32 --arch=x64', {
+          cwd: betterSqlitePath,
+          stdio: 'inherit'
+        });
+        console.log('✅ Windows binaries downloaded via prebuild-install');
+      } catch (err) {
+        console.log('❌ Could not download Windows binaries');
+        console.log('   The installer may fail on Windows');
+      }
+    }
   } else {
     console.log('⚠️  node_modules not found - run npm install first');
   }
