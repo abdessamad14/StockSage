@@ -92,7 +92,16 @@ try {
     cpSync(src, dest, { recursive: true });
   }
 
-  console.log(`⊙ Skipping node_modules (will be installed on target machine)...`);
+  // Include node_modules for true offline installation
+  console.log('📦 Including node_modules for offline installation...');
+  const nodeModulesSource = join(repoPath, 'node_modules');
+  if (existsSync(nodeModulesSource)) {
+    const nodeModulesDest = resolve('release', 'node_modules');
+    cpSync(nodeModulesSource, nodeModulesDest, { recursive: true });
+    console.log('✅ node_modules included');
+  } else {
+    console.log('⚠️  node_modules not found - run npm install first');
+  }
 
   // Check if nodejs portable exists in source repo and copy it
   const nodejsPortableSource = join(repoPath, 'nodejs');

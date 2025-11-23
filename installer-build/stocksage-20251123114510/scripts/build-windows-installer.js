@@ -92,9 +92,14 @@ Section "Install"
   ; Create uninstaller
   WriteUninstaller "$INSTDIR\\Uninstall.exe"
   
-  ; Install dependencies
-  DetailPrint "Installing dependencies (this may take a few minutes)..."
-  ExecWait '"$INSTDIR\\nodejs\\npm.cmd" install --production' $0
+  ; Verify node_modules exists (should be pre-included)
+  DetailPrint "Verifying dependencies..."
+  IfFileExists "$INSTDIR\\node_modules\\*.*" deps_ok deps_missing
+  deps_missing:
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Error: node_modules folder is missing!$\\nThis package should include all dependencies.$\\nPlease contact support."
+    Abort "Installation failed: Missing dependencies"
+  deps_ok:
+  DetailPrint "Dependencies verified (pre-installed)"
   
   ; Initialize database
   DetailPrint "Initializing database..."
