@@ -72,6 +72,7 @@ try {
     'uninstall.bat',
     'update.bat',
     'fix-windows.bat',
+    'debug-install.bat',
     'README.md',
     'README-WINDOWS.md',
     'INSTALL-README.txt',
