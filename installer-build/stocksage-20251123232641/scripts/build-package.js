@@ -101,8 +101,8 @@ try {
     cpSync(nodeModulesSource, nodeModulesDest, { recursive: true });
     console.log('✅ node_modules included');
     
-    // Remove Mac-compiled better-sqlite3 binary and download Windows version
-    console.log('🔧 Downloading Windows binaries for better-sqlite3...');
+    // Remove Mac-compiled better-sqlite3 binary and download Windows version for Node v16
+    console.log('🔧 Downloading Windows binaries for better-sqlite3 (Node.js v16)...');
     const betterSqlitePath = resolve('release', 'node_modules', 'better-sqlite3');
     const buildPath = join(betterSqlitePath, 'build');
     
@@ -112,27 +112,29 @@ try {
       console.log('   Removed Mac binaries');
     }
     
-    // Download Windows prebuild using npm
+    // Download Windows prebuild for Node.js v16.20.2 specifically
+    // NODE_MODULE_VERSION 93 is for Node v16
     try {
-      execSync('npm rebuild better-sqlite3 --platform=win32 --arch=x64', {
-        cwd: resolve('release'),
+      execSync('npx --yes prebuild-install --runtime=node --target=16.20.2 --platform=win32 --arch=x64', {
+        cwd: betterSqlitePath,
         stdio: 'inherit'
       });
-      console.log('✅ Windows binaries downloaded');
+      console.log('✅ Windows binaries for Node.js v16 downloaded');
     } catch (error) {
-      console.log('⚠️  Failed to download Windows binaries automatically');
-      console.log('   Will try alternative method...');
+      console.log('⚠️  Failed to download prebuilt binaries');
+      console.log('   Trying alternative approach...');
       
-      // Alternative: use prebuild-install
+      // Alternative: try without specific version (gets latest compatible)
       try {
-        execSync('npx prebuild-install --platform=win32 --arch=x64', {
+        execSync('npx --yes prebuild-install --platform=win32 --arch=x64', {
           cwd: betterSqlitePath,
           stdio: 'inherit'
         });
-        console.log('✅ Windows binaries downloaded via prebuild-install');
+        console.log('✅ Windows binaries downloaded');
       } catch (err) {
         console.log('❌ Could not download Windows binaries');
         console.log('   The installer may fail on Windows');
+        console.log('   Error:', err.message);
       }
     }
   } else {
