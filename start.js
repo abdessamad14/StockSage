@@ -82,10 +82,24 @@ function checkDatabase() {
 }
 
 function startServer() {
-  // Start the server
-  const serverProcess = spawn(npmCmd, ['run', 'start:local'], {
+  // Run tsx directly from node_modules instead of using npm scripts
+  // This avoids issues with cross-env not being found on Windows
+  const tsxBin = process.platform === 'win32' ? 'tsx.cmd' : 'tsx';
+  const tsxPath = join(process.cwd(), 'node_modules', '.bin', tsxBin);
+  const serverPath = join(process.cwd(), 'server', 'index.ts');
+  
+  // Set production environment
+  const env = {
+    ...process.env,
+    NODE_ENV: 'production'
+  };
+  
+  // Start the server using tsx directly
+  const serverProcess = spawn(tsxPath, [serverPath], {
     stdio: 'inherit',
-    cwd: process.cwd()
+    cwd: process.cwd(),
+    env,
+    shell: process.platform === 'win32' // Use shell on Windows for .cmd files
   });
   
   serverProcess.on('close', (code) => {
