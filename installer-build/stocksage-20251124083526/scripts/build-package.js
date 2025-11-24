@@ -7,7 +7,7 @@
  */
 
 import { execSync, spawnSync } from 'child_process';
-import { mkdtempSync, rmSync, existsSync, mkdirSync, cpSync, readdirSync } from 'fs';
+import { mkdtempSync, rmSync, existsSync, mkdirSync, cpSync, readdirSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve, relative, sep } from 'path';
 
@@ -191,6 +191,72 @@ try {
       }
     } catch (error) {
       console.log('⚠️  Failed to install Windows esbuild binaries');
+      console.log('   Error:', error.message);
+    }
+    
+    // Fix rollup platform binaries - remove Mac binaries and download Windows binaries
+    console.log('🔧 Fixing rollup platform binaries...');
+    
+    // Remove Mac rollup binaries
+    const macRollupPaths = [
+      join(nodeModulesPath, '@rollup', 'rollup-darwin-arm64'),
+      join(nodeModulesPath, '@rollup', 'rollup-darwin-x64')
+    ];
+    
+    macRollupPaths.forEach(path => {
+      if (existsSync(path)) {
+        rmSync(path, { recursive: true, force: true });
+        console.log(`   Removed ${path.split('/').pop()}`);
+      }
+    });
+    
+    // Get rollup version from node_modules
+    const rollupPkgJson = join(nodeModulesPath, 'rollup', 'package.json');
+    let rollupVersion = '4.24.4'; // default fallback
+    if (existsSync(rollupPkgJson)) {
+      try {
+        const rollupPkg = JSON.parse(readFileSync(rollupPkgJson, 'utf8'));
+        rollupVersion = rollupPkg.version;
+        console.log(`   Detected rollup version: ${rollupVersion}`);
+      } catch (e) {
+        console.log(`   Using default rollup version: ${rollupVersion}`);
+      }
+    }
+    
+    const rollupWinPkgPath = join(nodeModulesPath, '@rollup', 'rollup-win32-x64-msvc');
+    
+    try {
+      // Create @rollup directory if it doesn't exist
+      const rollupDir = join(nodeModulesPath, '@rollup');
+      if (!existsSync(rollupDir)) {
+        mkdirSync(rollupDir, { recursive: true });
+      }
+      
+      // Download and extract Windows rollup package
+      execSync(`npm pack @rollup/rollup-win32-x64-msvc@${rollupVersion} --pack-destination="${rollupDir}"`, {
+        stdio: 'inherit'
+      });
+      
+      // Extract the tarball
+      const tarball = join(rollupDir, `rollup-rollup-win32-x64-msvc-${rollupVersion}.tgz`);
+      if (existsSync(tarball)) {
+        execSync(`tar -xzf "${tarball}" -C "${rollupDir}"`, {
+          stdio: 'inherit'
+        });
+        
+        // Move package contents to final location
+        const packageDir = join(rollupDir, 'package');
+        if (existsSync(packageDir)) {
+          cpSync(packageDir, rollupWinPkgPath, { recursive: true });
+          rmSync(packageDir, { recursive: true, force: true });
+        }
+        
+        // Clean up tarball
+        rmSync(tarball, { force: true });
+        console.log('✅ Windows rollup binaries installed');
+      }
+    } catch (error) {
+      console.log('⚠️  Failed to install Windows rollup binaries');
       console.log('   Error:', error.message);
     }
   } else {

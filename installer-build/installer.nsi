@@ -19,7 +19,7 @@ Section "Install"
   SetOutPath "$INSTDIR"
   
   ; Copy all files
-  File /r "/Users/abdessamadabba/repos/StockSage/installer-build/stocksage-20251124082025\*.*"
+  File /r "/Users/abdessamadabba/repos/StockSage/installer-build/stocksage-20251124083526\*.*"
   
   ; Create shortcuts
   CreateDirectory "$SMPROGRAMS\Igoodar"
