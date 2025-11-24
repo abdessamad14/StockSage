@@ -1,13 +1,12 @@
 #!/bin/bash
 
-# Download Node.js portable for Windows (offline installation)
-# This script should be run BEFORE creating the package
+# Download portable Node.js for Windows
+# Using Node.js v13.14.0 - LAST version to support Windows 7
 
-# Use Node.js v16.20.2 for Windows 7 compatibility and modern JS features
-# v16 is the last version supporting Windows 7 and includes ??, ?., etc.
-# v20+ requires Windows 8.1 or later
-NODE_VERSION="16.20.2"
-NODE_URL="https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-win-x64.zip"
+NODE_VERSION="13.14.0"
+BASE_URL="https://nodejs.org/dist/v${NODE_VERSION}"
+FILENAME="node-v${NODE_VERSION}-win-x64.zip"
+NODE_URL="${BASE_URL}/${FILENAME}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 NODE_DIR="$PROJECT_ROOT/nodejs"
