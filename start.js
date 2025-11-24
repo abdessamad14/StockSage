@@ -84,8 +84,6 @@ function checkDatabase() {
 function startServer() {
   // Run tsx directly from node_modules instead of using npm scripts
   // This avoids issues with cross-env not being found on Windows
-  const tsxBin = process.platform === 'win32' ? 'tsx.cmd' : 'tsx';
-  const tsxPath = join(process.cwd(), 'node_modules', '.bin', tsxBin);
   const serverPath = join(process.cwd(), 'server', 'index.ts');
   
   // Set production environment
@@ -94,12 +92,25 @@ function startServer() {
     NODE_ENV: 'production'
   };
   
-  // Start the server using tsx directly
-  const serverProcess = spawn(tsxPath, [serverPath], {
+  // For Windows, use node_modules/.bin/tsx.cmd directly
+  // For Unix, use npx tsx which handles paths correctly
+  let command, args;
+  
+  if (process.platform === 'win32') {
+    // On Windows, call tsx.cmd via cmd.exe to handle paths with spaces
+    command = 'cmd.exe';
+    args = ['/c', 'node_modules\\.bin\\tsx.cmd', serverPath];
+  } else {
+    // On Unix, use npx
+    command = 'npx';
+    args = ['tsx', serverPath];
+  }
+  
+  // Start the server
+  const serverProcess = spawn(command, args, {
     stdio: 'inherit',
     cwd: process.cwd(),
-    env,
-    shell: process.platform === 'win32' // Use shell on Windows for .cmd files
+    env
   });
   
   serverProcess.on('close', (code) => {
