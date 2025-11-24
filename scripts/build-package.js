@@ -137,6 +137,62 @@ try {
         console.log('   Error:', err.message);
       }
     }
+    
+    // Fix esbuild platform binaries - remove Mac binaries and download Windows binaries
+    console.log('🔧 Fixing esbuild platform binaries...');
+    const nodeModulesPath = resolve('release', 'node_modules');
+    
+    // Remove Mac esbuild binaries
+    const macEsbuildPaths = [
+      join(nodeModulesPath, '@esbuild', 'darwin-arm64'),
+      join(nodeModulesPath, '@esbuild', 'darwin-x64')
+    ];
+    
+    macEsbuildPaths.forEach(path => {
+      if (existsSync(path)) {
+        rmSync(path, { recursive: true, force: true });
+        console.log(`   Removed ${path.split('/').pop()}`);
+      }
+    });
+    
+    // Download Windows esbuild binary manually (npm install won't work on Mac)
+    const esbuildVersion = '0.27.0'; // Match the version in package.json
+    const esbuildWinPkgPath = join(nodeModulesPath, '@esbuild', 'win32-x64');
+    
+    try {
+      // Create @esbuild directory if it doesn't exist
+      const esbuildDir = join(nodeModulesPath, '@esbuild');
+      if (!existsSync(esbuildDir)) {
+        mkdirSync(esbuildDir, { recursive: true });
+      }
+      
+      // Download and extract Windows esbuild package
+      execSync(`npm pack @esbuild/win32-x64@${esbuildVersion} --pack-destination="${esbuildDir}"`, {
+        stdio: 'inherit'
+      });
+      
+      // Extract the tarball
+      const tarball = join(esbuildDir, `esbuild-win32-x64-${esbuildVersion}.tgz`);
+      if (existsSync(tarball)) {
+        execSync(`tar -xzf "${tarball}" -C "${esbuildDir}"`, {
+          stdio: 'inherit'
+        });
+        
+        // Move package contents to final location
+        const packageDir = join(esbuildDir, 'package');
+        if (existsSync(packageDir)) {
+          cpSync(packageDir, esbuildWinPkgPath, { recursive: true });
+          rmSync(packageDir, { recursive: true, force: true });
+        }
+        
+        // Clean up tarball
+        rmSync(tarball, { force: true });
+        console.log('✅ Windows esbuild binaries installed');
+      }
+    } catch (error) {
+      console.log('⚠️  Failed to install Windows esbuild binaries');
+      console.log('   Error:', error.message);
+    }
   } else {
     console.log('⚠️  node_modules not found - run npm install first');
   }
