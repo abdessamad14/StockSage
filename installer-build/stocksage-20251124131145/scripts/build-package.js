@@ -101,8 +101,8 @@ try {
     cpSync(nodeModulesSource, nodeModulesDest, { recursive: true });
     console.log('✅ node_modules included');
     
-    // Remove Mac-compiled better-sqlite3 binary and download Windows version for Node v13
-    console.log('🔧 Downloading Windows binaries for better-sqlite3 (Node.js v13)...');
+    // Remove Mac-compiled better-sqlite3 binary and download Windows version for Node v20
+    console.log('🔧 Downloading Windows binaries for better-sqlite3 (Node.js v20)...');
     const betterSqlitePath = resolve('release', 'node_modules', 'better-sqlite3');
     const buildPath = join(betterSqlitePath, 'build');
     
@@ -112,14 +112,14 @@ try {
       console.log('   Removed Mac binaries');
     }
     
-    // Download Windows prebuild for Node.js v13.14.0 specifically
-    // NODE_MODULE_VERSION 79 is for Node v13
+    // Download Windows prebuild for Node.js v20.18.1 specifically
+    // NODE_MODULE_VERSION 115 is for Node v20
     try {
-      execSync('npx --yes prebuild-install --runtime=node --target=13.14.0 --platform=win32 --arch=x64', {
+      execSync('npx --yes prebuild-install --runtime=node --target=20.18.1 --platform=win32 --arch=x64', {
         cwd: betterSqlitePath,
         stdio: 'inherit'
       });
-      console.log('✅ Windows binaries for Node.js v13 downloaded');
+      console.log('✅ Windows binaries for Node.js v20 downloaded');
     } catch (error) {
       console.log('⚠️  Failed to download prebuilt binaries');
       console.log('   Trying alternative approach...');

@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Download portable Node.js for Windows
-# Using Node.js v13.14.0 - LAST version to support Windows 7
+# Using Node.js v20.18.1 LTS - Requires Windows 10 or higher
 
-NODE_VERSION="13.14.0"
+NODE_VERSION="20.18.1"
 BASE_URL="https://nodejs.org/dist/v${NODE_VERSION}"
 FILENAME="node-v${NODE_VERSION}-win-x64.zip"
 NODE_URL="${BASE_URL}/${FILENAME}"

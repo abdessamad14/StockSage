@@ -59,6 +59,9 @@ console.log('📝 Creating installer script...');
 const nsisScript = `
 ; NSIS Installer Script for Igoodar
 ; This can be compiled on Mac using makensis
+; Requires Windows 10 or higher
+
+!include "WinVer.nsh"
 
 !define APP_NAME "Igoodar"
 !define APP_VERSION "1.0.0"
@@ -72,6 +75,16 @@ RequestExecutionLevel admin
 
 Page directory
 Page instfiles
+
+; Check Windows version on init
+Function .onInit
+  ; Check if running on Windows 10 or higher
+  ; Windows 10 = 10.0 (NT 6.2 kernel version changed to 10.0)
+  \${If} \${AtMostWin8.1}
+    MessageBox MB_OK|MB_ICONSTOP "Igoodar requires Windows 10 or higher.$\\n$\\nYour system: \${__OSVERSION__}$\\n$\\nPlease upgrade your Windows version to install this application."
+    Abort
+  \${EndIf}
+FunctionEnd
 
 Section "Install"
   SetOutPath "$INSTDIR"
@@ -110,7 +123,7 @@ Section "Install"
   DetailPrint "Installation completed successfully!"
   
   ; Show completion message
-  MessageBox MB_OK|MB_ICONINFORMATION "Igoodar has been installed successfully!$\\n$\\nTo start the application:$\\n1. Double-click the 'Igoodar' icon on your desktop$\\n2. Wait for browser to open automatically$\\n3. Login with PIN: 1234 (Admin) or 5678 (Cashier)$\\n$\\nThe application will be available at:$\\nhttp://localhost:5003"
+  MessageBox MB_OK|MB_ICONINFORMATION "Igoodar has been installed successfully!$\\n$\\nSystem Requirements: Windows 10 or higher$\\nNode.js: v20.18.1 LTS (included)$\\n$\\nTo start the application:$\\n1. Double-click the 'Igoodar' icon on your desktop$\\n2. Wait for browser to open automatically$\\n3. Login with PIN: 1234 (Admin) or 5678 (Cashier)$\\n$\\nThe application will be available at:$\\nhttp://localhost:5003"
 SectionEnd
 
 Section "Uninstall"
