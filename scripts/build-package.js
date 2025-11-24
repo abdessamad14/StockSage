@@ -156,7 +156,7 @@ try {
     });
     
     // Download Windows esbuild binary manually (npm install won't work on Mac)
-    const esbuildVersion = '0.27.0'; // Match the version in package.json
+    const esbuildVersion = '0.25.0'; // MUST match the version in package.json
     const esbuildWinPkgPath = join(nodeModulesPath, '@esbuild', 'win32-x64');
     
     try {
