@@ -32,7 +32,7 @@ Section "Install"
   SetOutPath "$INSTDIR"
   
   ; Copy all files
-  File /r "/Users/abdessamadabba/repos/StockSage/installer-build/stocksage-20251124131145\*.*"
+  File /r "/Users/abdessamadabba/repos/StockSage/installer-build/stocksage-20251124135201\*.*"
   
   ; Create shortcuts
   CreateDirectory "$SMPROGRAMS\Igoodar"
@@ -43,6 +43,7 @@ Section "Install"
   ; Start Menu shortcuts
   CreateShortcut "$SMPROGRAMS\Igoodar\Igoodar.lnk" "$INSTDIR\start.bat" "" "$INSTDIR\nodejs\node.exe" 0 SW_SHOWMINIMIZED "" "Start Igoodar POS"
   CreateShortcut "$SMPROGRAMS\Igoodar\Debug Install.lnk" "$INSTDIR\debug-install.bat" "" "$INSTDIR\nodejs\node.exe" 0 SW_SHOWNORMAL "" "Debug Igoodar Installation"
+  CreateShortcut "$SMPROGRAMS\Igoodar\Create Shortcuts.lnk" "$INSTDIR\create-shortcuts.vbs" "" "$INSTDIR\nodejs\node.exe" 0 SW_SHOWNORMAL "" "Create Desktop and Start Menu Shortcuts"
   CreateShortcut "$SMPROGRAMS\Igoodar\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
   
   ; Create uninstaller
@@ -76,6 +77,7 @@ Section "Uninstall"
   Delete "$DESKTOP\Igoodar.lnk"
   Delete "$SMPROGRAMS\Igoodar\Igoodar.lnk"
   Delete "$SMPROGRAMS\Igoodar\Debug Install.lnk"
+  Delete "$SMPROGRAMS\Igoodar\Create Shortcuts.lnk"
   Delete "$SMPROGRAMS\Igoodar\Uninstall.lnk"
   RMDir "$SMPROGRAMS\Igoodar"
   

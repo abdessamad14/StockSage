@@ -81,7 +81,7 @@ Function .onInit
   ; Check if running on Windows 10 or higher
   ; Windows 10 = 10.0 (NT 6.2 kernel version changed to 10.0)
   \${If} \${AtMostWin8.1}
-    MessageBox MB_OK|MB_ICONSTOP "Igoodar requires Windows 10 or higher.$\\n$\\nYour system: \${__OSVERSION__}$\\n$\\nPlease upgrade your Windows version to install this application."
+    MessageBox MB_OK|MB_ICONSTOP "Igoodar requires Windows 10 or higher.$\\n$\\nYour Windows version is not supported.$\\n$\\nPlease upgrade to Windows 10, Windows 11, or Windows Server 2016+ to install this application."
     Abort
   \${EndIf}
 FunctionEnd
@@ -101,6 +101,7 @@ Section "Install"
   ; Start Menu shortcuts
   CreateShortcut "$SMPROGRAMS\\Igoodar\\Igoodar.lnk" "$INSTDIR\\start.bat" "" "$INSTDIR\\nodejs\\node.exe" 0 SW_SHOWMINIMIZED "" "Start Igoodar POS"
   CreateShortcut "$SMPROGRAMS\\Igoodar\\Debug Install.lnk" "$INSTDIR\\debug-install.bat" "" "$INSTDIR\\nodejs\\node.exe" 0 SW_SHOWNORMAL "" "Debug Igoodar Installation"
+  CreateShortcut "$SMPROGRAMS\\Igoodar\\Create Shortcuts.lnk" "$INSTDIR\\create-shortcuts.vbs" "" "$INSTDIR\\nodejs\\node.exe" 0 SW_SHOWNORMAL "" "Create Desktop and Start Menu Shortcuts"
   CreateShortcut "$SMPROGRAMS\\Igoodar\\Uninstall.lnk" "$INSTDIR\\Uninstall.exe"
   
   ; Create uninstaller
@@ -134,6 +135,7 @@ Section "Uninstall"
   Delete "$DESKTOP\\Igoodar.lnk"
   Delete "$SMPROGRAMS\\Igoodar\\Igoodar.lnk"
   Delete "$SMPROGRAMS\\Igoodar\\Debug Install.lnk"
+  Delete "$SMPROGRAMS\\Igoodar\\Create Shortcuts.lnk"
   Delete "$SMPROGRAMS\\Igoodar\\Uninstall.lnk"
   RMDir "$SMPROGRAMS\\Igoodar"
   

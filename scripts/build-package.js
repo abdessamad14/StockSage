@@ -69,6 +69,8 @@ try {
     'start.sh',
     'start.bat',
     'start-background.vbs',
+    'create-shortcuts.bat',
+    'create-shortcuts.vbs',
     'uninstall.bat',
     'update.bat',
     'fix-windows.bat',
