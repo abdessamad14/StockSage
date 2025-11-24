@@ -24,11 +24,12 @@ Section "Install"
   ; Create shortcuts
   CreateDirectory "$SMPROGRAMS\Igoodar"
   
-  ; Desktop shortcut - opens browser to app
-  CreateShortcut "$DESKTOP\Igoodar.lnk" "http://localhost:5003" "" "$INSTDIR\favicon.ico" 0 SW_SHOWNORMAL "" "Open Igoodar POS"
+  ; Desktop shortcut - runs start.bat to launch the app
+  CreateShortcut "$DESKTOP\Igoodar.lnk" "$INSTDIR\start.bat" "" "$INSTDIR\nodejs\node.exe" 0 SW_SHOWMINIMIZED "" "Start Igoodar POS"
   
   ; Start Menu shortcuts
-  CreateShortcut "$SMPROGRAMS\Igoodar\Igoodar.lnk" "http://localhost:5003" "" "$INSTDIR\favicon.ico" 0 SW_SHOWNORMAL "" "Open Igoodar POS"
+  CreateShortcut "$SMPROGRAMS\Igoodar\Igoodar.lnk" "$INSTDIR\start.bat" "" "$INSTDIR\nodejs\node.exe" 0 SW_SHOWMINIMIZED "" "Start Igoodar POS"
+  CreateShortcut "$SMPROGRAMS\Igoodar\Debug Install.lnk" "$INSTDIR\debug-install.bat" "" "$INSTDIR\nodejs\node.exe" 0 SW_SHOWNORMAL "" "Debug Igoodar Installation"
   CreateShortcut "$SMPROGRAMS\Igoodar\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
   
   ; Create uninstaller
@@ -47,35 +48,24 @@ Section "Install"
   DetailPrint "Initializing database..."
   ExecWait '"$INSTDIR\nodejs\node.exe" "$INSTDIR\scripts\init-sqlite.js"' $0
   
-  ; Create startup batch file to run app in background
-  FileOpen $0 "$INSTDIR\start-service.bat" w
-  FileWrite $0 '@echo off$\r$\n'
-  FileWrite $0 'cd /d "$INSTDIR"$\r$\n'
-  FileWrite $0 'start /B "$INSTDIR\nodejs\node.exe" start.js$\r$\n'
-  FileClose $0
+  ; Installation complete message
+  DetailPrint "Installation completed successfully!"
   
-  ; Add to startup
-  CreateShortcut "$SMSTARTUP\Igoodar.lnk" "$INSTDIR\start-service.bat" "" "$INSTDIR\favicon.ico" 0 SW_SHOWMINIMIZED "" "Start Igoodar Service"
-  
-  ; Start application now
-  DetailPrint "Starting Igoodar..."
-  Exec '"$INSTDIR\start-service.bat"'
-  
-  ; Wait a moment for server to start
-  Sleep 3000
-  
-  ; Open browser
-  ExecShell "open" "http://localhost:5003"
+  ; Show completion message
+  MessageBox MB_OK|MB_ICONINFORMATION "Igoodar has been installed successfully!$\n$\nTo start the application:$\n1. Double-click the 'Igoodar' icon on your desktop$\n2. Wait for browser to open automatically$\n3. Login with PIN: 1234 (Admin) or 5678 (Cashier)$\n$\nThe application will be available at:$\nhttp://localhost:5003"
 SectionEnd
 
 Section "Uninstall"
-  ; Stop application
-  ExecWait 'taskkill /IM node.exe /F'
-  
-  ; Remove files
-  RMDir /r "$INSTDIR"
+  ; Stop application if running
+  ExecWait 'taskkill /IM node.exe /F /FI "WINDOWTITLE eq Igoodar*"'
   
   ; Remove shortcuts
   Delete "$DESKTOP\Igoodar.lnk"
-  RMDir /r "$SMPROGRAMS\Igoodar"
+  Delete "$SMPROGRAMS\Igoodar\Igoodar.lnk"
+  Delete "$SMPROGRAMS\Igoodar\Debug Install.lnk"
+  Delete "$SMPROGRAMS\Igoodar\Uninstall.lnk"
+  RMDir "$SMPROGRAMS\Igoodar"
+  
+  ; Remove files
+  RMDir /r "$INSTDIR"
 SectionEnd
