@@ -66,4 +66,4 @@ packages/
 *.tar.gz
 
 # Node.js portable (for offline packages)
-nodejs/
+nodejs/data/machine.id
