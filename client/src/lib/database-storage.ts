@@ -1,7 +1,20 @@
 // Database-only storage layer for StockSage
 // All operations go through API endpoints to SQLite database
 
-const API_BASE = 'http://localhost:5003/api/offline';
+// Dynamic API base URL - uses current host for network access (mobile, other PCs)
+const getApiBase = () => {
+  // In browser, use the current host (works for localhost and network IPs)
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol;
+    const host = window.location.hostname;
+    const port = '5003';
+    return `${protocol}//${host}:${port}/api/offline`;
+  }
+  // Fallback for SSR or non-browser environments
+  return 'http://localhost:5003/api/offline';
+};
+
+const API_BASE = getApiBase();
 
 // Generic API helper with retry logic
 async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -10,9 +23,10 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`API call attempt ${attempt} to ${API_BASE}${endpoint}`);
+      const apiBase = getApiBase();
+      console.log(`API call attempt ${attempt} to ${apiBase}${endpoint}`);
       
-      const response = await fetch(`${API_BASE}${endpoint}`, {
+      const response = await fetch(`${apiBase}${endpoint}`, {
         headers: {
           'Content-Type': 'application/json',
           ...options.headers,

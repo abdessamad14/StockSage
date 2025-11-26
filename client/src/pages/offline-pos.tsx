@@ -1024,7 +1024,11 @@ export default function OfflinePOS() {
           // Create stock transaction entry for sale
           try {
             console.log('Creating stock transaction entry');
-            const response = await fetch('http://localhost:5003/api/offline/stock-transactions', {
+            // Dynamic API URL for network access
+            const apiBase = typeof window !== 'undefined' 
+              ? `${window.location.protocol}//${window.location.hostname}:5003`
+              : 'http://localhost:5003';
+            const response = await fetch(`${apiBase}/api/offline/stock-transactions`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

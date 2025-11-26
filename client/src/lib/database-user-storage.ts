@@ -1,6 +1,15 @@
 import { OfflineUser, AuthSession } from './user-storage';
 
-const API_BASE_URL = 'http://localhost:5003/api/offline';
+// Dynamic API base URL - uses current host for network access (mobile, other PCs)
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol;
+    const host = window.location.hostname;
+    const port = '5003';
+    return `${protocol}//${host}:${port}/api/offline`;
+  }
+  return 'http://localhost:5003/api/offline';
+};
 
 export class DatabaseUserStorage {
   private sessionKey = 'stocksage_auth_session';
@@ -8,7 +17,7 @@ export class DatabaseUserStorage {
   // Get all users from database
   async getAll(): Promise<OfflineUser[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/users`);
+      const response = await fetch(`${getApiBaseUrl()}/users`);
       if (!response.ok) {
         throw new Error('Failed to fetch users');
       }
@@ -34,7 +43,7 @@ export class DatabaseUserStorage {
   // Create new user
   async create(userData: Omit<OfflineUser, 'id'>): Promise<OfflineUser> {
     try {
-      const response = await fetch(`${API_BASE_URL}/users`, {
+      const response = await fetch(`${getApiBaseUrl()}/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -65,7 +74,7 @@ export class DatabaseUserStorage {
   // Update user
   async update(id: string, updates: Partial<OfflineUser>): Promise<OfflineUser> {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/users/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -94,7 +103,7 @@ export class DatabaseUserStorage {
   // Delete user
   async delete(id: string): Promise<boolean> {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/users/${id}`, {
         method: 'DELETE',
       });
 
