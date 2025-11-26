@@ -31,8 +31,29 @@ FunctionEnd
 Section "Install"
   SetOutPath "$INSTDIR"
   
-  ; Copy all files
-  File /r "/Users/abdessamadabba/repos/StockSage/installer-build/stocksage-20251126093347\*.*"
+  ; ========================================
+  ; PRESERVE DATA FOLDER DURING UPDATE
+  ; ========================================
+  
+  ; Check if this is an update (data folder exists)
+  IfFileExists "$INSTDIR\data\stocksage.db" 0 fresh_install
+    ; This is an UPDATE - backup data first
+    DetailPrint "Existing installation detected - backing up data..."
+    CreateDirectory "$INSTDIR\data_backup"
+    CopyFiles /SILENT "$INSTDIR\data\*.*" "$INSTDIR\data_backup"
+    DetailPrint "Data backed up to data_backup folder"
+  fresh_install:
+  
+  ; Copy all files (this overwrites everything except what we backed up)
+  File /r "/Users/abdessamadabba/repos/StockSage/installer-build/stocksage-20251126093914\*.*"
+  
+  ; Restore data if this was an update
+  IfFileExists "$INSTDIR\data_backup\stocksage.db" 0 no_restore
+    DetailPrint "Restoring your data..."
+    CreateDirectory "$INSTDIR\data"
+    CopyFiles /SILENT "$INSTDIR\data_backup\*.*" "$INSTDIR\data"
+    DetailPrint "Data restored successfully!"
+  no_restore:
   
   ; Create shortcuts
   CreateDirectory "$SMPROGRAMS\Igoodar"
@@ -65,11 +86,23 @@ Section "Install"
   ; Installation complete message
   DetailPrint "Installation completed successfully!"
   
-  ; Show completion message
-  MessageBox MB_OK|MB_ICONINFORMATION "Igoodar has been installed successfully!$\n$\nSystem Requirements: Windows 10 or higher$\nNode.js: v20.18.1 LTS (included)$\n$\nTo start the application:$\n1. Double-click the 'Igoodar' icon on your desktop$\n2. Wait for browser to open automatically$\n3. Login with PIN: 1234 (Admin) or 5678 (Cashier)$\n$\nThe application will be available at:$\nhttp://localhost:5003"
+  ; Show different message for update vs fresh install
+  IfFileExists "$INSTDIR\data_backup\stocksage.db" 0 show_fresh_message
+    ; UPDATE message
+    MessageBox MB_OK|MB_ICONINFORMATION "Igoodar has been UPDATED successfully!$\n$\nYour data has been preserved:$\n- All products$\n- All sales history$\n- All customers$\n- All settings$\n$\nTo start the application:$\n1. Double-click the 'Igoodar' icon on your desktop$\n2. Login with your existing PIN$\n$\nThe application will be available at:$\nhttp://localhost:5003"
+    Goto done_message
+  show_fresh_message:
+    ; FRESH INSTALL message
+    MessageBox MB_OK|MB_ICONINFORMATION "Igoodar has been installed successfully!$\n$\nSystem Requirements: Windows 10 or higher$\nNode.js: v20.18.1 LTS (included)$\n$\nTo start the application:$\n1. Double-click the 'Igoodar' icon on your desktop$\n2. Wait for browser to open automatically$\n3. Login with PIN: 1234 (Admin) or 5678 (Cashier)$\n$\nThe application will be available at:$\nhttp://localhost:5003"
+  done_message:
 SectionEnd
 
 Section "Uninstall"
+  ; Warn user about data deletion
+  MessageBox MB_YESNO|MB_ICONQUESTION "Are you sure you want to uninstall Igoodar?$\n$\nWARNING: This will DELETE all your data including:$\n- Products$\n- Sales history$\n- Customers$\n- Settings$\n$\nTo keep your data, click NO and backup the 'data' folder first." IDYES proceed_uninstall
+    Abort "Uninstall cancelled"
+  proceed_uninstall:
+  
   ; Stop application if running
   ExecWait 'taskkill /IM node.exe /F /FI "WINDOWTITLE eq Igoodar*"'
   
@@ -83,4 +116,6 @@ Section "Uninstall"
   
   ; Remove files
   RMDir /r "$INSTDIR"
+  
+  MessageBox MB_OK|MB_ICONINFORMATION "Igoodar has been uninstalled."
 SectionEnd
