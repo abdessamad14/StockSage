@@ -190,6 +190,18 @@ export const settings = sqliteTable("settings", {
   printerAddress: text("printer_address"),
   theme: text("theme").default("light"),
   syncInterval: integer("sync_interval").default(15), // minutes
+  // Additional settings
+  lowStockThreshold: integer("low_stock_threshold").default(10),
+  enableNotifications: integer("enable_notifications", { mode: "boolean" }).default(false),
+  enableLowStockAlerts: integer("enable_low_stock_alerts", { mode: "boolean" }).default(true),
+  enableAutoBackup: integer("enable_auto_backup", { mode: "boolean" }).default(false),
+  printerConnected: integer("printer_connected", { mode: "boolean" }).default(false),
+  printerVendorId: integer("printer_vendor_id"),
+  printerProductId: integer("printer_product_id"),
+  printerCashDrawer: integer("printer_cash_drawer", { mode: "boolean" }).default(false),
+  printerBuzzer: integer("printer_buzzer", { mode: "boolean" }).default(false),
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
 });
 
 // Stock Locations table

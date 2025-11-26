@@ -256,6 +256,7 @@ function ensureSettings(db, config) {
     return;
   }
 
+  const now = new Date().toISOString();
   insertRowIfColumnsExist(db, 'settings', {
     tenant_id: config.tenantId,
     business_name: config.businessName,
@@ -271,7 +272,19 @@ function ensureSettings(db, config) {
     printer_address: '',
     theme: 'light',
     sync_interval: 15,
-    logo: ''
+    logo: '',
+    // New settings fields
+    low_stock_threshold: 10,
+    enable_notifications: 0,
+    enable_low_stock_alerts: 1,
+    enable_auto_backup: 0,
+    printer_connected: 0,
+    printer_vendor_id: null,
+    printer_product_id: null,
+    printer_cash_drawer: 0,
+    printer_buzzer: 0,
+    created_at: now,
+    updated_at: now
   });
 
   console.log('  • Added default business settings');

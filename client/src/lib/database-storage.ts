@@ -134,6 +134,10 @@ export interface OfflineSettings {
   businessAddress?: string;
   businessPhone?: string;
   businessEmail?: string;
+  // Alias fields for database compatibility
+  address?: string;
+  phone?: string;
+  email?: string;
   taxRate?: number;
   currency: string;
   receiptFooter?: string;
@@ -143,6 +147,13 @@ export interface OfflineSettings {
   printerProductId?: number | null;
   printerCashDrawer?: boolean;
   printerBuzzer?: boolean;
+  // Additional settings fields
+  lowStockThreshold?: number;
+  enableNotifications?: boolean;
+  enableLowStockAlerts?: boolean;
+  enableAutoBackup?: boolean;
+  language?: string;
+  theme?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -988,40 +999,129 @@ export const databaseOrderStorage = {
   }
 };
 
-// Offline Settings Storage (localStorage-based)
+// Offline Settings Storage (Database-based with localStorage cache)
 export const offlineSettingsStorage = {
   async get(): Promise<OfflineSettings | null> {
     try {
-      const stored = localStorage.getItem('stocksage_settings');
-      if (!stored) {
-        // Return default settings if none exist
-        const defaultSettings: OfflineSettings = {
-          id: '1',
-          businessName: 'Mon Commerce',
-          businessAddress: '123 Rue Principale, Casablanca, Maroc',
-          businessPhone: '+212 5 22 XX XX XX',
-          businessEmail: 'contact@moncommerce.ma',
-          taxRate: 20,
-          currency: 'DH',
-          receiptFooter: 'Merci pour votre visite!',
-          receiptHeader: 'REÇU DE VENTE',
-          printerConnected: false,
-          printerVendorId: null,
-          printerProductId: null,
-          printerCashDrawer: false,
-          printerBuzzer: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        
-        // Save default settings
-        localStorage.setItem('stocksage_settings', JSON.stringify(defaultSettings));
-        return defaultSettings;
+      // Try to get from database first
+      const apiBase = getApiBase();
+      const response = await fetch(`${apiBase}/settings`);
+      
+      if (response.ok) {
+        const dbSettings = await response.json();
+        if (dbSettings) {
+          // Map database fields to OfflineSettings
+          const settings: OfflineSettings = {
+            id: dbSettings.id?.toString() || '1',
+            businessName: dbSettings.businessName || 'Mon Commerce',
+            businessAddress: dbSettings.address || '',
+            businessPhone: dbSettings.phone || '',
+            businessEmail: dbSettings.email || '',
+            address: dbSettings.address || '',
+            phone: dbSettings.phone || '',
+            email: dbSettings.email || '',
+            taxRate: dbSettings.taxRate || 20,
+            currency: dbSettings.currency || 'DH',
+            receiptFooter: dbSettings.receiptFooter || 'Merci pour votre visite!',
+            receiptHeader: dbSettings.receiptHeader || 'REÇU DE VENTE',
+            printerConnected: dbSettings.printerConnected || false,
+            printerVendorId: dbSettings.printerVendorId || null,
+            printerProductId: dbSettings.printerProductId || null,
+            printerCashDrawer: dbSettings.printerCashDrawer || false,
+            printerBuzzer: dbSettings.printerBuzzer || false,
+            lowStockThreshold: dbSettings.lowStockThreshold || 10,
+            enableNotifications: dbSettings.enableNotifications || false,
+            enableLowStockAlerts: dbSettings.enableLowStockAlerts || true,
+            enableAutoBackup: dbSettings.enableAutoBackup || false,
+            language: dbSettings.language || 'fr',
+            theme: dbSettings.theme || 'light',
+            createdAt: dbSettings.createdAt || new Date().toISOString(),
+            updatedAt: dbSettings.updatedAt || new Date().toISOString()
+          };
+          
+          // Cache in localStorage for offline access
+          localStorage.setItem('stocksage_settings', JSON.stringify(settings));
+          return settings;
+        }
       }
       
-      return JSON.parse(stored);
+      // If no database settings, check localStorage cache
+      const stored = localStorage.getItem('stocksage_settings');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+      
+      // Return default settings and create in database
+      const defaultSettings: OfflineSettings = {
+        id: '1',
+        businessName: 'Mon Commerce',
+        businessAddress: '123 Rue Principale, Casablanca, Maroc',
+        businessPhone: '+212 5 22 XX XX XX',
+        businessEmail: 'contact@moncommerce.ma',
+        address: '123 Rue Principale, Casablanca, Maroc',
+        phone: '+212 5 22 XX XX XX',
+        email: 'contact@moncommerce.ma',
+        taxRate: 20,
+        currency: 'DH',
+        receiptFooter: 'Merci pour votre visite!',
+        receiptHeader: 'REÇU DE VENTE',
+        printerConnected: false,
+        printerVendorId: null,
+        printerProductId: null,
+        printerCashDrawer: false,
+        printerBuzzer: false,
+        lowStockThreshold: 10,
+        enableNotifications: false,
+        enableLowStockAlerts: true,
+        enableAutoBackup: false,
+        language: 'fr',
+        theme: 'light',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Try to create in database
+      try {
+        const createResponse = await fetch(`${apiBase}/settings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            businessName: defaultSettings.businessName,
+            address: defaultSettings.businessAddress,
+            phone: defaultSettings.businessPhone,
+            email: defaultSettings.businessEmail,
+            taxRate: defaultSettings.taxRate,
+            currency: defaultSettings.currency,
+            receiptFooter: defaultSettings.receiptFooter,
+            receiptHeader: defaultSettings.receiptHeader,
+            lowStockThreshold: defaultSettings.lowStockThreshold,
+            enableNotifications: defaultSettings.enableNotifications,
+            enableLowStockAlerts: defaultSettings.enableLowStockAlerts,
+            enableAutoBackup: defaultSettings.enableAutoBackup,
+            language: defaultSettings.language,
+            theme: defaultSettings.theme
+          })
+        });
+        
+        if (createResponse.ok) {
+          const created = await createResponse.json();
+          defaultSettings.id = created.id?.toString() || '1';
+        }
+      } catch (createError) {
+        console.error('Error creating default settings in database:', createError);
+      }
+      
+      // Save to localStorage cache
+      localStorage.setItem('stocksage_settings', JSON.stringify(defaultSettings));
+      return defaultSettings;
     } catch (error) {
-      console.error('Error loading settings from localStorage:', error);
+      console.error('Error loading settings:', error);
+      
+      // Fallback to localStorage if database fails
+      const stored = localStorage.getItem('stocksage_settings');
+      if (stored) {
+        return JSON.parse(stored);
+      }
       return null;
     }
   },
@@ -1029,6 +1129,60 @@ export const offlineSettingsStorage = {
   async update(updates: Partial<OfflineSettings>): Promise<OfflineSettings> {
     try {
       const current = await this.get();
+      const settingsId = current?.id || '1';
+      
+      // Prepare database update payload
+      const dbPayload: any = {
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Map OfflineSettings fields to database fields
+      if (updates.businessName !== undefined) dbPayload.businessName = updates.businessName;
+      if (updates.address !== undefined) dbPayload.address = updates.address;
+      if (updates.businessAddress !== undefined) dbPayload.address = updates.businessAddress;
+      if (updates.phone !== undefined) dbPayload.phone = updates.phone;
+      if (updates.businessPhone !== undefined) dbPayload.phone = updates.businessPhone;
+      if (updates.email !== undefined) dbPayload.email = updates.email;
+      if (updates.businessEmail !== undefined) dbPayload.email = updates.businessEmail;
+      if (updates.taxRate !== undefined) dbPayload.taxRate = updates.taxRate;
+      if (updates.currency !== undefined) dbPayload.currency = updates.currency;
+      if (updates.receiptFooter !== undefined) dbPayload.receiptFooter = updates.receiptFooter;
+      if (updates.receiptHeader !== undefined) dbPayload.receiptHeader = updates.receiptHeader;
+      if (updates.lowStockThreshold !== undefined) dbPayload.lowStockThreshold = updates.lowStockThreshold;
+      if (updates.enableNotifications !== undefined) dbPayload.enableNotifications = updates.enableNotifications;
+      if (updates.enableLowStockAlerts !== undefined) dbPayload.enableLowStockAlerts = updates.enableLowStockAlerts;
+      if (updates.enableAutoBackup !== undefined) dbPayload.enableAutoBackup = updates.enableAutoBackup;
+      if (updates.language !== undefined) dbPayload.language = updates.language;
+      if (updates.theme !== undefined) dbPayload.theme = updates.theme;
+      
+      // Update in database
+      const apiBase = getApiBase();
+      const response = await fetch(`${apiBase}/settings/${settingsId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dbPayload)
+      });
+      
+      // Merge updates with current settings
+      const updated: OfflineSettings = {
+        ...current,
+        ...updates,
+        updatedAt: new Date().toISOString()
+      } as OfflineSettings;
+      
+      // Always update localStorage cache
+      localStorage.setItem('stocksage_settings', JSON.stringify(updated));
+      
+      if (!response.ok) {
+        console.warn('Failed to update settings in database, using localStorage cache');
+      }
+      
+      return updated;
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      
+      // Fallback: update localStorage only
+      const current = JSON.parse(localStorage.getItem('stocksage_settings') || '{}');
       const updated: OfflineSettings = {
         ...current,
         ...updates,
@@ -1037,9 +1191,6 @@ export const offlineSettingsStorage = {
       
       localStorage.setItem('stocksage_settings', JSON.stringify(updated));
       return updated;
-    } catch (error) {
-      console.error('Error updating settings in localStorage:', error);
-      throw error;
     }
   }
 };
