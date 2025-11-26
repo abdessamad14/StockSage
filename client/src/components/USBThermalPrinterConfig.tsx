@@ -73,7 +73,7 @@ export default function USBThermalPrinterConfig() {
       setIsConnecting(true);
       setError('');
       
-      // Request access to USB devices
+      // Request access to USB devices - include many thermal printer vendors
       const device = await navigator.usb.requestDevice({
         filters: [
           // BIXOLON printers
@@ -82,8 +82,30 @@ export default function USBThermalPrinterConfig() {
           { vendorId: 0x04b8 },
           // Star printers
           { vendorId: 0x0519 },
-          // Generic thermal printers
-          { classCode: 7 } // Printer class
+          // Citizen printers
+          { vendorId: 0x1D90 },
+          // Zebra printers
+          { vendorId: 0x0A5F },
+          // TSC printers
+          { vendorId: 0x1203 },
+          // Xprinter / Generic Chinese printers
+          { vendorId: 0x0483 },
+          { vendorId: 0x0416 },
+          { vendorId: 0x0493 },
+          { vendorId: 0x0456 },
+          { vendorId: 0x154F },
+          { vendorId: 0x0FE6 },
+          { vendorId: 0x0525 },
+          { vendorId: 0x28E9 },
+          { vendorId: 0x4B43 },
+          // Rongta printers
+          { vendorId: 0x0DD4 },
+          // HPRT printers
+          { vendorId: 0x0485 },
+          // POS-X printers
+          { vendorId: 0x0FE6 },
+          // Generic thermal printers (printer class)
+          { classCode: 7 }
         ]
       });
 
@@ -151,26 +173,50 @@ export default function USBThermalPrinterConfig() {
         try {
           await device.open();
         } catch (openError: any) {
-          // If access denied, user needs to re-authorize the device
-          if (openError.name === 'SecurityError' || openError.message.includes('Access denied')) {
-            throw new Error('USB access denied. Please click "Connect Printer" again to re-authorize the device.');
+          // If access denied, try to request the device again
+          if (openError.name === 'SecurityError' || openError.message.includes('Access denied') || openError.message.includes('denied')) {
+            // Try to re-request the device
+            try {
+              const newDevice = await navigator.usb.requestDevice({
+                filters: [{ vendorId: selectedDevice.vendorId, productId: selectedDevice.productId }]
+              });
+              await newDevice.open();
+              // Update the device reference
+              Object.assign(device, newDevice);
+            } catch (reAuthError) {
+              throw new Error('USB access denied. The printer may be in use by another application. Try: 1) Unplug and replug the printer, 2) Close other applications using the printer, 3) Click "Connect Printer" again.');
+            }
+          } else {
+            throw openError;
           }
-          throw openError;
         }
       }
 
       // Select configuration (usually configuration 1)
-      if (device.configuration === null) {
-        await device.selectConfiguration(1);
+      try {
+        if (device.configuration === null) {
+          await device.selectConfiguration(1);
+        }
+      } catch (configError: any) {
+        console.warn('Could not select configuration:', configError);
+        // Some printers don't need explicit configuration selection
       }
 
       // Find the bulk OUT endpoint for sending data
       const interface_ = device.configuration?.interfaces[0];
       if (!interface_) {
-        throw new Error('No interface found');
+        throw new Error('No interface found. The printer may not be compatible with WebUSB.');
       }
 
-      await device.claimInterface(interface_.interfaceNumber);
+      // Try to claim interface, handle if already claimed
+      try {
+        await device.claimInterface(interface_.interfaceNumber);
+      } catch (claimError: any) {
+        if (claimError.message.includes('claimed') || claimError.message.includes('in use')) {
+          throw new Error('Printer is in use by another application. Please close other printing software and try again.');
+        }
+        throw claimError;
+      }
 
       // Generate ESC/POS test receipt
       const escPos = generateTestReceipt();

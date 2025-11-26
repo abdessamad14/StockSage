@@ -80,25 +80,38 @@ export class ThermalReceiptPrinter {
           await device.open();
         } catch (openError: any) {
           // If access denied, user needs to re-authorize the device
-          if (openError.name === 'SecurityError' || openError.message.includes('Access denied')) {
-            throw new Error('USB access denied. Please click "Configure Printer" in Settings to re-authorize the device.');
+          if (openError.name === 'SecurityError' || openError.message.includes('Access denied') || openError.message.includes('denied')) {
+            throw new Error('USB access denied. Please go to Settings → Thermal Printer and click "Connect Printer" to re-authorize the device. If the problem persists, try unplugging and replugging the printer.');
           }
           throw openError;
         }
       }
 
       // Select configuration (usually configuration 1)
-      if (device.configuration === null) {
-        await device.selectConfiguration(1);
+      try {
+        if (device.configuration === null) {
+          await device.selectConfiguration(1);
+        }
+      } catch (configError: any) {
+        console.warn('Could not select configuration:', configError);
+        // Some printers don't need explicit configuration selection
       }
 
       // Find the bulk OUT endpoint for sending data
       const interface_ = device.configuration?.interfaces[0];
       if (!interface_) {
-        throw new Error('No interface found');
+        throw new Error('No interface found. The printer may not be compatible with WebUSB.');
       }
 
-      await device.claimInterface(interface_.interfaceNumber);
+      // Try to claim interface, handle if already claimed
+      try {
+        await device.claimInterface(interface_.interfaceNumber);
+      } catch (claimError: any) {
+        if (claimError.message.includes('claimed') || claimError.message.includes('in use')) {
+          throw new Error('Printer is in use by another application. Please close other printing software (like the printer driver utility) and try again.');
+        }
+        throw claimError;
+      }
 
       // Generate ESC/POS receipt
       const escPos = ThermalReceiptPrinter.generateReceiptCommands(receiptData, currentSettings);
