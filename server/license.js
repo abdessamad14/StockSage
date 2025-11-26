@@ -14,7 +14,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const LICENSE_FILE = path.join(__dirname, '..', 'data', 'license.key');
+const MACHINE_ID_FILE = path.join(__dirname, '..', 'data', 'machine.id');
 const SECRET = 'IGOODAR-2025-PROTECT-YOUR-BUSINESS'; // Change this to your own secret!
+
+// Cached machine ID to ensure consistency
+let cachedMachineId = null;
 
 /**
  * Get MAC addresses using Windows getmac command (works even when offline)
@@ -75,10 +79,9 @@ function getWindowsPermanentMacs() {
 }
 
 /**
- * Get unique machine ID (hardware fingerprint)
- * Uses permanent physical adapters - works online and offline
+ * Generate a new machine ID from hardware
  */
-function getMachineId() {
+function generateMachineIdFromHardware() {
   const permanentMacs = [];
   
   // On Windows, use getmac command (works offline)
@@ -142,6 +145,49 @@ function getMachineId() {
   // Use permanent MACs + hostname for unique ID
   const uniqueString = macString + os.hostname();
   return crypto.createHash('sha256').update(uniqueString).digest('hex').substring(0, 16);
+}
+
+/**
+ * Get unique machine ID (hardware fingerprint)
+ * IMPORTANT: Once generated, the machine ID is cached to file to ensure
+ * it stays the same even when network conditions change (online/offline)
+ */
+function getMachineId() {
+  // Return cached ID if available
+  if (cachedMachineId) {
+    return cachedMachineId;
+  }
+  
+  // Try to load from file first (ensures consistency across restarts)
+  try {
+    if (fs.existsSync(MACHINE_ID_FILE)) {
+      const savedId = fs.readFileSync(MACHINE_ID_FILE, 'utf8').trim();
+      if (savedId && savedId.length === 16) {
+        cachedMachineId = savedId;
+        console.log('📋 Machine ID loaded from cache:', cachedMachineId);
+        return cachedMachineId;
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ Could not read cached machine ID:', error.message);
+  }
+  
+  // Generate new machine ID from hardware
+  cachedMachineId = generateMachineIdFromHardware();
+  
+  // Save to file for future consistency
+  try {
+    const dataDir = path.dirname(MACHINE_ID_FILE);
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    fs.writeFileSync(MACHINE_ID_FILE, cachedMachineId, 'utf8');
+    console.log('💾 Machine ID saved to cache:', cachedMachineId);
+  } catch (error) {
+    console.warn('⚠️ Could not save machine ID to cache:', error.message);
+  }
+  
+  return cachedMachineId;
 }
 
 /**
