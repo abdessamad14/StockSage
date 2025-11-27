@@ -284,6 +284,29 @@ This will:
 - Create a default cashier user if it doesn't exist
 - Verify other essential columns
 
+#### "table settings has no column named low_stock_threshold" Error
+
+If you see this error when accessing settings:
+
+```
+Error fetching settings: SqliteError: no such column: "low_stock_threshold"
+Error creating settings: SqliteError: table settings has no column named low_stock_threshold
+```
+
+**Run the settings schema fix tool:**
+
+```bash
+npm run db:fix-settings
+```
+
+This will:
+- Add all missing columns to the settings table
+- Set proper default values (low_stock_threshold: 10, etc.)
+- Update existing settings records
+- Verify the schema is complete
+
+**Note:** This commonly happens when upgrading from an older version of StockSage. The fix is safe and preserves all existing settings data.
+
 #### Database Corruption
 
 If the database appears corrupted or has multiple schema issues:

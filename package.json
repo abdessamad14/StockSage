@@ -17,6 +17,7 @@
     "db:init": "node scripts/init-sqlite.js",
     "db:fix": "node scripts/fix-database.js",
     "db:repair": "node scripts/repair-database.js",
+    "db:fix-settings": "node scripts/fix-settings-schema.js",
     "db:test-users": "node scripts/test-user-creation.js",
     "seed:test": "node scripts/seed-test-data.js",
     "seed:comprehensive": "node scripts/seed-comprehensive-test-data.js",
