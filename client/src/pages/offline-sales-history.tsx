@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { useOfflineSales } from "@/hooks/use-offline-sales";
 import { useOfflineProducts } from "@/hooks/use-offline-products";
 import { useOfflineCustomers } from "@/hooks/use-offline-customers";
+import { useOfflineAuth } from "@/hooks/use-offline-auth";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { OfflineSale } from "@/lib/offline-storage";
@@ -40,6 +41,7 @@ export default function OfflineSalesHistory() {
   const { sales, loading, deleteSale } = useOfflineSales();
   const { products } = useOfflineProducts();
   const { customers } = useOfflineCustomers();
+  const { canDeleteSales } = useOfflineAuth();
   const { t } = useI18n();
   const { toast } = useToast();
 
@@ -156,19 +158,21 @@ export default function OfflineSalesHistory() {
           >
             <Receipt className="w-4 h-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleDeleteSale(sale)}
-            title={t('delete_sale')}
-            className="hover:bg-red-50 text-red-600"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          {canDeleteSales && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDeleteSale(sale)}
+              title={t('delete_sale')}
+              className="hover:bg-red-50 text-red-600"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       )
     }
-  ]), [t, saleStatusLabels, paymentMethodLabels, formatCurrency, customers]);
+  ]), [t, saleStatusLabels, paymentMethodLabels, formatCurrency, customers, canDeleteSales]);
 
   const [visibleColumns, setVisibleColumns] = useState<string[]>(() => columnDefinitions.map(column => column.id));
 

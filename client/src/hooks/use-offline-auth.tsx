@@ -14,6 +14,7 @@ type OfflineAuthContextType = {
   canManageSuppliers: boolean;
   canViewReports: boolean;
   canManageUsers: boolean;
+  canDeleteSales: boolean;
 };
 
 export const OfflineAuthContext = createContext<OfflineAuthContextType | null>(null);
@@ -77,6 +78,10 @@ export function OfflineAuthProvider({ children }: { children: ReactNode }) {
     return user !== null && user.active && user.role === 'admin';
   };
 
+  const canDeleteSales = (user: OfflineUser | null): boolean => {
+    return user !== null && user.active && user.role === 'admin';
+  };
+
   return (
     <OfflineAuthContext.Provider
       value={{
@@ -90,6 +95,7 @@ export function OfflineAuthProvider({ children }: { children: ReactNode }) {
         canManageSuppliers: canManageSuppliers(user),
         canViewReports: canViewReports(user),
         canManageUsers: canManageUsers(user),
+        canDeleteSales: canDeleteSales(user),
       }}
     >
       {children}
