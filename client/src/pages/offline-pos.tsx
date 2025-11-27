@@ -665,7 +665,18 @@ export default function OfflinePOS() {
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.barcode?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || product.categoryId === selectedCategory;
+    
+    // Handle both categoryId (ID) and category name for backwards compatibility
+    let matchesCategory = false;
+    if (selectedCategory === 'all') {
+      matchesCategory = true;
+    } else {
+      // Check if product's categoryId matches by ID or by category name
+      const selectedCat = categories.find(c => c.id === selectedCategory);
+      matchesCategory = product.categoryId === selectedCategory || 
+                       (!!selectedCat && product.categoryId === selectedCat.name);
+    }
+    
     const isActive = product.active !== false; // Only show active products
     
     // Debug logging

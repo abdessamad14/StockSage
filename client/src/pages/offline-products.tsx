@@ -278,13 +278,24 @@ export default function OfflineProducts() {
 
   // Filter products
   const filteredProducts = products.filter(product => {
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = 
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.barcode?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesCategory = selectedCategoryFilter === "all" || 
-      product.categoryId === selectedCategoryFilter ||
-      (selectedCategoryFilter === "uncategorized" && !product.categoryId);
+    // Handle both categoryId (ID) and category field (name) for backwards compatibility
+    const productCategory = product.categoryId;
+    let matchesCategory = false;
+    
+    if (selectedCategoryFilter === "all") {
+      matchesCategory = true;
+    } else if (selectedCategoryFilter === "uncategorized") {
+      matchesCategory = !productCategory;
+    } else {
+      // Check if productCategory matches by ID or by name
+      const selectedCat = categories.find(c => c.id === selectedCategoryFilter);
+      matchesCategory = productCategory === selectedCategoryFilter || 
+                       (!!selectedCat && productCategory === selectedCat.name);
+    }
     
     return matchesSearch && matchesCategory;
   });
@@ -865,7 +876,7 @@ export default function OfflineProducts() {
                     <p className="text-sm text-gray-600 mb-2">{category.description}</p>
                   )}
                   <div className="text-sm text-gray-500">
-                    {products.filter(p => p.categoryId === category.id).length} products
+                    {products.filter(p => p.categoryId === category.id || p.categoryId === category.name).length} products
                   </div>
                 </CardContent>
               </Card>
