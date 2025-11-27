@@ -30,13 +30,14 @@ import {
   Eye,
   Filter,
   Download,
-  TrendingUp
+  TrendingUp,
+  Trash2
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export default function OfflineSalesHistory() {
-  const { sales, loading } = useOfflineSales();
+  const { sales, loading, deleteSale } = useOfflineSales();
   const { products } = useOfflineProducts();
   const { customers } = useOfflineCustomers();
   const { t } = useI18n();
@@ -155,6 +156,15 @@ export default function OfflineSalesHistory() {
           >
             <Receipt className="w-4 h-4" />
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleDeleteSale(sale)}
+            title={t('delete_sale')}
+            className="hover:bg-red-50 text-red-600"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </div>
       )
     }
@@ -262,6 +272,27 @@ export default function OfflineSalesHistory() {
       toast({
         title: t('error'),
         description: t('offline_pos_sale_completed_print_error'),
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteSale = async (sale: OfflineSale) => {
+    if (!confirm(t('confirm_delete_sale', { invoiceNumber: sale.invoiceNumber }))) {
+      return;
+    }
+
+    try {
+      await deleteSale(sale.id);
+      toast({
+        title: t('success'),
+        description: t('sale_deleted_successfully')
+      });
+    } catch (error) {
+      console.error('Error deleting sale:', error);
+      toast({
+        title: t('error'),
+        description: t('sale_delete_error'),
         variant: "destructive"
       });
     }

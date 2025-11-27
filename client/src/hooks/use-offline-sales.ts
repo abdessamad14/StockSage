@@ -37,10 +37,16 @@ export function useOfflineSales() {
     return newSale;
   };
 
+  const deleteSale = async (id: string) => {
+    await offlineSalesStorage.delete(id);
+    await loadSales();
+  };
+
   return {
     sales,
     loading,
     createSale,
+    deleteSale,
     refetch: loadSales
   };
 }

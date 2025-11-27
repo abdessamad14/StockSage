@@ -772,6 +772,12 @@ export const databaseSalesStorage = {
       createdAt: created.createdAt,
       updatedAt: created.updatedAt
     };
+  },
+
+  async delete(id: string): Promise<void> {
+    await apiCall(`/sales/${id}`, {
+      method: 'DELETE'
+    });
   }
 };
 
