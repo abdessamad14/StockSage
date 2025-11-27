@@ -12,48 +12,6 @@
     {
       "idx": 1,
       "version": "6",
-      "when": 1724537640000,
-      "tag": "0001_add_missing_tables",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1724960520000,
-      "tag": "0002_add_remaining_tables",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1725834540000,
-      "tag": "0003_add_payment_fields_to_orders",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1726008480000,
-      "tag": "0004_add_image_to_categories",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1726009020000,
-      "tag": "0005_add_timestamps_to_categories",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "6",
-      "when": 1726081740000,
-      "tag": "0006_add_pin_to_users",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "6",
       "when": 1732663920000,
       "tag": "0007_add_settings_fields",
       "breakpoints": true
