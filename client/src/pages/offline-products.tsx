@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Package, Search, Plus, Edit, Trash2, Tag, Filter, Upload, X, Image } from "lucide-react";
+import { Package, Search, Plus, Edit, Trash2, Tag, Filter, Upload, X, Image, Eye, EyeOff } from "lucide-react";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -392,6 +392,25 @@ export default function OfflineProducts() {
     }
   };
 
+  const handleToggleProductActive = async (product: OfflineProduct) => {
+    try {
+      await updateProduct(product.id, {
+        ...product,
+        active: !product.active
+      });
+      toast({
+        title: t('success'),
+        description: product.active ? t('product_deactivated') : t('product_activated')
+      });
+    } catch (error) {
+      toast({
+        title: t('error'),
+        description: t('failed_to_update_product'),
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleDeleteProduct = async (productId: string) => {
     try {
       await deleteProduct(productId);
@@ -402,8 +421,19 @@ export default function OfflineProducts() {
     } catch (error: any) {
       console.error('Error deleting product:', error);
       
-      // Use the error message from API or fallback to generic message
-      const errorMessage = error?.message || t('failed_to_delete_product');
+      // Check for specific error types and use translated messages
+      let errorMessage = t('failed_to_delete_product');
+      
+      if (error?.message) {
+        if (error.message.includes('sales transactions') || error.message.includes('sales history')) {
+          errorMessage = t('product_has_sales_history');
+        } else if (error.message.includes('purchase orders') || error.message.includes('order history') || error.message.includes('purchase history')) {
+          errorMessage = t('product_has_order_history');
+        } else {
+          // Use the API message if it doesn't match our specific cases
+          errorMessage = error.message;
+        }
+      }
       
       toast({
         title: t('error'),
@@ -751,6 +781,19 @@ export default function OfflineProducts() {
                         title={t('edit')}
                       >
                         <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className={`h-9 w-9 ${
+                          product.active 
+                            ? 'border-amber-200 text-amber-600 hover:bg-amber-50' 
+                            : 'border-green-200 text-green-600 hover:bg-green-50'
+                        }`}
+                        onClick={() => handleToggleProductActive(product)}
+                        title={product.active ? t('deactivate_product') : t('activate_product')}
+                      >
+                        {product.active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </Button>
                       <Button
                         variant="outline"
