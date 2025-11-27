@@ -72,16 +72,36 @@ try {
       { name: 'printer_product_id', sql: 'ALTER TABLE settings ADD COLUMN printer_product_id INTEGER' },
       { name: 'printer_cash_drawer', sql: 'ALTER TABLE settings ADD COLUMN printer_cash_drawer INTEGER DEFAULT 0' },
       { name: 'printer_buzzer', sql: 'ALTER TABLE settings ADD COLUMN printer_buzzer INTEGER DEFAULT 0' },
-      { name: 'created_at', sql: 'ALTER TABLE settings ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP' },
-      { name: 'updated_at', sql: 'ALTER TABLE settings ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP' }
+      // Note: SQLite ALTER TABLE doesn't support function defaults like CURRENT_TIMESTAMP
+      // So we add with NULL default and then update the values
+      { name: 'created_at', sql: 'ALTER TABLE settings ADD COLUMN created_at TEXT' },
+      { name: 'updated_at', sql: 'ALTER TABLE settings ADD COLUMN updated_at TEXT' }
     ];
     
+    let columnsAdded = false;
     for (const column of requiredColumns) {
       if (!columnNames.includes(column.name)) {
         console.log(`  Adding missing column: ${column.name}`);
         sqlite.prepare(column.sql).run();
+        columnsAdded = true;
       }
     }
+    
+    // Update timestamp columns for existing rows (set to current time if NULL)
+    if (columnsAdded) {
+      try {
+        sqlite.prepare(`
+          UPDATE settings 
+          SET created_at = datetime('now', 'localtime'),
+              updated_at = datetime('now', 'localtime')
+          WHERE created_at IS NULL OR updated_at IS NULL
+        `).run();
+        console.log('  Updated timestamp columns for existing records');
+      } catch (error) {
+        console.warn('  Could not update timestamp columns:', error.message);
+      }
+    }
+    
     console.log('✅ Settings table schema updated');
   } catch (error) {
     console.warn('⚠️  Could not update settings schema:', error.message);

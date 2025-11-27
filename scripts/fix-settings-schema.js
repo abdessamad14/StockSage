@@ -46,6 +46,8 @@ try {
   console.log('   Current columns:', existingColumns.join(', '));
   
   // Define columns that should exist
+  // Note: SQLite ALTER TABLE doesn't support function defaults like datetime('now')
+  // So timestamp columns are added without defaults, then values are updated
   const requiredColumns = [
     { name: 'low_stock_threshold', type: 'INTEGER', defaultValue: '10' },
     { name: 'enable_notifications', type: 'INTEGER', defaultValue: '0' },
@@ -56,8 +58,8 @@ try {
     { name: 'printer_product_id', type: 'INTEGER', defaultValue: 'NULL' },
     { name: 'printer_cash_drawer', type: 'INTEGER', defaultValue: '0' },
     { name: 'printer_buzzer', type: 'INTEGER', defaultValue: '0' },
-    { name: 'created_at', type: 'TEXT', defaultValue: "datetime('now')" },
-    { name: 'updated_at', type: 'TEXT', defaultValue: "datetime('now')" },
+    { name: 'created_at', type: 'TEXT', defaultValue: 'NULL', isTimestamp: true },
+    { name: 'updated_at', type: 'TEXT', defaultValue: 'NULL', isTimestamp: true },
   ];
   
   // Check for missing columns
@@ -96,8 +98,22 @@ try {
     }
   }
   
+  // Update timestamp columns for existing rows
+  console.log('\n📝 Setting timestamp values for existing records...');
+  try {
+    db.prepare(`
+      UPDATE settings 
+      SET created_at = datetime('now', 'localtime'),
+          updated_at = datetime('now', 'localtime')
+      WHERE created_at IS NULL OR updated_at IS NULL
+    `).run();
+    console.log('✅ Timestamp columns updated\n');
+  } catch (error) {
+    console.log('⚠️  Could not update timestamp columns:', error.message);
+  }
+  
   // Verify the fix
-  console.log('\n🔍 Verifying schema repair...');
+  console.log('🔍 Verifying schema repair...');
   const updatedTableInfo = db.prepare('PRAGMA table_info(settings)').all();
   const updatedColumns = updatedTableInfo.map(col => col.name);
   
@@ -108,21 +124,21 @@ try {
   if (stillMissing.length === 0) {
     console.log('✅ All columns verified!\n');
     
-    // Update existing settings records
-    console.log('📝 Updating existing settings records...');
+    // Update existing settings records with default values
+    console.log('📝 Applying default values to existing settings records...');
     try {
       const updateFields = missingColumns
-        .filter(col => col.defaultValue !== 'NULL' && !['created_at', 'updated_at'].includes(col.name))
+        .filter(col => col.defaultValue !== 'NULL' && !col.isTimestamp)
         .map(col => `${col.name} = ${col.defaultValue}`)
         .join(', ');
       
       if (updateFields) {
-        db.prepare(`UPDATE settings SET ${updateFields}, updated_at = datetime('now')`).run();
-        console.log('✅ Settings records updated\n');
+        db.prepare(`UPDATE settings SET ${updateFields}`).run();
+        console.log('✅ Default values applied\n');
       }
     } catch (error) {
-      console.log('⚠️  Could not update settings records:', error.message);
-      console.log('   Settings will use default values for new columns\n');
+      console.log('⚠️  Could not apply default values:', error.message);
+      console.log('   Settings will use column defaults for new values\n');
     }
     
     console.log('========================================');
