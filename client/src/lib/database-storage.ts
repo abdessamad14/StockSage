@@ -506,13 +506,8 @@ export const databaseProductStorage = {
   },
 
   async delete(id: string): Promise<boolean> {
-    try {
-      await apiCall(`/products/${id}`, { method: 'DELETE' });
-      return true;
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      return false;
-    }
+    await apiCall(`/products/${id}`, { method: 'DELETE' });
+    return true;
   },
 
   async search(query: string): Promise<OfflineProduct[]> {
