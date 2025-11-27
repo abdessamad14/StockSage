@@ -148,7 +148,8 @@ export default function OfflinePOS() {
       .filter((product) => {
         const matchesName = product.name.toLowerCase().includes(normalizedQuery);
         const matchesBarcode = product.barcode?.toLowerCase().includes(normalizedQuery);
-        return matchesName || matchesBarcode;
+        const isActive = product.active !== false; // Only show active products
+        return (matchesName || matchesBarcode) && isActive;
       })
       .slice(0, 8);
   }, [quickSearchTerm, products]);
@@ -665,13 +666,14 @@ export default function OfflinePOS() {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.barcode?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || product.categoryId === selectedCategory;
+    const isActive = product.active !== false; // Only show active products
     
     // Debug logging
     if (selectedCategory !== 'all') {
       console.log('Filtering - Product:', product.name, 'CategoryId:', product.categoryId, 'Selected:', selectedCategory, 'Matches:', matchesCategory);
     }
     
-    return matchesSearch && matchesCategory;
+    return matchesSearch && matchesCategory && isActive;
   });
 
   // Cart functions
