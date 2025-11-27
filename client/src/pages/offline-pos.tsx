@@ -2384,12 +2384,6 @@ export default function OfflinePOS() {
                           {(creditInfo?.creditLimit || 0).toFixed(2)} DH
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>{t('after_payment')}:</span>
-                        <span className="font-medium text-green-600">
-                          {Math.max(0, (creditInfo?.currentBalance || 0) - creditAmount).toFixed(2)} DH
-                        </span>
-                      </div>
                     </div>
                   </div>
                 </div>

@@ -613,14 +613,6 @@ export default function OfflineCustomers() {
                           {formatCurrency(creditInfo?.creditLimit)}
                         </span>
                       </div>
-                      {creditAmount > 0 && (
-                        <div className="flex justify-between">
-                          <span>{t('after_payment')}:</span>
-                          <span className="font-medium text-green-600">
-                            {formatCurrency(Math.max(0, (creditInfo?.currentBalance || 0) - creditAmount))}
-                          </span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
