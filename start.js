@@ -76,8 +76,23 @@ function checkDatabase() {
       }
     });
   } else {
-    console.log('✅ Database found, starting server...');
-    startServer();
+    console.log('✅ Database found, checking schema...');
+    
+    // Always run schema migration check on startup to ensure schema is up-to-date
+    const migrateProcess = spawn('node', ['scripts/init-sqlite.js', '--no-seed'], {
+      stdio: 'inherit',
+      cwd: process.cwd()
+    });
+    
+    migrateProcess.on('close', (code) => {
+      if (code === 0) {
+        console.log('✅ Schema check complete');
+        startServer();
+      } else {
+        console.error('❌ Schema migration failed');
+        process.exit(1);
+      }
+    });
   }
 }
 
