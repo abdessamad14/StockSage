@@ -262,12 +262,27 @@ router.delete('/products/:id', async (req, res) => {
     const productId = parseInt(id);
     
     // Delete related records first (outside transaction to avoid FK issues)
+    // Delete product stock
+    await db.delete(productStock)
+      .where(eq(productStock.productId, productId));
+    
+    // Delete stock transactions
+    await db.delete(stockTransactions)
+      .where(eq(stockTransactions.productId, productId));
+    
+    // Delete inventory count items
+    await db.delete(inventoryCountItems)
+      .where(eq(inventoryCountItems.productId, productId));
+    
+    // Delete inventory adjustment items
     await db.delete(inventoryAdjustmentItems)
       .where(eq(inventoryAdjustmentItems.productId, productId));
     
+    // Delete sale items
     await db.delete(saleItems)
       .where(eq(saleItems.productId, productId));
     
+    // Delete order items
     await db.delete(orderItems)
       .where(eq(orderItems.productId, productId));
     
