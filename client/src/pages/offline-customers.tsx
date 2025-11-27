@@ -24,6 +24,7 @@ type CustomerFormData = {
   phone?: string;
   email?: string;
   address?: string;
+  creditLimit?: number;
   creditBalance?: number;
   notes?: string;
 };
@@ -38,6 +39,7 @@ export default function OfflineCustomers() {
     phone: z.string().optional(),
     email: z.string().email(t('invalid_email')).optional().or(z.literal('')),
     address: z.string().optional(),
+    creditLimit: z.coerce.number().min(0).optional(),
     creditBalance: z.coerce.number().optional(),
     notes: z.string().optional()
   }), [t]);
@@ -67,6 +69,7 @@ export default function OfflineCustomers() {
       phone: "",
       email: "",
       address: "",
+      creditLimit: 0,
       creditBalance: 0,
       notes: ""
     }
@@ -130,6 +133,7 @@ export default function OfflineCustomers() {
       phone: customer.phone || "",
       email: customer.email || "",
       address: customer.address || "",
+      creditLimit: customer.creditLimit || 0,
       creditBalance: customer.creditBalance || 0,
       notes: customer.notes || ""
     });
@@ -448,6 +452,26 @@ export default function OfflineCustomers() {
                     <FormLabel>{t('address')}</FormLabel>
                     <FormControl>
                       <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="creditLimit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('credit_limit')}</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        min="0"
+                        placeholder="0.00"
+                        {...field} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
