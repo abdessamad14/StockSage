@@ -505,7 +505,7 @@ export default function OfflineCustomers() {
                     <div className="text-lg">{t('loading_credit_info')}</div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card className="p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <DollarSign className="w-5 h-5 text-red-500" />
@@ -513,6 +513,26 @@ export default function OfflineCustomers() {
                       </div>
                       <p className="text-2xl font-bold text-red-600">
                         {formatCurrency(creditInfo?.currentBalance)}
+                      </p>
+                    </Card>
+                    
+                    <Card className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CreditCard className="w-5 h-5 text-blue-500" />
+                        <h3 className="font-semibold">{t('credit_limit')}</h3>
+                      </div>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {formatCurrency(creditInfo?.creditLimit)}
+                      </p>
+                    </Card>
+                    
+                    <Card className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-5 h-5 text-green-500" />
+                        <h3 className="font-semibold">{t('available_credit')}</h3>
+                      </div>
+                      <p className="text-2xl font-bold text-green-600">
+                        {formatCurrency(Math.max(0, (creditInfo?.creditLimit || 0) - (creditInfo?.currentBalance || 0)))}
                       </p>
                     </Card>
                   </div>
@@ -561,6 +581,12 @@ export default function OfflineCustomers() {
                         <span>{t('current_balance')}:</span>
                         <span className="font-medium text-red-600">
                           {formatCurrency(creditInfo?.currentBalance)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>{t('credit_limit')}:</span>
+                        <span className="font-medium text-blue-600">
+                          {formatCurrency(creditInfo?.creditLimit)}
                         </span>
                       </div>
                       {creditAmount > 0 && (
