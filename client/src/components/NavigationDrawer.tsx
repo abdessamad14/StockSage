@@ -49,8 +49,8 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
   };
 
   return (
-    <div className={`fixed top-0 ${drawerPositionClass} h-full w-72 bg-white shadow-lg z-50 drawer ${isOpen ? 'drawer-open' : 'drawer-closed'}`}>
-      <div className="p-4 bg-primary flex items-center border-b border-gray-200">
+    <div className={`fixed top-0 ${drawerPositionClass} h-full w-72 bg-white shadow-lg z-50 drawer flex flex-col ${isOpen ? 'drawer-open' : 'drawer-closed'}`}>
+      <div className="p-4 bg-primary flex items-center border-b border-gray-200 flex-shrink-0">
         <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center mr-3 overflow-hidden">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10 text-primary">
             <rect width="20" height="14" x="2" y="5" rx="2" />
@@ -63,7 +63,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
         </div>
       </div>
       
-      <div className="overflow-y-auto h-[calc(100%-144px)]">
+      <div className="overflow-y-auto flex-1">
         <div className="py-2">
           {/* POS */}
           {canUsePOS && (
@@ -154,7 +154,7 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
         </div>
       </div>
       
-      <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 p-4">
+      <div className="border-t border-gray-200 p-4 flex-shrink-0">
         {/* User Info and Logout */}
         {user && (
           <div className="mb-4 p-3 bg-gray-50 rounded-lg">
