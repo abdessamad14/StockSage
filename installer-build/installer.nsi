@@ -45,7 +45,7 @@ Section "Install"
   fresh_install:
   
   ; Copy all files (this overwrites everything except what we backed up)
-  File /r "/Users/abdessamadabba/repos/StockSage/installer-build/stocksage-20251126102728\*.*"
+  File /r "/Users/abdessamadabba/repos/StockSage/installer-build/stocksage-20251127200229\*.*"
   
   ; Restore data if this was an update
   IfFileExists "$INSTDIR\data_backup\stocksage.db" 0 no_restore

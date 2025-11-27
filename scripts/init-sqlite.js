@@ -56,6 +56,36 @@ try {
     console.log('✅ Database migrations completed successfully');
   }
   
+  // Manual migration for settings table columns (to handle existing databases)
+  console.log('🔄 Checking settings table schema...');
+  try {
+    const settingsColumns = sqlite.prepare("PRAGMA table_info(settings)").all();
+    const columnNames = settingsColumns.map(col => col.name);
+    
+    const requiredColumns = [
+      { name: 'enable_notifications', sql: 'ALTER TABLE settings ADD COLUMN enable_notifications INTEGER DEFAULT 0' },
+      { name: 'enable_low_stock_alerts', sql: 'ALTER TABLE settings ADD COLUMN enable_low_stock_alerts INTEGER DEFAULT 1' },
+      { name: 'enable_auto_backup', sql: 'ALTER TABLE settings ADD COLUMN enable_auto_backup INTEGER DEFAULT 0' },
+      { name: 'printer_connected', sql: 'ALTER TABLE settings ADD COLUMN printer_connected INTEGER DEFAULT 0' },
+      { name: 'printer_vendor_id', sql: 'ALTER TABLE settings ADD COLUMN printer_vendor_id INTEGER' },
+      { name: 'printer_product_id', sql: 'ALTER TABLE settings ADD COLUMN printer_product_id INTEGER' },
+      { name: 'printer_cash_drawer', sql: 'ALTER TABLE settings ADD COLUMN printer_cash_drawer INTEGER DEFAULT 0' },
+      { name: 'printer_buzzer', sql: 'ALTER TABLE settings ADD COLUMN printer_buzzer INTEGER DEFAULT 0' },
+      { name: 'created_at', sql: 'ALTER TABLE settings ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP' },
+      { name: 'updated_at', sql: 'ALTER TABLE settings ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP' }
+    ];
+    
+    for (const column of requiredColumns) {
+      if (!columnNames.includes(column.name)) {
+        console.log(`  Adding missing column: ${column.name}`);
+        sqlite.prepare(column.sql).run();
+      }
+    }
+    console.log('✅ Settings table schema updated');
+  } catch (error) {
+    console.warn('⚠️  Could not update settings schema:', error.message);
+  }
+  
   if (config.seed) {
     seedDatabase(sqlite, config);
   } else {
