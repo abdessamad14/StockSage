@@ -261,7 +261,35 @@ router.delete('/products/:id', async (req, res) => {
     const { id } = req.params;
     const productId = parseInt(id);
     
-    // Delete related records first (outside transaction to avoid FK issues)
+    // Check if product exists in any sales
+    const productSales = await db.select()
+      .from(saleItems)
+      .where(eq(saleItems.productId, productId))
+      .limit(1);
+    
+    if (productSales.length > 0) {
+      return res.status(400).json({ 
+        error: 'Cannot delete product that has sales history',
+        message: 'This product has been used in sales transactions and cannot be deleted. Please deactivate it instead to preserve sales history.',
+        hasSales: true
+      });
+    }
+    
+    // Check if product exists in any purchase orders
+    const productOrders = await db.select()
+      .from(orderItems)
+      .where(eq(orderItems.productId, productId))
+      .limit(1);
+    
+    if (productOrders.length > 0) {
+      return res.status(400).json({ 
+        error: 'Cannot delete product that has purchase history',
+        message: 'This product has been used in purchase orders and cannot be deleted. Please deactivate it instead to preserve order history.',
+        hasOrders: true
+      });
+    }
+    
+    // If no sales or orders, safe to delete related records
     // Delete product stock
     await db.delete(productStock)
       .where(eq(productStock.productId, productId));
@@ -277,14 +305,6 @@ router.delete('/products/:id', async (req, res) => {
     // Delete inventory adjustment items
     await db.delete(inventoryAdjustmentItems)
       .where(eq(inventoryAdjustmentItems.productId, productId));
-    
-    // Delete sale items
-    await db.delete(saleItems)
-      .where(eq(saleItems.productId, productId));
-    
-    // Delete order items
-    await db.delete(orderItems)
-      .where(eq(orderItems.productId, productId));
     
     // Finally delete the product
     const deletedProduct = await db.delete(products)

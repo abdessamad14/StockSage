@@ -394,16 +394,22 @@ export default function OfflineProducts() {
 
   const handleDeleteProduct = async (productId: string) => {
     try {
-      deleteProduct(productId);
+      await deleteProduct(productId);
       toast({
         title: t('success'),
         description: t('product_deleted_successfully')
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error deleting product:', error);
+      
+      // Use the error message from API or fallback to generic message
+      const errorMessage = error?.message || t('failed_to_delete_product');
+      
       toast({
         title: t('error'),
-        description: t('failed_to_delete_product'),
-        variant: "destructive"
+        description: errorMessage,
+        variant: "destructive",
+        duration: 6000 // Show longer for important messages
       });
     }
   };

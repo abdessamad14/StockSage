@@ -35,7 +35,17 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
       });
 
       if (!response.ok) {
-        throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+        // Try to get error message from response body
+        let errorMessage = `API call failed: ${response.status} ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.message || errorData.error) {
+            errorMessage = errorData.message || errorData.error;
+          }
+        } catch {
+          // If we can't parse the response, use the default error
+        }
+        throw new Error(errorMessage);
       }
 
       console.log(`API call successful on attempt ${attempt}`);
@@ -43,6 +53,11 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
     } catch (error) {
       console.error(`API call attempt ${attempt} failed:`, error);
       lastError = error as Error;
+      
+      // Don't retry on 400 errors (bad request/business logic errors)
+      if (error instanceof Error && error.message.includes('Cannot delete')) {
+        throw error; // Throw immediately for business logic errors
+      }
       
       if (attempt < maxRetries) {
         console.log(`Retrying in ${attempt * 1000}ms...`);
