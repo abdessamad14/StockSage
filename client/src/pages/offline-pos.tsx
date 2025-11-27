@@ -906,6 +906,26 @@ export default function OfflinePOS() {
       return;
     }
 
+    // Check credit limit for credit sales
+    if (effectivePaymentMethod === 'credit' && selectedCustomer) {
+      const currentBalance = selectedCustomer.creditBalance || 0;
+      const creditLimit = selectedCustomer.creditLimit || 0;
+      const availableCredit = creditLimit - currentBalance;
+      
+      if (creditLimit > 0 && total > availableCredit) {
+        toast({
+          title: t('error'),
+          description: t('credit_limit_exceeded', {
+            available: availableCredit.toFixed(2),
+            required: total.toFixed(2),
+            limit: creditLimit.toFixed(2)
+          }),
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     if (effectivePaymentMethod === 'cash' && effectivePaidAmount < total) {
       toast({
         title: t('error'),
