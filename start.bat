@@ -69,12 +69,18 @@ exit /b 1
 :setup
 :: Node.js is available, continue with setup
 
+:: Change to application directory (important for shortcuts!)
+cd /d "%APP_DIR%"
+
 :: Check if node_modules exists (should be included in package)
-if not exist "node_modules\" (
+if not exist "%APP_DIR%node_modules\" (
     echo [ERROR] node_modules folder missing!
     echo This package should include node_modules for offline installation.
     echo.
     echo If you extracted from ZIP, make sure you extracted the COMPLETE file.
+    echo.
+    echo Current directory: %CD%
+    echo App directory: %APP_DIR%
     echo.
     pause
     goto error

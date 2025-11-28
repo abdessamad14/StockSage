@@ -116,6 +116,9 @@ Section "Install"
   ; Create shortcuts
   CreateDirectory "$SMPROGRAMS\\Igoodar"
   
+  ; Set working directory for shortcuts (critical for finding node_modules!)
+  SetOutPath "$INSTDIR"
+  
   ; Desktop shortcut - runs start.bat to launch the app
   CreateShortcut "$DESKTOP\\Igoodar.lnk" "$INSTDIR\\start.bat" "" "$INSTDIR\\nodejs\\node.exe" 0 SW_SHOWMINIMIZED "" "Start Igoodar POS"
   
