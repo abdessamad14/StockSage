@@ -76,3 +76,5 @@ data/machine.id
 
 # Installer build artifacts
 installer-build/stocksage-*/
+installer-build/output/
+installer-build/installer.nsi
