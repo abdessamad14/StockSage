@@ -158,6 +158,8 @@ export interface OfflineSettings {
   currency: string;
   receiptFooter?: string;
   receiptHeader?: string;
+  printerType?: string; // 'none', 'usb', 'network'
+  printerAddress?: string; // IP:port for network printers
   printerConnected?: boolean;
   printerVendorId?: number | null;
   printerProductId?: number | null;

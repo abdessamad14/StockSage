@@ -1,13 +1,50 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useOfflineSettings } from '@/hooks/use-offline-settings';
+import { useToast } from '@/hooks/use-toast';
 
 export default function NetworkPrinterTest() {
+  const { settings, updateSettings } = useOfflineSettings();
+  const { toast } = useToast();
   const [ip, setIp] = useState('192.168.1.100');
   const [port, setPort] = useState('9100');
   const [status, setStatus] = useState('');
+
+  // Load saved printer address on mount
+  useEffect(() => {
+    if (settings?.printerAddress) {
+      const parts = settings.printerAddress.split(':');
+      if (parts.length === 2) {
+        setIp(parts[0]);
+        setPort(parts[1]);
+      } else {
+        setIp(settings.printerAddress);
+      }
+    }
+  }, [settings]);
+
+  const saveSettings = async () => {
+    try {
+      const printerAddress = `${ip}:${port}`;
+      await updateSettings({
+        printerType: 'network',
+        printerAddress
+      });
+      toast({
+        title: 'Saved',
+        description: 'Network printer settings saved successfully',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: `Failed to save settings: ${error.message}`,
+        variant: 'destructive'
+      });
+    }
+  };
 
   const testPrint = async () => {
     try {
@@ -48,7 +85,10 @@ export default function NetworkPrinterTest() {
           <Label>Port</Label>
           <Input value={port} onChange={e => setPort(e.target.value)} placeholder="9100" />
         </div>
-        <Button onClick={testPrint} className="w-full">Test Print</Button>
+        <div className="flex gap-2">
+          <Button onClick={saveSettings} variant="outline" className="flex-1">Save Settings</Button>
+          <Button onClick={testPrint} className="flex-1">Test Print</Button>
+        </div>
         {status && <p className="text-sm">{status}</p>}
       </CardContent>
     </Card>

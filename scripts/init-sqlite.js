@@ -63,6 +63,8 @@ try {
     const columnNames = settingsColumns.map(col => col.name);
     
     const requiredColumns = [
+      { name: 'printer_type', sql: 'ALTER TABLE settings ADD COLUMN printer_type TEXT DEFAULT "none"' },
+      { name: 'printer_address', sql: 'ALTER TABLE settings ADD COLUMN printer_address TEXT' },
       { name: 'low_stock_threshold', sql: 'ALTER TABLE settings ADD COLUMN low_stock_threshold INTEGER DEFAULT 10' },
       { name: 'enable_notifications', sql: 'ALTER TABLE settings ADD COLUMN enable_notifications INTEGER DEFAULT 0' },
       { name: 'enable_low_stock_alerts', sql: 'ALTER TABLE settings ADD COLUMN enable_low_stock_alerts INTEGER DEFAULT 1' },

@@ -704,7 +704,9 @@ export default function OfflineProducts() {
                 const quantity = getWarehouseStock(product.id);
                 const isLowStock = quantity <= (product.minStockLevel || 0);
 
-                const stockLabel = `${quantity}${product.unit ? ` ${product.unit}` : ''}`;
+                // Round quantity to 2 decimal places for display
+                const displayQuantity = product.weighable ? quantity.toFixed(2) : Math.floor(quantity).toString();
+                const stockLabel = `${displayQuantity}${product.unit ? ` ${product.unit}` : ''}`;
                 const profit = product.sellingPrice - product.costPrice;
                 const marginPercentage = product.sellingPrice > 0 ? (profit / product.sellingPrice) * 100 : 0;
                 const stockValue = product.costPrice * quantity;
