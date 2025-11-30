@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { AlertCircle, Printer, Settings, Usb, Zap } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useOfflineSettings } from '@/hooks/use-offline-settings';
+import NetworkPrinterTest from './NetworkPrinterTest';
 
 interface USBDevice {
   vendorId: number;
@@ -37,6 +38,7 @@ export default function USBThermalPrinterConfig() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionDialog, setConnectionDialog] = useState(false);
   const [error, setError] = useState<string>('');
+  const [connectionType, setConnectionType] = useState<'usb' | 'network'>('usb');
 
   // Get printer settings from global settings
   const isConnected = globalSettings?.printerConnected || false;
@@ -354,26 +356,25 @@ export default function USBThermalPrinterConfig() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Printer Type Selection */}
+          {/* Connection Type Selection */}
           <div className="space-y-2">
-            <Label htmlFor="printer-type">Printer Type</Label>
+            <Label htmlFor="connection-type">Connection Type</Label>
             <Select 
-              value={settings.printerType} 
-              onValueChange={(value) => updateSetting('printerType', value)}
+              value={connectionType} 
+              onValueChange={(value: any) => setConnectionType(value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select printer type" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="USB Thermal Printer">USB Thermal Printer</SelectItem>
-                <SelectItem value="BIXOLON SRP-350plusIII">BIXOLON SRP-350plusIII</SelectItem>
-                <SelectItem value="Epson TM-T20">Epson TM-T20</SelectItem>
-                <SelectItem value="Star TSP143">Star TSP143</SelectItem>
+                <SelectItem value="usb">USB Thermal Printer</SelectItem>
+                <SelectItem value="network">Network Printer (IP)</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* USB Thermal Printer Section */}
+          {connectionType === 'usb' && (
           <div className="border rounded-lg p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -553,6 +554,10 @@ export default function USBThermalPrinterConfig() {
               )}
             </div>
           </div>
+          )}
+
+          {/* Network Printer Section */}
+          {connectionType === 'network' && <NetworkPrinterTest />}
 
           {/* Error Display */}
           {error && (

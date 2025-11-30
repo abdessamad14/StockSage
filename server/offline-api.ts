@@ -2,6 +2,7 @@ import express from 'express';
 import { db } from './db';
 import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems, productCategories, users } from '../shared/sqlite-schema.js';
 import { eq } from 'drizzle-orm';
+import { printToNetwork } from './network-printer.js';
 
 const router = express.Router();
 
@@ -1303,6 +1304,19 @@ router.delete('/users/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
+// Network printer endpoint
+router.post('/print-network', async (req, res) => {
+  try {
+    const { ipAddress, port, escPosData } = req.body;
+    
+    await printToNetwork(ipAddress, port || 9100, Buffer.from(escPosData));
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Network print error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
