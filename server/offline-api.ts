@@ -851,7 +851,10 @@ router.put('/product-stock/upsert', async (req, res) => {
     
     // Try to find existing stock record
     const existingStock = await db.select().from(productStock)
-      .where(eq(productStock.productId, productId) && eq(productStock.locationId, locationId));
+      .where(and(
+        eq(productStock.productId, parseInt(productId)),
+        eq(productStock.locationId, locationId)
+      ));
     
     if (existingStock.length > 0) {
       // Update existing record
@@ -869,7 +872,7 @@ router.put('/product-stock/upsert', async (req, res) => {
       // Create new record
       const created = await db.insert(productStock).values({
         tenantId: 'default',
-        productId,
+        productId: parseInt(productId),
         locationId,
         quantity,
         minStockLevel: minStockLevel || 0
