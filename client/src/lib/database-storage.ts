@@ -84,6 +84,7 @@ export interface OfflineProduct {
   minStockLevel?: number;
   unit?: string;
   image?: string;
+  weighable?: boolean; // For products sold by weight (kg)
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -290,6 +291,7 @@ export const databaseProductStorage = {
       minStockLevel: p.minStockLevel ?? undefined,
       unit: p.unit ?? undefined,
       image: p.image ?? undefined,
+      weighable: p.weighable ?? false,
       active: p.active !== false,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt
@@ -313,6 +315,7 @@ export const databaseProductStorage = {
         minStockLevel: product.minStockLevel ?? undefined,
         unit: product.unit ?? undefined,
         image: product.image ?? undefined,
+        weighable: product.weighable ?? false,
         active: product.active !== false,
         createdAt: product.createdAt,
         updatedAt: product.updatedAt
@@ -481,6 +484,7 @@ export const databaseProductStorage = {
         minStockLevel: updates.minStockLevel,
         unit: updates.unit,
         image: updates.image,
+        weighable: updates.weighable,
         active: updates.active
       })
     });

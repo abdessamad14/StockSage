@@ -47,6 +47,7 @@ export const products = sqliteTable("products", {
   minStockLevel: integer("min_stock_level").default(10),
   unit: text("unit").default("pièce"),
   image: text("image"),
+  weighable: integer("weighable", { mode: "boolean" }).notNull().default(false), // For products sold by weight (kg)
   active: integer("active", { mode: "boolean" }).notNull().default(true),
 });
 

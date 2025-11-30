@@ -64,6 +64,7 @@ import {
   databaseCustomerStorage
 } from '@/lib/offline-storage';
 import { creditHelpers } from '@/lib/database-storage';
+import WeighableProductDialog from '@/components/WeighableProductDialog';
 
 interface CartItem {
   product: OfflineProduct;
@@ -129,6 +130,8 @@ export default function OfflinePOS() {
     credit: 0,
     ordersCount: 0
   });
+  const [weighableDialogOpen, setWeighableDialogOpen] = useState(false);
+  const [selectedWeighableProduct, setSelectedWeighableProduct] = useState<OfflineProduct | null>(null);
 
   // Credit management state
   const [isCreditDialogOpen, setIsCreditDialogOpen] = useState(false);
@@ -688,23 +691,42 @@ export default function OfflinePOS() {
   });
 
   // Cart functions
-  const addToCart = (product: OfflineProduct) => {
+  const addToCart = (product: OfflineProduct, customQuantity?: number, customPrice?: number) => {
+    // Check if product is weighable
+    if ((product as any).weighable && !customQuantity) {
+      setSelectedWeighableProduct(product);
+      setWeighableDialogOpen(true);
+      return;
+    }
+    
     const existingItem = cart.find(item => item.product.id === product.id);
     
-    if (existingItem) {
+    if (existingItem && !customQuantity) {
       setCart(cart.map(item =>
         item.product.id === product.id
           ? { ...item, quantity: item.quantity + 1, totalPrice: (item.quantity + 1) * item.unitPrice }
           : item
       ));
     } else {
+      const quantity = customQuantity || 1;
+      const unitPrice = customPrice ? customPrice / quantity : (product.sellingPrice || 0);
       const newItem: CartItem = {
         product,
-        quantity: 1,
-        unitPrice: product.sellingPrice || 0,
-        totalPrice: product.sellingPrice || 0
+        quantity,
+        unitPrice,
+        totalPrice: customPrice || (quantity * unitPrice)
       };
       setCart([...cart, newItem]);
+    }
+  };
+  
+  const handleWeighableConfirm = (quantity: number, price: number) => {
+    if (selectedWeighableProduct) {
+      addToCart(selectedWeighableProduct, quantity, price);
+      toast({
+        title: t('product_added'),
+        description: `${selectedWeighableProduct.name} - ${quantity.toFixed(3)}kg ajouté`
+      });
     }
   };
 
@@ -1401,40 +1423,32 @@ export default function OfflinePOS() {
                     <td className="px-2 py-2 text-center">
                       <input
                           type="text"
-                          value={quantityInputs[item.product.id] ?? item.quantity.toString()}
+                          value={quantityInputs[item.product.id] ?? ((item.product as any).weighable ? item.quantity.toFixed(3) : item.quantity.toString())}
                           onChange={(e) => {
                             const value = e.target.value;
+                            
+                            // For non-weighable products: only allow whole numbers
+                            if (!(item.product as any).weighable) {
+                              // Check if value contains decimal point
+                              if (value.includes('.') || value.includes(',')) {
+                                // Don't allow decimal input
+                                return;
+                              }
+                            }
+                            
                             // Update local input state immediately
                             setQuantityInputs(prev => ({
                               ...prev,
                               [item.product.id]: value
                             }));
-                          }}
-                          onBlur={(e) => {
-                            const value = e.target.value;
-                            // Process the value when user finishes editing
-                            if (value.includes('*')) {
-                              const parts = value.split('*');
-                              if (parts.length === 2) {
-                                const num1 = parseFloat(parts[0]) || 0;
-                                const num2 = parseFloat(parts[1]) || 0;
-                                const calculatedQty = num1 * num2;
-                                if (calculatedQty > 0) {
-                                  updateCartItemQuantity(item.product.id, calculatedQty);
-                                  // Clear the local input state
-                                  setQuantityInputs(prev => {
-                                    const newState = { ...prev };
-                                    delete newState[item.product.id];
-                                    return newState;
-                                  });
-                                }
-                              }
-                            } else {
-                              const newQty = parseFloat(value) || 0;
-                              if (newQty > 0) {
+                            
+                            // For weighable products, recalculate immediately
+                            if ((item.product as any).weighable) {
+                              const newQty = parseFloat(value);
+                              if (!isNaN(newQty) && newQty > 0) {
                                 updateCartItemQuantity(item.product.id, newQty);
-                                // Clear the local input state
-                                setQuantityInputs(prev => {
+                                // Clear price input state so it shows the fresh calculated value
+                                setPriceInputs(prev => {
                                   const newState = { ...prev };
                                   delete newState[item.product.id];
                                   return newState;
@@ -1442,19 +1456,47 @@ export default function OfflinePOS() {
                               }
                             }
                           }}
+                          onBlur={(e) => {
+                            const value = e.target.value;
+                            // Process the value when user finishes editing (for non-weighable)
+                            if (!(item.product as any).weighable) {
+                              if (value.includes('*')) {
+                                const parts = value.split('*');
+                                if (parts.length === 2) {
+                                  const num1 = parseFloat(parts[0]) || 0;
+                                  const num2 = parseFloat(parts[1]) || 0;
+                                  const calculatedQty = num1 * num2;
+                                  if (calculatedQty > 0) {
+                                    updateCartItemQuantity(item.product.id, calculatedQty);
+                                  }
+                                }
+                              } else {
+                                const newQty = parseFloat(value) || 0;
+                                if (newQty > 0) {
+                                  updateCartItemQuantity(item.product.id, newQty);
+                                }
+                              }
+                            }
+                            // Clear the local input state
+                            setQuantityInputs(prev => {
+                              const newState = { ...prev };
+                              delete newState[item.product.id];
+                              return newState;
+                            });
+                          }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               e.currentTarget.blur();
                             }
                           }}
                           className="w-20 px-2 py-1 text-sm border border-[#0f866c]/30 rounded focus:border-[#0f866c] focus:ring-1 focus:ring-[#0f866c]/20 bg-white text-center font-medium"
-                          placeholder="Qty"
+                          placeholder={(item.product as any).weighable ? "kg" : "Qty"}
                         />
                     </td>
                     <td className="px-2 py-2 text-right">
                       <input
                           type="text"
-                          value={priceInputs[item.product.id] ?? item.unitPrice.toString()}
+                          value={priceInputs[item.product.id] ?? ((item.product as any).weighable ? item.totalPrice.toFixed(2) : item.unitPrice.toString())}
                           onChange={(e) => {
                             const value = e.target.value;
                             // Update local input state immediately
@@ -1462,20 +1504,40 @@ export default function OfflinePOS() {
                               ...prev,
                               [item.product.id]: value
                             }));
+                            
+                            // For weighable products, recalculate quantity immediately
+                            if ((item.product as any).weighable) {
+                              const newValue = parseFloat(value);
+                              if (!isNaN(newValue) && newValue >= 0) {
+                                const pricePerKg = item.product.sellingPrice;
+                                if (pricePerKg > 0) {
+                                  const newQuantity = newValue / pricePerKg;
+                                  updateCartItemQuantity(item.product.id, newQuantity);
+                                  // Clear quantity input state so it shows the fresh calculated value
+                                  setQuantityInputs(prev => {
+                                    const newState = { ...prev };
+                                    delete newState[item.product.id];
+                                    return newState;
+                                  });
+                                }
+                              }
+                            }
                           }}
                           onBlur={(e) => {
                             const value = e.target.value;
-                            // Process the value when user finishes editing
-                            const newPrice = parseFloat(value) || 0;
-                            if (newPrice >= 0) {
-                              updateCartItemPrice(item.product.id, newPrice);
-                              // Clear the local input state
-                              setPriceInputs(prev => {
-                                const newState = { ...prev };
-                                delete newState[item.product.id];
-                                return newState;
-                              });
+                            const newValue = parseFloat(value) || 0;
+                            
+                            // For regular products: update unit price on blur
+                            if (!(item.product as any).weighable && newValue >= 0) {
+                              updateCartItemPrice(item.product.id, newValue);
                             }
+                            
+                            // Clear the local input state
+                            setPriceInputs(prev => {
+                              const newState = { ...prev };
+                              delete newState[item.product.id];
+                              return newState;
+                            });
                           }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
@@ -1487,9 +1549,9 @@ export default function OfflinePOS() {
                               ? 'border-red-500 bg-red-50 text-red-700 focus:border-red-600 focus:ring-red-200' 
                               : 'border-[#0f866c]/30 focus:border-[#0f866c] focus:ring-[#0f866c]/20'
                           }`}
-                          placeholder="Price"
+                          placeholder={(item.product as any).weighable ? "Total" : "Price"}
                         />
-                        <span className="ml-1 text-xs text-gray-500">DH</span>
+                        <span className="ml-1 text-xs text-gray-500">DH{(item.product as any).weighable ? '' : '/kg'}</span>
                     </td>
                     <td className="px-2 py-2 text-right font-bold text-sm text-[#0f866c]">
                       {item.totalPrice.toFixed(2)} DH
@@ -2441,6 +2503,20 @@ export default function OfflinePOS() {
           )}
         </DialogContent>
     </Dialog>
+
+    {/* Weighable Product Dialog */}
+    {selectedWeighableProduct && (
+      <WeighableProductDialog
+        open={weighableDialogOpen}
+        onOpenChange={setWeighableDialogOpen}
+        product={{
+          id: selectedWeighableProduct.id,
+          name: selectedWeighableProduct.name,
+          sellingPrice: selectedWeighableProduct.sellingPrice
+        }}
+        onConfirm={handleWeighableConfirm}
+      />
+    )}
     </>
   );
 }

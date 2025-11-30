@@ -1,7 +1,7 @@
 import express from 'express';
 import { db } from './db';
 import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems, productCategories, users } from '../shared/sqlite-schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { printToNetwork } from './network-printer.js';
 
 const router = express.Router();
@@ -202,6 +202,7 @@ router.put('/products/:id', async (req, res) => {
       minStockLevel: req.body.minStockLevel ?? existing.minStockLevel,
       unit: req.body.unit ?? existing.unit,
       image: req.body.image ?? existing.image,
+      weighable: req.body.weighable !== undefined ? Boolean(req.body.weighable) : Boolean(existing.weighable),
       active: req.body.active ?? existing.active,
       updatedAt: new Date().toISOString()
     };
@@ -814,7 +815,10 @@ router.get('/product-stock/:productId/:locationId', async (req, res) => {
   try {
     const { productId, locationId } = req.params;
     const stock = await db.select().from(productStock)
-      .where(eq(productStock.productId, parseInt(productId)) && eq(productStock.locationId, locationId));
+      .where(and(
+        eq(productStock.productId, parseInt(productId)),
+        eq(productStock.locationId, locationId)
+      ));
     
     if (stock.length === 0) {
       return res.status(404).json({ error: 'Product stock not found' });

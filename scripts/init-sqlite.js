@@ -78,6 +78,18 @@ try {
       { name: 'updated_at', sql: 'ALTER TABLE settings ADD COLUMN updated_at TEXT' }
     ];
     
+    // Migration for products table - add weighable column
+    try {
+      const productsColumns = sqlite.prepare("PRAGMA table_info(products)").all();
+      const productColumnNames = productsColumns.map(col => col.name);
+      if (!productColumnNames.includes('weighable')) {
+        console.log('  Adding weighable column to products table...');
+        sqlite.prepare('ALTER TABLE products ADD COLUMN weighable INTEGER DEFAULT 0').run();
+      }
+    } catch (error) {
+      console.warn('  Could not add weighable column:', error.message);
+    }
+    
     let columnsAdded = false;
     for (const column of requiredColumns) {
       if (!columnNames.includes(column.name)) {

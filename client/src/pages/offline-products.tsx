@@ -17,7 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Package, Search, Plus, Edit, Trash2, Tag, Filter, Upload, X, Image, Eye, EyeOff } from "lucide-react";
+import { Package, Search, Plus, Edit, Trash2, Tag, Filter, Upload, X, Image, Eye, EyeOff, Scale } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -32,6 +33,7 @@ const productSchema = z.object({
   minStockLevel: z.number().min(0, "Min stock level must be positive").optional(),
   unit: z.string().optional(),
   image: z.string().optional(),
+  weighable: z.boolean().default(false), // For products sold by weight
   active: z.boolean().default(true)
 });
 
@@ -69,8 +71,12 @@ export default function OfflineProducts() {
 
   // Function to refresh product stocks
   const refreshProductStocks = async () => {
-    if (!primaryWarehouse) return;
+    if (!primaryWarehouse) {
+      console.log('No primary warehouse found');
+      return;
+    }
     
+    console.log('Refreshing stocks for warehouse:', primaryWarehouse.id);
     const stockMap: Record<string, number> = {};
     
     for (const product of products) {
@@ -80,12 +86,14 @@ export default function OfflineProducts() {
           String(primaryWarehouse.id)
         );
         stockMap[product.id] = stock?.quantity || 0;
+        console.log(`Product ${product.id} (${product.name}): stock = ${stock?.quantity}`);
       } catch (error) {
         console.warn(`Failed to fetch stock for product ${product.id}:`, error);
         stockMap[product.id] = 0;
       }
     }
     
+    console.log('Final stockMap:', stockMap);
     setProductStocks(stockMap);
   };
 
@@ -195,6 +203,7 @@ export default function OfflineProducts() {
       minStockLevel: 0,
       unit: "",
       image: "",
+      weighable: false,
       active: true
     }
   });
@@ -367,7 +376,9 @@ export default function OfflineProducts() {
       
       // Debug logging
       console.log('Form data categoryId:', data.categoryId);
+      console.log('Form data weighable:', data.weighable);
       console.log('Selected image:', selectedImage);
+      console.log('Full form data:', data);
       
       // Update product information
       await updateProduct(editingProduct.id, {
@@ -581,6 +592,7 @@ export default function OfflineProducts() {
         minStockLevel: product.minStockLevel || 0,
         unit: product.unit || "",
         image: product.image || "",
+        weighable: product.weighable || false,
         active: product.active
       });
     } else {
@@ -1092,6 +1104,31 @@ export default function OfflineProducts() {
                   )}
                 />
               </div>
+
+              {/* Weighable Toggle */}
+              <FormField
+                control={productForm.control}
+                name="weighable"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base flex items-center gap-2">
+                        <Scale className="h-4 w-4" />
+                        Produit pesable (vendu au poids)
+                      </FormLabel>
+                      <div className="text-sm text-muted-foreground">
+                        Pour les produits vendus au kilogramme (farine, pommes de terre, etc.)
+                      </div>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
 
               {/* Image Upload */}
               <FormField
