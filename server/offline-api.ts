@@ -132,7 +132,10 @@ router.patch('/products/:id', async (req, res) => {
         
         // Update or create stock record for primary warehouse
         const existingStock = await db.select().from(productStock)
-          .where(eq(productStock.productId, productId) && eq(productStock.locationId, warehouseId));
+          .where(and(
+            eq(productStock.productId, productId),
+            eq(productStock.locationId, warehouseId)
+          ));
         
         if (existingStock.length > 0) {
           await db.update(productStock)
@@ -848,16 +851,23 @@ router.post('/product-stock', async (req, res) => {
 router.put('/product-stock/upsert', async (req, res) => {
   try {
     const { productId, locationId, quantity, minStockLevel } = req.body;
+    console.log(`[UPSERT] Received: productId=${productId} (type: ${typeof productId}), locationId=${locationId}, quantity=${quantity}`);
     
     // Try to find existing stock record
+    const parsedProductId = parseInt(productId);
+    console.log(`[UPSERT] Parsed productId: ${parsedProductId}`);
+    
     const existingStock = await db.select().from(productStock)
       .where(and(
-        eq(productStock.productId, parseInt(productId)),
+        eq(productStock.productId, parsedProductId),
         eq(productStock.locationId, locationId)
       ));
     
+    console.log(`[UPSERT] Found ${existingStock.length} existing records for product ${parsedProductId} at location ${locationId}`);
+    
     if (existingStock.length > 0) {
       // Update existing record
+      console.log(`[UPSERT] Updating existing record ID ${existingStock[0].id} with quantity ${quantity}`);
       const updated = await db.update(productStock)
         .set({
           quantity,
@@ -867,17 +877,20 @@ router.put('/product-stock/upsert', async (req, res) => {
         .where(eq(productStock.id, existingStock[0].id))
         .returning();
       
+      console.log(`[UPSERT] Updated successfully:`, updated[0]);
       res.json(updated[0]);
     } else {
       // Create new record
+      console.log(`[UPSERT] Creating new record for product ${parsedProductId} at location ${locationId}`);
       const created = await db.insert(productStock).values({
         tenantId: 'default',
-        productId: parseInt(productId),
+        productId: parsedProductId,
         locationId,
         quantity,
         minStockLevel: minStockLevel || 0
       }).returning();
       
+      console.log(`[UPSERT] Created successfully:`, created[0]);
       res.json(created[0]);
     }
   } catch (error) {
