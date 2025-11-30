@@ -598,7 +598,22 @@ export default function OfflineProducts() {
     } else {
       setEditingProduct(null);
       setSelectedImage(null);
-      productForm.reset();
+      productForm.reset({
+        name: "",
+        barcode: "",
+        description: "",
+        categoryId: "none",
+        costPrice: 0,
+        sellingPrice: 0,
+        semiWholesalePrice: 0,
+        wholesalePrice: 0,
+        quantity: 0,
+        minStockLevel: 0,
+        unit: "",
+        image: "",
+        weighable: false,
+        active: true
+      });
     }
     setIsProductDialogOpen(true);
   };
