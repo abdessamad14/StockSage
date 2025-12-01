@@ -1046,6 +1046,8 @@ export const offlineSettingsStorage = {
             currency: dbSettings.currency || 'DH',
             receiptFooter: dbSettings.receiptFooter || 'Merci pour votre visite!',
             receiptHeader: dbSettings.receiptHeader || 'REÇU DE VENTE',
+            printerType: dbSettings.printerType || 'none',
+            printerAddress: dbSettings.printerAddress || '',
             printerConnected: dbSettings.printerConnected || false,
             printerVendorId: dbSettings.printerVendorId || null,
             printerProductId: dbSettings.printerProductId || null,
@@ -1170,6 +1172,13 @@ export const offlineSettingsStorage = {
       if (updates.currency !== undefined) dbPayload.currency = updates.currency;
       if (updates.receiptFooter !== undefined) dbPayload.receiptFooter = updates.receiptFooter;
       if (updates.receiptHeader !== undefined) dbPayload.receiptHeader = updates.receiptHeader;
+      if (updates.printerType !== undefined) dbPayload.printerType = updates.printerType;
+      if (updates.printerAddress !== undefined) dbPayload.printerAddress = updates.printerAddress;
+      if (updates.printerConnected !== undefined) dbPayload.printerConnected = updates.printerConnected;
+      if (updates.printerVendorId !== undefined) dbPayload.printerVendorId = updates.printerVendorId;
+      if (updates.printerProductId !== undefined) dbPayload.printerProductId = updates.printerProductId;
+      if (updates.printerCashDrawer !== undefined) dbPayload.printerCashDrawer = updates.printerCashDrawer;
+      if (updates.printerBuzzer !== undefined) dbPayload.printerBuzzer = updates.printerBuzzer;
       if (updates.lowStockThreshold !== undefined) dbPayload.lowStockThreshold = updates.lowStockThreshold;
       if (updates.enableNotifications !== undefined) dbPayload.enableNotifications = updates.enableNotifications;
       if (updates.enableLowStockAlerts !== undefined) dbPayload.enableLowStockAlerts = updates.enableLowStockAlerts;
