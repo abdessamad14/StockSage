@@ -42,7 +42,18 @@ export class ThermalReceiptPrinter {
     const settings = JSON.parse(localStorage.getItem('stocksage_settings') || '{}');
     const currentSettings = settings;
     
-    // First try thermal printer if configured
+    // Try network printer if configured
+    if (currentSettings?.printerType === 'network' && currentSettings?.printerAddress) {
+      try {
+        await this.printToNetworkPrinter(receiptData, currentSettings);
+        return;
+      } catch (error) {
+        console.warn('Network printer failed:', error);
+        throw new Error(`Imprimante réseau non disponible: ${(error as Error).message}`);
+      }
+    }
+    
+    // Try USB thermal printer if configured
     if (currentSettings?.printerConnected && currentSettings?.printerVendorId && 'usb' in navigator) {
       try {
         await this.printToThermalPrinter(receiptData, currentSettings);
@@ -55,6 +66,46 @@ export class ThermalReceiptPrinter {
     
     // If no thermal printer configured, show message instead of opening print dialog
     throw new Error('Imprimante thermique non configurée');
+  }
+
+  // Print to network printer
+  private static async printToNetworkPrinter(receiptData: ReceiptData, currentSettings: any): Promise<void> {
+    try {
+      console.log('Printing receipt to network printer...');
+      
+      // Parse IP and port from printerAddress (format: "IP:PORT")
+      const [ip, portStr] = currentSettings.printerAddress.split(':');
+      const port = parseInt(portStr || '9100');
+      
+      if (!ip) {
+        throw new Error('Invalid printer address format');
+      }
+      
+      // Generate ESC/POS receipt commands
+      const escPosBuffer = this.generateReceiptCommands(receiptData, currentSettings);
+      
+      // Send to backend API for network printing
+      const apiBase = localStorage.getItem('stocksage_api_base') || 'http://localhost:5003/api/offline';
+      const response = await fetch(`${apiBase}/print-network`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ipAddress: ip,
+          port: port,
+          escPosData: Array.from(escPosBuffer)
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Network print failed');
+      }
+      
+      console.log('Receipt printed successfully to network printer');
+    } catch (error: any) {
+      console.error('Network receipt print error:', error);
+      throw new Error(`Network print failed: ${error.message}`);
+    }
   }
 
   // Print to thermal printer
