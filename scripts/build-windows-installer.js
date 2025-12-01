@@ -60,18 +60,19 @@ const nsisScript = `
 ; NSIS Installer Script for Igoodar
 ; This can be compiled on Mac using makensis
 ; Requires Windows 10 or higher
+; NO ADMIN RIGHTS REQUIRED - Installs to user's AppData
 
 !include "WinVer.nsh"
 
 !define APP_NAME "Igoodar"
 !define APP_VERSION "1.0.0"
 !define APP_PUBLISHER "Your Company"
-!define INSTALL_DIR "$PROGRAMFILES64\\Igoodar"
+!define INSTALL_DIR "$LOCALAPPDATA\\Igoodar"
 
 Name "\${APP_NAME}"
 OutFile "${join(outputDir, 'igoodar-setup-1.0.0.exe')}"
 InstallDir "\${INSTALL_DIR}"
-RequestExecutionLevel admin
+RequestExecutionLevel user
 
 Page directory
 Page instfiles
@@ -113,19 +114,47 @@ Section "Install"
     DetailPrint "Data restored successfully!"
   no_restore:
   
-  ; Create shortcuts
+  ; Create silent startup VBS script for background running
+  DetailPrint "Creating auto-start script..."
+  FileOpen $0 "$INSTDIR\\start-silent.vbs" w
+  FileWrite $0 'Set WshShell = CreateObject("WScript.Shell")$\\r$\\n'
+  FileWrite $0 'WshShell.CurrentDirectory = "$INSTDIR"$\\r$\\n'
+  FileWrite $0 'WshShell.Run """$INSTDIR\\start.bat""", 0, False$\\r$\\n'
+  FileClose $0
+  
+  ; Add to Windows Startup (runs automatically on boot for current user)
+  DetailPrint "Adding to Windows Startup..."
+  WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Run" "Igoodar" '"wscript.exe" "$INSTDIR\\start-silent.vbs"'
+  
+  ; Create shortcuts (optional, for manual control)
   CreateDirectory "$SMPROGRAMS\\Igoodar"
   
   ; Set working directory for shortcuts (critical for finding node_modules!)
   SetOutPath "$INSTDIR"
   
-  ; Desktop shortcut - runs start.bat to launch the app
-  CreateShortcut "$DESKTOP\\Igoodar.lnk" "$INSTDIR\\start.bat" "" "$INSTDIR\\nodejs\\node.exe" 0 SW_SHOWMINIMIZED "" "Start Igoodar POS"
+  ; Create URL file for browser shortcut on desktop
+  FileOpen $0 "$DESKTOP\\Igoodar Dashboard.url" w
+  FileWrite $0 "[InternetShortcut]$\\r$\\n"
+  FileWrite $0 "URL=http://localhost:5003$\\r$\\n"
+  FileClose $0
   
   ; Start Menu shortcuts
-  CreateShortcut "$SMPROGRAMS\\Igoodar\\Igoodar.lnk" "$INSTDIR\\start.bat" "" "$INSTDIR\\nodejs\\node.exe" 0 SW_SHOWMINIMIZED "" "Start Igoodar POS"
-  CreateShortcut "$SMPROGRAMS\\Igoodar\\Debug Install.lnk" "$INSTDIR\\debug-install.bat" "" "$INSTDIR\\nodejs\\node.exe" 0 SW_SHOWNORMAL "" "Debug Igoodar Installation"
-  CreateShortcut "$SMPROGRAMS\\Igoodar\\Create Shortcuts.lnk" "$INSTDIR\\create-shortcuts.vbs" "" "$INSTDIR\\nodejs\\node.exe" 0 SW_SHOWNORMAL "" "Create Desktop and Start Menu Shortcuts"
+  FileOpen $0 "$SMPROGRAMS\\Igoodar\\Igoodar Dashboard.url" w
+  FileWrite $0 "[InternetShortcut]$\\r$\\n"
+  FileWrite $0 "URL=http://localhost:5003$\\r$\\n"
+  FileClose $0
+  
+  ; Create stop script
+  FileOpen $0 "$INSTDIR\\stop-igoodar.bat" w
+  FileWrite $0 '@echo off$\\r$\\n'
+  FileWrite $0 'taskkill /F /IM node.exe /FI "WINDOWTITLE eq Igoodar*"$\\r$\\n'
+  FileWrite $0 'echo Igoodar has been stopped.$\\r$\\n'
+  FileWrite $0 'pause$\\r$\\n'
+  FileClose $0
+  
+  CreateShortcut "$SMPROGRAMS\\Igoodar\\Restart Igoodar.lnk" "$INSTDIR\\start.bat"
+  CreateShortcut "$SMPROGRAMS\\Igoodar\\Stop Igoodar.lnk" "$INSTDIR\\stop-igoodar.bat"
+  CreateShortcut "$SMPROGRAMS\\Igoodar\\Debug Install.lnk" "$INSTDIR\\debug-install.bat"
   CreateShortcut "$SMPROGRAMS\\Igoodar\\Uninstall.lnk" "$INSTDIR\\Uninstall.exe"
   
   ; Create uninstaller
@@ -147,14 +176,25 @@ Section "Install"
   ; Installation complete message
   DetailPrint "Installation completed successfully!"
   
+  ; Start the application automatically in background
+  DetailPrint "Starting Igoodar service..."
+  Exec '"wscript.exe" "$INSTDIR\\start-silent.vbs"'
+  
+  ; Wait 3 seconds for server to start
+  Sleep 3000
+  
   ; Show different message for update vs fresh install
   IfFileExists "$INSTDIR\\data_backup\\stocksage.db" 0 show_fresh_message
     ; UPDATE message
-    MessageBox MB_OK|MB_ICONINFORMATION "Igoodar has been UPDATED successfully!$\\n$\\nYour data has been preserved:$\\n- All products$\\n- All sales history$\\n- All customers$\\n- All settings$\\n$\\nTo start the application:$\\n1. Double-click the 'Igoodar' icon on your desktop$\\n2. Login with your existing PIN$\\n$\\nThe application will be available at:$\\nhttp://localhost:5003"
+    MessageBox MB_OK|MB_ICONINFORMATION "Igoodar has been UPDATED successfully!$\\n$\\nYour data has been preserved:$\\n- All products$\\n- All sales history$\\n- All customers$\\n- All settings$\\n$\\n✅ Igoodar is now running in the background$\\n✅ Auto-starts with Windows (no admin needed)$\\n$\\nTo access the app:$\\n- Double-click 'Igoodar Dashboard' on your desktop$\\n- Or go to: http://localhost:5003$\\n$\\nLogin with your existing credentials."
+    ; Auto-open browser for updates
+    ExecShell "open" "http://localhost:5003"
     Goto done_message
   show_fresh_message:
     ; FRESH INSTALL message
-    MessageBox MB_OK|MB_ICONINFORMATION "Igoodar has been installed successfully!$\\n$\\nSystem Requirements: Windows 10 or higher$\\nNode.js: v20.18.1 LTS (included)$\\n$\\nTo start the application:$\\n1. Double-click the 'Igoodar' icon on your desktop$\\n2. Wait for browser to open automatically$\\n3. Login with PIN: 1234 (Admin) or 5678 (Cashier)$\\n$\\nThe application will be available at:$\\nhttp://localhost:5003"
+    MessageBox MB_OK|MB_ICONINFORMATION "Igoodar has been installed successfully!$\\n$\\n✅ Igoodar is now running in the background$\\n✅ Auto-starts with Windows (no admin needed)$\\n✅ Runs silently in system tray$\\n$\\nDefault Login Credentials:$\\n- Admin PIN: 1234$\\n- Cashier PIN: 5678$\\n$\\nTo access the app:$\\n- Double-click 'Igoodar Dashboard' on your desktop$\\n- Or go to: http://localhost:5003$\\n$\\nThe browser will now open automatically..."
+    ; Auto-open browser for fresh installs
+    ExecShell "open" "http://localhost:5003"
   done_message:
 SectionEnd
 
@@ -165,20 +205,26 @@ Section "Uninstall"
   proceed_uninstall:
   
   ; Stop application if running
+  DetailPrint "Stopping Igoodar service..."
   ExecWait 'taskkill /IM node.exe /F /FI "WINDOWTITLE eq Igoodar*"'
   
+  ; Remove from Windows Startup
+  DetailPrint "Removing from Windows Startup..."
+  DeleteRegValue HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Run" "Igoodar"
+  
   ; Remove shortcuts
-  Delete "$DESKTOP\\Igoodar.lnk"
-  Delete "$SMPROGRAMS\\Igoodar\\Igoodar.lnk"
+  Delete "$DESKTOP\\Igoodar Dashboard.url"
+  Delete "$SMPROGRAMS\\Igoodar\\Igoodar Dashboard.url"
+  Delete "$SMPROGRAMS\\Igoodar\\Restart Igoodar.lnk"
+  Delete "$SMPROGRAMS\\Igoodar\\Stop Igoodar.lnk"
   Delete "$SMPROGRAMS\\Igoodar\\Debug Install.lnk"
-  Delete "$SMPROGRAMS\\Igoodar\\Create Shortcuts.lnk"
   Delete "$SMPROGRAMS\\Igoodar\\Uninstall.lnk"
   RMDir "$SMPROGRAMS\\Igoodar"
   
   ; Remove files
   RMDir /r "$INSTDIR"
   
-  MessageBox MB_OK|MB_ICONINFORMATION "Igoodar has been uninstalled."
+  MessageBox MB_OK|MB_ICONINFORMATION "Igoodar has been uninstalled.$\\n$\\nThe auto-start feature has been removed from Windows Startup."
 SectionEnd
 `;
 
