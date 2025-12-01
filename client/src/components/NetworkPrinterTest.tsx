@@ -26,23 +26,17 @@ export default function NetworkPrinterTest() {
     }
   }, [settings]);
 
-  const saveSettings = async () => {
+  // Auto-save IP and port to database
+  const saveToDatabase = async () => {
+    if (!ip || !port) return;
     try {
       const printerAddress = `${ip}:${port}`;
       await updateSettings({
         printerType: 'network',
         printerAddress
       });
-      toast({
-        title: 'Saved',
-        description: 'Network printer settings saved successfully',
-      });
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: `Failed to save settings: ${error.message}`,
-        variant: 'destructive'
-      });
+      console.error('Failed to save printer address:', error);
     }
   };
 
@@ -79,16 +73,23 @@ export default function NetworkPrinterTest() {
       <CardContent className="space-y-3">
         <div>
           <Label>IP Address</Label>
-          <Input value={ip} onChange={e => setIp(e.target.value)} placeholder="192.168.1.100" />
+          <Input 
+            value={ip} 
+            onChange={e => setIp(e.target.value)} 
+            onBlur={saveToDatabase}
+            placeholder="192.168.1.100" 
+          />
         </div>
         <div>
           <Label>Port</Label>
-          <Input value={port} onChange={e => setPort(e.target.value)} placeholder="9100" />
+          <Input 
+            value={port} 
+            onChange={e => setPort(e.target.value)} 
+            onBlur={saveToDatabase}
+            placeholder="9100" 
+          />
         </div>
-        <div className="flex gap-2">
-          <Button onClick={saveSettings} variant="outline" className="flex-1">Save Settings</Button>
-          <Button onClick={testPrint} className="flex-1">Test Print</Button>
-        </div>
+        <Button onClick={testPrint} className="w-full">Test Print</Button>
         {status && <p className="text-sm">{status}</p>}
       </CardContent>
     </Card>

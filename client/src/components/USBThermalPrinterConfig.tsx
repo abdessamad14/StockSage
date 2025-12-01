@@ -370,7 +370,17 @@ export default function USBThermalPrinterConfig() {
             <Label htmlFor="connection-type">Connection Type</Label>
             <Select 
               value={connectionType} 
-              onValueChange={(value: any) => setConnectionType(value)}
+              onValueChange={async (value: any) => {
+                setConnectionType(value);
+                // Save printer type to database immediately
+                try {
+                  await updateSettings({
+                    printerType: value === 'network' ? 'network' : 'usb'
+                  });
+                } catch (error) {
+                  console.error('Failed to save printer type:', error);
+                }
+              }}
             >
               <SelectTrigger>
                 <SelectValue />
