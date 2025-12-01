@@ -40,6 +40,15 @@ export default function USBThermalPrinterConfig() {
   const [error, setError] = useState<string>('');
   const [connectionType, setConnectionType] = useState<'usb' | 'network'>('usb');
 
+  // Load saved printer type on mount
+  useEffect(() => {
+    if (globalSettings?.printerType === 'network') {
+      setConnectionType('network');
+    } else {
+      setConnectionType('usb');
+    }
+  }, [globalSettings?.printerType]);
+
   // Get printer settings from global settings
   const isConnected = globalSettings?.printerConnected || false;
   const selectedDevice = globalSettings?.printerVendorId ? {
