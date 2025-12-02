@@ -208,7 +208,7 @@ export default function OfflinePurchasePOS() {
 
       const newOrder = await createOrder(orderData);
 
-      // Create order items
+      // Create order items and update stock
       for (const item of cart) {
         await offlinePurchaseOrderItemStorage.create({
           orderId: newOrder.id,
@@ -217,6 +217,23 @@ export default function OfflinePurchasePOS() {
           unitPrice: item.unitCost,
           totalPrice: item.totalCost
         });
+
+        // UPDATE STOCK - INCREASE quantity for purchases
+        const currentStock = await offlineProductStockStorage.getByProductAndLocation(
+          item.product.id,
+          selectedWarehouse
+        );
+        const previousQuantity = currentStock?.quantity || 0;
+        const newQuantity = previousQuantity + item.quantity;
+
+        await offlineProductStockStorage.upsert({
+          productId: item.product.id,
+          locationId: selectedWarehouse,
+          quantity: newQuantity,
+          minStockLevel: currentStock?.minStockLevel || 0
+        });
+
+        console.log(`✅ Stock increased for ${item.product.name}: ${previousQuantity} → ${newQuantity} (+${item.quantity})`);
       }
 
       // Handle payment if not credit
