@@ -121,6 +121,23 @@ try {
     console.warn('⚠️  Could not update settings schema:', error.message);
   }
   
+  // Migration for sale_items table - add product_name column
+  console.log('🔄 Checking sale_items table schema...');
+  try {
+    const saleItemsColumns = sqlite.prepare("PRAGMA table_info(sale_items)").all();
+    const saleItemColumnNames = saleItemsColumns.map(col => col.name);
+    
+    if (!saleItemColumnNames.includes('product_name')) {
+      console.log('  Adding product_name column to sale_items table...');
+      sqlite.prepare('ALTER TABLE sale_items ADD COLUMN product_name TEXT').run();
+      console.log('✅ sale_items table schema updated');
+    } else {
+      console.log('✅ sale_items table already has product_name column');
+    }
+  } catch (error) {
+    console.warn('⚠️  Could not update sale_items schema:', error.message);
+  }
+  
   if (config.seed) {
     seedDatabase(sqlite, config);
   } else {

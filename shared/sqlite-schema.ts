@@ -100,6 +100,7 @@ export const saleItems = sqliteTable("sale_items", {
   tenantId: text("tenant_id").notNull(),
   saleId: integer("sale_id").notNull().references(() => sales.id),
   productId: integer("product_id").notNull().references(() => products.id),
+  productName: text("product_name"),
   quantity: integer("quantity").notNull(),
   unitPrice: real("unit_price").notNull(),
   totalPrice: real("total_price").notNull(),
