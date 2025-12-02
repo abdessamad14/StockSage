@@ -2160,7 +2160,10 @@ export default function OfflinePOS() {
                             {product.name}
                           </h3>
                           <div className="text-xs text-white/80 mb-1">
-                            {getProductStock(product.id)} {t('available')}
+                            {product.weighable 
+                              ? Math.round(getProductStock(product.id) * 100) / 100 
+                              : getProductStock(product.id)
+                            } {t('available')}
                           </div>
                           <div className="bg-white bg-opacity-20 rounded-lg py-1 px-2">
                             <div className="font-bold text-lg">
