@@ -71,6 +71,7 @@ export default function OfflinePurchasePOS() {
   const [lastOrder, setLastOrder] = useState<any>(null);
   const [stockLocations, setStockLocations] = useState<any[]>([]);
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("");
+  const [productSearchQuery, setProductSearchQuery] = useState("");
 
   // Load stock locations
   useEffect(() => {
@@ -93,15 +94,15 @@ export default function OfflinePurchasePOS() {
   const tax = 0;
   const total = subtotal + tax;
 
-  // Filter products
+  // Filter products for search
   const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return products;
-    const query = searchQuery.toLowerCase();
+    if (!productSearchQuery.trim()) return products;
+    const query = productSearchQuery.toLowerCase();
     return products.filter(p => 
       p.name.toLowerCase().includes(query) ||
       (p.barcode && p.barcode.toLowerCase().includes(query))
     );
-  }, [products, searchQuery]);
+  }, [products, productSearchQuery]);
 
   // Add product to cart
   const addToCart = (product: OfflineProduct) => {
@@ -164,6 +165,54 @@ export default function OfflinePurchasePOS() {
     setSelectedSupplier(null);
     setNotes("");
     setPaidAmount(0);
+  };
+
+  // Load purchase order into cart
+  const loadPurchaseOrder = async (order: any) => {
+    try {
+      // Set supplier
+      const supplier = suppliers.find(s => s.id === order.supplierId);
+      setSelectedSupplier(supplier || null);
+
+      // Set warehouse
+      setSelectedWarehouse(order.warehouseId || "");
+
+      // Load order items
+      const orderItems = await offlinePurchaseOrderItemStorage.getByOrderId(order.id);
+      
+      // Convert order items to cart items
+      const cartItems: PurchaseCartItem[] = [];
+      for (const item of orderItems) {
+        const product = products.find(p => p.id === item.productId);
+        if (product) {
+          cartItems.push({
+            product,
+            quantity: item.quantity,
+            unitCost: item.unitPrice,
+            totalCost: item.totalPrice
+          });
+        }
+      }
+      
+      setCart(cartItems);
+      setNotes(order.notes || "");
+      
+      // Switch to products tab to see the cart
+      setRightSidebarView('products');
+      
+      toast({
+        title: t('success'),
+        description: `${t('order')} ${order.orderNumber} ${t('loaded')}`,
+        duration: 2000
+      });
+    } catch (error) {
+      console.error('Error loading purchase order:', error);
+      toast({
+        title: t('error'),
+        description: t('failed_to_load_order'),
+        variant: "destructive"
+      });
+    }
   };
 
   // Process purchase order
@@ -349,6 +398,8 @@ export default function OfflinePurchasePOS() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
               placeholder={t('search_products_or_scan')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
             />
           </div>
@@ -524,7 +575,21 @@ export default function OfflinePurchasePOS() {
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-4">
           {rightSidebarView === 'products' ? (
-            <div className="grid grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 pb-8">
+            <>
+              {/* Search Bar */}
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <Input
+                    placeholder={t('search_products_or_scan')}
+                    value={productSearchQuery}
+                    onChange={(e) => setProductSearchQuery(e.target.value)}
+                    className="pl-10 text-lg py-6"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 pb-8">
               {filteredProducts.map((product, index) => {
                 const colors = [
                   'bg-gradient-to-br from-[#f94144] via-[#f3722c] to-[#f8961e]',
@@ -568,7 +633,8 @@ export default function OfflinePurchasePOS() {
                   </div>
                 );
               })}
-            </div>
+              </div>
+            </>
           ) : (
             /* Purchase Orders View with Summaries */
             <div className="space-y-4">
@@ -615,7 +681,11 @@ export default function OfflinePurchasePOS() {
                     orders.slice(0, 10).map((order: any) => {
                       const supplier = suppliers.find(s => s.id === order.supplierId);
                       return (
-                        <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div 
+                          key={order.id} 
+                          onClick={() => loadPurchaseOrder(order)}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                        >
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                               <Truck className="h-5 w-5 text-blue-600" />
