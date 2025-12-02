@@ -15,7 +15,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Card, CardContent } from "@/components/ui/card";
 import { 
   Dialog,
   DialogContent,
@@ -34,7 +33,9 @@ import {
   Plus,
   Minus,
   User,
-  MapPin
+  MapPin,
+  BarChart3,
+  Settings
 } from "lucide-react";
 
 interface PurchaseCartItem {
@@ -53,6 +54,7 @@ export default function OfflinePurchasePOS() {
 
   // State
   const [selectedSupplier, setSelectedSupplier] = useState<OfflineSupplier | null>(null);
+  const [rightSidebarView, setRightSidebarView] = useState<'products' | 'suppliers'>('products');
   const [cart, setCart] = useState<PurchaseCartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit' | 'bank_check'>('credit');
@@ -82,7 +84,7 @@ export default function OfflinePurchasePOS() {
 
   // Calculate totals
   const subtotal = cart.reduce((sum, item) => sum + item.totalCost, 0);
-  const tax = 0; // No tax for purchases
+  const tax = 0;
   const total = subtotal + tax;
 
   // Filter products
@@ -281,139 +283,210 @@ export default function OfflinePurchasePOS() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Left Sidebar - Suppliers */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col shadow-lg">
-        <div className="p-4 border-b bg-gradient-to-r from-blue-600 to-indigo-600">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Truck className="h-6 w-6" />
-            {t('suppliers')}
-          </h2>
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50">
+      {/* LEFT PANEL - Purchase Order Preview (like invoice in POS) */}
+      <div className="w-[500px] bg-[#fdf5ec] border-r border-gray-200 flex flex-col shadow-lg">
+        {/* Header */}
+        <div className="p-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-white text-xl font-bold">{t('purchase_order_pos')}</h1>
+              <p className="text-white/80 text-sm mt-1">
+                {new Date().toLocaleString('fr-FR')}
+              </p>
+            </div>
+            <div className="text-white text-right">
+              <div className="text-sm">{t('supplier')}:</div>
+              <div className="font-semibold">{selectedSupplier ? selectedSupplier.name : t('no_supplier')}</div>
+            </div>
+          </div>
         </div>
 
-        <div className="p-4">
+        {/* Search */}
+        <div className="p-4 bg-white border-b">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder={t('search_suppliers')}
+              placeholder={t('search_products_or_scan')}
               className="pl-10"
-              onChange={(e) => {
-                const query = e.target.value.toLowerCase();
-                const filtered = suppliers.filter(s => 
-                  s.name.toLowerCase().includes(query) ||
-                  (s.phone && s.phone.includes(query))
-                );
-                // For now, we'll keep all suppliers visible, implement filtering if needed
-              }}
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          <div
-            onClick={() => setSelectedSupplier(null)}
-            className={`p-4 rounded-xl cursor-pointer transition-all ${
-              !selectedSupplier
-                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
-                : 'bg-gray-50 hover:bg-gray-100'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                !selectedSupplier ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
-                <User className="h-6 w-6" />
-              </div>
-              <div>
-                <div className="font-semibold">{t('no_supplier')}</div>
-                <div className="text-sm opacity-80">{t('general_purchase')}</div>
-              </div>
-            </div>
+        {/* Order Items Table (like invoice table) */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="bg-white/90 rounded-lg shadow-sm border border-gray-200 p-4">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b text-xs text-gray-600">
+                  <th className="text-left py-2">{t('product').toUpperCase()}</th>
+                  <th className="text-center py-2">{t('quantity').toUpperCase()}</th>
+                  <th className="text-right py-2">{t('unit_cost').toUpperCase()}</th>
+                  <th className="text-right py-2">{t('total').toUpperCase()}</th>
+                  <th className="py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {cart.map(item => (
+                  <tr key={item.product.id} className="border-b">
+                    <td className="py-3">
+                      <div className="font-medium text-sm">{item.product.name}</div>
+                      <div className="text-xs text-gray-500">{item.product.barcode}</div>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                          className="h-7 w-7 p-0"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <Input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => updateQuantity(item.product.id, parseFloat(e.target.value) || 0)}
+                          className="w-16 h-7 text-center text-sm"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                          className="h-7 w-7 p-0"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </td>
+                    <td className="py-3">
+                      <Input
+                        type="number"
+                        value={item.unitCost}
+                        onChange={(e) => updateUnitCost(item.product.id, parseFloat(e.target.value) || 0)}
+                        className="w-24 h-7 text-right text-sm"
+                        step="0.01"
+                      />
+                    </td>
+                    <td className="py-3 text-right font-semibold text-sm">
+                      {item.totalCost.toFixed(2)} DH
+                    </td>
+                    <td className="py-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFromCart(item.product.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+                {/* Empty rows to fill space */}
+                {cart.length < 5 && Array.from({ length: 5 - cart.length }).map((_, index) => (
+                  <tr key={`empty-${index}`} className="border-b">
+                    <td className="py-3 text-xs text-gray-300">-</td>
+                    <td className="py-3"></td>
+                    <td className="py-3"></td>
+                    <td className="py-3"></td>
+                    <td className="py-3"></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Summary Footer */}
+        <div className="border-t p-4 bg-white space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>{t('subtotal')}:</span>
+            <span className="font-semibold">{subtotal.toFixed(2)} DH</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span>{t('tax')}:</span>
+            <span className="font-semibold">{tax.toFixed(2)} DH</span>
+          </div>
+          <Separator />
+          <div className="flex justify-between text-lg font-bold">
+            <span>{t('total').toUpperCase()}:</span>
+            <span className="text-green-600">{total.toFixed(2)} DH</span>
           </div>
 
-          {suppliers.map(supplier => (
-            <div
-              key={supplier.id}
-              onClick={() => setSelectedSupplier(supplier)}
-              className={`p-4 rounded-xl cursor-pointer transition-all ${
-                selectedSupplier?.id === supplier.id
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
-                  : 'bg-gray-50 hover:bg-gray-100'
-              }`}
+          {/* Action Buttons */}
+          <div className="pt-2 space-y-2">
+            <Button
+              onClick={() => setIsCheckoutOpen(true)}
+              disabled={cart.length === 0 || !selectedSupplier}
+              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-6 text-lg"
             >
-              <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                  selectedSupplier?.id === supplier.id ? 'bg-white/20' : 'bg-blue-100'
-                }`}>
-                  <Truck className="h-6 w-6" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold">{supplier.name}</div>
-                  {supplier.phone && (
-                    <div className="text-sm opacity-80">{supplier.phone}</div>
-                  )}
-                </div>
-              </div>
+              <ShoppingCart className="mr-2 h-5 w-5" />
+              {t('proceed_to_checkout')}
+            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                onClick={clearCart}
+                variant="outline"
+                disabled={cart.length === 0}
+              >
+                {t('clear_cart')}
+              </Button>
+              <Button
+                onClick={() => window.location.href = '/orders-history'}
+                variant="outline"
+              >
+                {t('orders')}
+              </Button>
             </div>
-          ))}
+          </div>
         </div>
       </div>
 
-      {/* Main Content - Products and Cart */}
+      {/* RIGHT PANEL - Products and Suppliers */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="bg-white border-b p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">{t('purchase_order_pos')}</h1>
-              <p className="text-sm text-gray-600">
-                {selectedSupplier ? (
-                  <span className="flex items-center gap-2">
-                    <Truck className="h-4 w-4" />
-                    {selectedSupplier.name}
-                  </span>
-                ) : (
-                  t('select_supplier_to_start')
-                )}
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-sm text-gray-600">{t('cart_items')}</div>
-                <div className="text-2xl font-bold text-blue-600">{cart.length}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm text-gray-600">{t('total')}</div>
-                <div className="text-2xl font-bold text-green-600">{total.toFixed(2)} DH</div>
-              </div>
-            </div>
+        {/* Function Buttons (like POS) */}
+        <div className="bg-white border-b p-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              onClick={() => setRightSidebarView('products')}
+              className={`h-16 font-bold text-sm flex flex-col items-center justify-center gap-1 ${
+                rightSidebarView === 'products'
+                  ? 'bg-gradient-to-br from-[#06d6a0] via-[#1b998b] to-[#118ab2] text-white'
+                  : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700'
+              }`}
+            >
+              <Package className="h-5 w-5" />
+              {t('products').toUpperCase()}
+            </Button>
+            <Button
+              onClick={() => setRightSidebarView('suppliers')}
+              className={`h-16 font-bold text-sm flex flex-col items-center justify-center gap-1 ${
+                rightSidebarView === 'suppliers'
+                  ? 'bg-gradient-to-br from-[#06d6a0] via-[#1b998b] to-[#118ab2] text-white'
+                  : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700'
+              }`}
+            >
+              <Truck className="h-5 w-5" />
+              {t('suppliers').toUpperCase()}
+            </Button>
           </div>
         </div>
 
-        <div className="flex-1 flex overflow-hidden">
-          {/* Products Grid */}
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                <Input
-                  placeholder={t('search_products_or_scan')}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 text-lg py-6"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-8">
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {rightSidebarView === 'products' ? (
+            <div className="grid grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 pb-8">
               {filteredProducts.map((product, index) => {
                 const colors = [
-                  'bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600',
-                  'bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600',
-                  'bg-gradient-to-br from-green-500 via-emerald-600 to-teal-600',
-                  'bg-gradient-to-br from-orange-500 via-orange-600 to-red-600',
-                  'bg-gradient-to-br from-yellow-500 via-amber-600 to-orange-600',
-                  'bg-gradient-to-br from-indigo-500 via-blue-600 to-cyan-600'
+                  'bg-gradient-to-br from-[#f94144] via-[#f3722c] to-[#f8961e]',
+                  'bg-gradient-to-br from-[#06d6a0] via-[#1b998b] to-[#118ab2]',
+                  'bg-gradient-to-br from-[#3a86ff] via-[#4361ee] to-[#7209b7]',
+                  'bg-gradient-to-br from-[#ffbe0b] via-[#fb8500] to-[#ff6d00]',
+                  'bg-gradient-to-br from-[#ef233c] via-[#d00000] to-[#9d0208]',
+                  'bg-gradient-to-br from-[#8338ec] via-[#9d4edd] to-[#7209b7]',
+                  'bg-gradient-to-br from-[#118ab2] via-[#06d6a0] to-[#4cc9f0]',
+                  'bg-gradient-to-br from-[#f4a259] via-[#f77f00] to-[#e85d04]'
                 ];
                 const bgColor = colors[index % colors.length];
 
@@ -448,122 +521,61 @@ export default function OfflinePurchasePOS() {
                 );
               })}
             </div>
-          </div>
-
-          {/* Cart Sidebar */}
-          <div className="w-96 bg-white border-l flex flex-col shadow-lg">
-            <div className="p-4 border-b bg-gradient-to-r from-green-600 to-emerald-600">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <ShoppingCart className="h-6 w-6" />
-                {t('purchase_cart')}
-              </h2>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {cart.length === 0 ? (
-                <div className="text-center py-16 text-gray-400">
-                  <ShoppingCart className="h-16 w-16 mx-auto mb-4" />
-                  <p>{t('cart_empty')}</p>
-                  <p className="text-sm mt-2">{t('add_products_to_start')}</p>
-                </div>
-              ) : (
-                cart.map(item => (
-                  <div key={item.product.id} className="bg-gray-50 rounded-lg p-3 space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="font-semibold text-sm">{item.product.name}</div>
-                        <div className="text-xs text-gray-600">{item.product.barcode}</div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFromCart(item.product.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <Input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => updateQuantity(item.product.id, parseFloat(e.target.value) || 0)}
-                        className="w-20 text-center"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-600">{t('unit_cost')}:</span>
-                      <Input
-                        type="number"
-                        value={item.unitCost}
-                        onChange={(e) => updateUnitCost(item.product.id, parseFloat(e.target.value) || 0)}
-                        className="flex-1 text-sm"
-                        step="0.01"
-                      />
-                      <span className="text-xs">DH</span>
-                    </div>
-
-                    <div className="flex justify-between items-center pt-2 border-t">
-                      <span className="text-xs text-gray-600">{t('total')}:</span>
-                      <span className="font-bold text-green-600">{item.totalCost.toFixed(2)} DH</span>
+          ) : (
+            /* Suppliers View */
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div
+                onClick={() => setSelectedSupplier(null)}
+                className={`p-4 rounded-xl cursor-pointer transition-all border-2 ${
+                  !selectedSupplier
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-700 shadow-lg'
+                    : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md'
+                }`}
+              >
+                <div className="flex flex-col items-center text-center gap-2">
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                    !selectedSupplier ? 'bg-white/20' : 'bg-gray-100'
+                  }`}>
+                    <User className="h-8 w-8" />
+                  </div>
+                  <div>
+                    <div className="font-semibold">{t('no_supplier')}</div>
+                    <div className={`text-sm ${!selectedSupplier ? 'text-white/80' : 'text-gray-600'}`}>
+                      {t('general_purchase')}
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-
-            {/* Cart Summary */}
-            <div className="border-t p-4 space-y-2 bg-gray-50">
-              <div className="flex justify-between text-sm">
-                <span>{t('subtotal')}:</span>
-                <span className="font-semibold">{subtotal.toFixed(2)} DH</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>{t('tax')}:</span>
-                <span className="font-semibold">{tax.toFixed(2)} DH</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between text-lg font-bold">
-                <span>{t('total')}:</span>
-                <span className="text-green-600">{total.toFixed(2)} DH</span>
+                </div>
               </div>
 
-              <div className="space-y-2 pt-2">
-                <Button
-                  onClick={() => setIsCheckoutOpen(true)}
-                  disabled={cart.length === 0 || !selectedSupplier}
-                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-6 text-lg"
+              {suppliers.map(supplier => (
+                <div
+                  key={supplier.id}
+                  onClick={() => setSelectedSupplier(supplier)}
+                  className={`p-4 rounded-xl cursor-pointer transition-all border-2 ${
+                    selectedSupplier?.id === supplier.id
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-700 shadow-lg'
+                      : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md'
+                  }`}
                 >
-                  <ShoppingCart className="mr-2 h-5 w-5" />
-                  {t('proceed_to_checkout')}
-                </Button>
-                <Button
-                  onClick={clearCart}
-                  variant="outline"
-                  className="w-full"
-                  disabled={cart.length === 0}
-                >
-                  {t('clear_cart')}
-                </Button>
-              </div>
+                  <div className="flex flex-col items-center text-center gap-2">
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                      selectedSupplier?.id === supplier.id ? 'bg-white/20' : 'bg-blue-100'
+                    }`}>
+                      <Truck className="h-8 w-8" />
+                    </div>
+                    <div>
+                      <div className="font-semibold">{supplier.name}</div>
+                      {supplier.phone && (
+                        <div className={`text-sm ${selectedSupplier?.id === supplier.id ? 'text-white/80' : 'text-gray-600'}`}>
+                          {supplier.phone}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+          )}
         </div>
       </div>
 
