@@ -15,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { 
   Dialog,
   DialogContent,
@@ -35,7 +37,11 @@ import {
   User,
   MapPin,
   BarChart3,
-  Settings
+  Settings,
+  GripVertical,
+  Printer,
+  Clock,
+  TrendingUp
 } from "lucide-react";
 
 interface PurchaseCartItem {
@@ -48,13 +54,13 @@ interface PurchaseCartItem {
 export default function OfflinePurchasePOS() {
   const { suppliers, loading: suppliersLoading } = useOfflineSuppliers();
   const { products, loading: productsLoading } = useOfflineProducts();
-  const { createOrder, generateOrderNumber } = useOfflinePurchaseOrders();
+  const { orders, createOrder, generateOrderNumber } = useOfflinePurchaseOrders();
   const { toast } = useToast();
   const { t } = useI18n();
 
   // State
   const [selectedSupplier, setSelectedSupplier] = useState<OfflineSupplier | null>(null);
-  const [rightSidebarView, setRightSidebarView] = useState<'products' | 'suppliers'>('products');
+  const [rightSidebarView, setRightSidebarView] = useState<'products' | 'orders'>('products');
   const [cart, setCart] = useState<PurchaseCartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit' | 'bank_check'>('credit');
@@ -283,24 +289,59 @@ export default function OfflinePurchasePOS() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50">
-      {/* LEFT PANEL - Purchase Order Preview (like invoice in POS) */}
-      <div className="w-[500px] bg-[#fdf5ec] border-r border-gray-200 flex flex-col shadow-lg">
-        {/* Header */}
-        <div className="p-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-white text-xl font-bold">{t('purchase_order_pos')}</h1>
-              <p className="text-white/80 text-sm mt-1">
-                {new Date().toLocaleString('fr-FR')}
-              </p>
+    <>
+      <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50">
+        <PanelGroup direction="horizontal">
+        {/* LEFT PANEL - Purchase Order Preview (like invoice in POS) */}
+        <Panel defaultSize={35} minSize={25} maxSize={50}>
+          <div className="h-full bg-[#fdf5ec] border-r border-gray-200 flex flex-col shadow-lg">
+            {/* Header with Supplier Dropdown */}
+            <div className="p-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">
+              <div className="flex justify-between items-center mb-3">
+                <div>
+                  <h1 className="text-white text-xl font-bold">{t('purchase_order_pos')}</h1>
+                  <p className="text-white/80 text-sm mt-1">
+                    {new Date().toLocaleString('fr-FR')}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.print()}
+                  className="text-white hover:bg-white/20"
+                >
+                  <Printer className="h-5 w-5" />
+                </Button>
+              </div>
+              
+              {/* Supplier Dropdown */}
+              <div>
+                <label className="text-white/80 text-xs mb-1 block">{t('supplier')}:</label>
+                <Select 
+                  value={selectedSupplier?.id || "none"}
+                  onValueChange={(value) => {
+                    if (value === "none") {
+                      setSelectedSupplier(null);
+                    } else {
+                      const supplier = suppliers.find(s => s.id === value);
+                      setSelectedSupplier(supplier || null);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                    <SelectValue placeholder={t('select_supplier')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('no_supplier')}</SelectItem>
+                    {suppliers.map(supplier => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="text-white text-right">
-              <div className="text-sm">{t('supplier')}:</div>
-              <div className="font-semibold">{selectedSupplier ? selectedSupplier.name : t('no_supplier')}</div>
-            </div>
-          </div>
-        </div>
 
         {/* Search */}
         <div className="p-4 bg-white border-b">
@@ -441,35 +482,42 @@ export default function OfflinePurchasePOS() {
             </div>
           </div>
         </div>
-      </div>
+          </div>
+        </Panel>
 
-      {/* RIGHT PANEL - Products and Suppliers */}
-      <div className="flex-1 flex flex-col">
-        {/* Function Buttons (like POS) */}
-        <div className="bg-white border-b p-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              onClick={() => setRightSidebarView('products')}
-              className={`h-16 font-bold text-sm flex flex-col items-center justify-center gap-1 ${
-                rightSidebarView === 'products'
-                  ? 'bg-gradient-to-br from-[#06d6a0] via-[#1b998b] to-[#118ab2] text-white'
-                  : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700'
-              }`}
-            >
-              <Package className="h-5 w-5" />
-              {t('products').toUpperCase()}
-            </Button>
-            <Button
-              onClick={() => setRightSidebarView('suppliers')}
-              className={`h-16 font-bold text-sm flex flex-col items-center justify-center gap-1 ${
-                rightSidebarView === 'suppliers'
-                  ? 'bg-gradient-to-br from-[#06d6a0] via-[#1b998b] to-[#118ab2] text-white'
-                  : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700'
-              }`}
-            >
-              <Truck className="h-5 w-5" />
-              {t('suppliers').toUpperCase()}
-            </Button>
+        {/* RESIZER */}
+        <PanelResizeHandle className="w-2 bg-gray-300 hover:bg-blue-500 transition-colors flex items-center justify-center group">
+          <div className="w-1 h-8 bg-gray-400 rounded group-hover:bg-white transition-colors"></div>
+        </PanelResizeHandle>
+
+        {/* RIGHT PANEL - Products and Orders */}
+        <Panel defaultSize={65} minSize={50}>
+          <div className="h-full flex flex-col">
+            {/* Tab Buttons */}
+            <div className="bg-white border-b p-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  onClick={() => setRightSidebarView('products')}
+                  className={`h-16 font-bold text-sm flex flex-col items-center justify-center gap-1 ${
+                    rightSidebarView === 'products'
+                      ? 'bg-gradient-to-br from-[#06d6a0] via-[#1b998b] to-[#118ab2] text-white'
+                      : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700'
+                  }`}
+                >
+                  <Package className="h-5 w-5" />
+                  {t('products').toUpperCase()}
+                </Button>
+                <Button
+                  onClick={() => setRightSidebarView('orders')}
+                  className={`h-16 font-bold text-sm flex flex-col items-center justify-center gap-1 ${
+                    rightSidebarView === 'orders'
+                      ? 'bg-gradient-to-br from-[#06d6a0] via-[#1b998b] to-[#118ab2] text-white'
+                      : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700'
+                  }`}
+                >
+                  <Clock className="h-5 w-5" />
+                  {t('orders').toUpperCase()}
+                </Button>
           </div>
         </div>
 
@@ -522,64 +570,93 @@ export default function OfflinePurchasePOS() {
               })}
             </div>
           ) : (
-            /* Suppliers View */
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              <div
-                onClick={() => setSelectedSupplier(null)}
-                className={`p-4 rounded-xl cursor-pointer transition-all border-2 ${
-                  !selectedSupplier
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-700 shadow-lg'
-                    : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md'
-                }`}
-              >
-                <div className="flex flex-col items-center text-center gap-2">
-                  <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                    !selectedSupplier ? 'bg-white/20' : 'bg-gray-100'
-                  }`}>
-                    <User className="h-8 w-8" />
-                  </div>
-                  <div>
-                    <div className="font-semibold">{t('no_supplier')}</div>
-                    <div className={`text-sm ${!selectedSupplier ? 'text-white/80' : 'text-gray-600'}`}>
-                      {t('general_purchase')}
+            /* Purchase Orders View with Summaries */
+            <div className="space-y-4">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-xl shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-80">{t('total_orders')}</p>
+                      <h3 className="text-3xl font-bold">{orders?.length || 0}</h3>
                     </div>
+                    <Package className="h-12 w-12 opacity-50" />
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-xl shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-80">{t('total_value')}</p>
+                      <h3 className="text-3xl font-bold">
+                        {orders?.reduce((sum: number, o: any) => sum + (o.total || 0), 0).toFixed(2) || '0.00'} DH
+                      </h3>
+                    </div>
+                    <TrendingUp className="h-12 w-12 opacity-50" />
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 rounded-xl shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm opacity-80">{t('pending')}</p>
+                      <h3 className="text-3xl font-bold">
+                        {orders?.filter((o: any) => o.status === 'draft' || o.status === 'pending').length || 0}
+                      </h3>
+                    </div>
+                    <Clock className="h-12 w-12 opacity-50" />
                   </div>
                 </div>
               </div>
 
-              {suppliers.map(supplier => (
-                <div
-                  key={supplier.id}
-                  onClick={() => setSelectedSupplier(supplier)}
-                  className={`p-4 rounded-xl cursor-pointer transition-all border-2 ${
-                    selectedSupplier?.id === supplier.id
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-700 shadow-lg'
-                      : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md'
-                  }`}
-                >
-                  <div className="flex flex-col items-center text-center gap-2">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                      selectedSupplier?.id === supplier.id ? 'bg-white/20' : 'bg-blue-100'
-                    }`}>
-                      <Truck className="h-8 w-8" />
-                    </div>
-                    <div>
-                      <div className="font-semibold">{supplier.name}</div>
-                      {supplier.phone && (
-                        <div className={`text-sm ${selectedSupplier?.id === supplier.id ? 'text-white/80' : 'text-gray-600'}`}>
-                          {supplier.phone}
+              {/* Recent Orders List */}
+              <div className="bg-white rounded-xl shadow-sm border p-4">
+                <h3 className="font-bold text-lg mb-4">{t('recent_orders')}</h3>
+                <div className="space-y-2">
+                  {orders && orders.length > 0 ? (
+                    orders.slice(0, 10).map((order: any) => {
+                      const supplier = suppliers.find(s => s.id === order.supplierId);
+                      return (
+                        <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              <Truck className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="font-semibold text-sm">{order.orderNumber}</div>
+                              <div className="text-xs text-gray-600">
+                                {supplier?.name || t('no_supplier')} • {new Date(order.date).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold text-sm">{order.total?.toFixed(2)} DH</div>
+                            <div className={`text-xs px-2 py-1 rounded ${
+                              order.status === 'received' ? 'bg-green-100 text-green-700' :
+                              order.status === 'ordered' ? 'bg-blue-100 text-blue-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {order.status}
+                            </div>
+                          </div>
                         </div>
-                      )}
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-8 text-gray-400">
+                      <Package className="h-12 w-12 mx-auto mb-2" />
+                      <p>{t('no_orders_created')}</p>
                     </div>
-                  </div>
+                  )}
                 </div>
-              ))}
+              </div>
             </div>
           )}
         </div>
-      </div>
+          </div>
+        </Panel>
+      </PanelGroup>
+    </div>
 
-      {/* Checkout Dialog */}
+    {/* Checkout Dialog */}
       <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -759,6 +836,6 @@ export default function OfflinePurchasePOS() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

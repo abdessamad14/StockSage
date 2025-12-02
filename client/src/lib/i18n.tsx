@@ -398,6 +398,10 @@ const frTranslations: TranslationDictionary = {
   'search_products_or_scan': 'Rechercher des produits ou scanner un code-barres...',
   'cost': 'Coût',
   'add_products_to_start': 'Ajoutez des produits pour commencer',
+  'select_supplier': 'Sélectionner un fournisseur',
+  'recent_orders': 'Commandes récentes',
+  'pending': 'En attente',
+  'order_items': 'Articles de commande',
 
   // Reports
   'reports_title': 'Rapports et analyses',
