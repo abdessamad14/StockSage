@@ -2119,7 +2119,7 @@ export default function OfflinePOS() {
               </div>
 
               {/* Products Grid */}
-              <div className="p-4 overflow-y-auto pb-20" style={{ maxHeight: 'calc(100vh - 240px)' }}>
+              <div className="p-4 overflow-y-auto pb-32" style={{ maxHeight: 'calc(100vh - 220px)' }}>
                 <div className="grid grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                   {filteredProducts.map((product, index) => {
                     const colors = [
