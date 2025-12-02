@@ -401,6 +401,7 @@ const frTranslations: TranslationDictionary = {
   'recent_orders': 'Commandes récentes',
   'loaded': 'chargée',
   'failed_to_load_order': 'Échec du chargement de la commande',
+  'no_results_found': 'Aucun résultat trouvé',
 
   // Reports
   'reports_title': 'Rapports et analyses',

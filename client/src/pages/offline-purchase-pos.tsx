@@ -94,7 +94,7 @@ export default function OfflinePurchasePOS() {
   const tax = 0;
   const total = subtotal + tax;
 
-  // Filter products for search
+  // Filter products for search (right panel)
   const filteredProducts = useMemo(() => {
     if (!productSearchQuery.trim()) return products;
     const query = productSearchQuery.toLowerCase();
@@ -103,6 +103,16 @@ export default function OfflinePurchasePOS() {
       (p.barcode && p.barcode.toLowerCase().includes(query))
     );
   }, [products, productSearchQuery]);
+
+  // Filter cart items for search (left panel)
+  const filteredCart = useMemo(() => {
+    if (!searchQuery.trim()) return cart;
+    const query = searchQuery.toLowerCase();
+    return cart.filter(item => 
+      item.product.name.toLowerCase().includes(query) ||
+      (item.product.barcode && item.product.barcode.toLowerCase().includes(query))
+    );
+  }, [cart, searchQuery]);
 
   // Add product to cart
   const addToCart = (product: OfflineProduct) => {
@@ -197,8 +207,12 @@ export default function OfflinePurchasePOS() {
       setCart(cartItems);
       setNotes(order.notes || "");
       
-      // Switch to products tab to see the cart
-      setRightSidebarView('products');
+      // Clear search to show all items
+      setSearchQuery("");
+      setProductSearchQuery("");
+      
+      // Don't switch tabs - stay on orders tab to see what was clicked
+      // setRightSidebarView('products');
       
       toast({
         title: t('success'),
@@ -419,7 +433,7 @@ export default function OfflinePurchasePOS() {
                 </tr>
               </thead>
               <tbody>
-                {cart.map(item => (
+                {filteredCart.map(item => (
                   <tr key={item.product.id} className="border-b">
                     <td className="py-3">
                       <div className="font-medium text-sm">{item.product.name}</div>
@@ -476,7 +490,7 @@ export default function OfflinePurchasePOS() {
                   </tr>
                 ))}
                 {/* Empty rows to fill space */}
-                {cart.length < 5 && Array.from({ length: 5 - cart.length }).map((_, index) => (
+                {filteredCart.length < 5 && Array.from({ length: 5 - filteredCart.length }).map((_, index) => (
                   <tr key={`empty-${index}`} className="border-b">
                     <td className="py-3 text-xs text-gray-300">-</td>
                     <td className="py-3"></td>
@@ -485,6 +499,24 @@ export default function OfflinePurchasePOS() {
                     <td className="py-3"></td>
                   </tr>
                 ))}
+                {/* No results message */}
+                {filteredCart.length === 0 && cart.length > 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center">
+                      <Search className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                      <p className="text-gray-400 text-sm">{t('no_results_found')}</p>
+                    </td>
+                  </tr>
+                )}
+                {/* Empty cart message */}
+                {cart.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center">
+                      <Package className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                      <p className="text-gray-400 text-sm">{t('add_products_to_start')}</p>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
