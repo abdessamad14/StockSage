@@ -1601,7 +1601,7 @@ export default function OfflinePOS() {
                 {/* Product count */}
                 <div className="flex justify-between text-xs text-slate-600 bg-slate-50 px-2 py-1 rounded">
                   <span>{t('items_in_cart')}:</span>
-                  <span className="font-semibold">{cart.reduce((sum, item) => sum + item.quantity, 0)} {t('items')}</span>
+                  <span className="font-semibold">{cart.reduce((sum, item) => sum + (item.product.weighable ? 1 : item.quantity), 0)} {t('items')}</span>
                 </div>
                 
                 {/* Total */}
