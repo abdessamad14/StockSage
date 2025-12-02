@@ -2274,12 +2274,20 @@ export default function OfflinePOS() {
               
               <div>
                 <h4 className="font-medium mb-2">{t('items')}:</h4>
-                {lastSale.items.map(item => (
-                  <div key={item.id} className="flex justify-between text-sm">
-                    <span>{item.productName} x{item.quantity}</span>
-                    <span>{item.totalPrice.toFixed(2)} DH</span>
-                  </div>
-                ))}
+                {lastSale.items.map(item => {
+                  // Find the original product to check if it's weighable
+                  const product = products.find(p => p.id === item.productId.toString());
+                  const roundedQty = product?.weighable 
+                    ? Math.round(item.quantity * 100) / 100 
+                    : item.quantity;
+                  
+                  return (
+                    <div key={item.id} className="flex justify-between text-sm">
+                      <span>{item.productName || 'Article'} x{roundedQty}</span>
+                      <span>{item.totalPrice.toFixed(2)} DH</span>
+                    </div>
+                  );
+                })}
               </div>
               
               <Separator />
