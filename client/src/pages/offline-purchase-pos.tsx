@@ -13,6 +13,7 @@ import {
   offlinePurchaseOrderItemStorage,
   offlineSupplierPaymentStorage
 } from "@/lib/offline-storage";
+import { offlineStockTransactionStorage } from "@/lib/database-storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -385,6 +386,18 @@ export default function OfflinePurchasePOS() {
           locationId: selectedWarehouse,
           quantity: newQuantity,
           minStockLevel: currentStock?.minStockLevel || 0
+        });
+
+        // CREATE STOCK TRANSACTION for history tracking
+        await offlineStockTransactionStorage.create({
+          productId: item.product.id,
+          warehouseId: selectedWarehouse,
+          type: 'entry',
+          quantity: item.quantity,
+          previousQuantity: previousQuantity,
+          newQuantity: newQuantity,
+          reason: `Achat fournisseur: ${selectedSupplier.name} - ${newOrder.orderNumber}`,
+          reference: newOrder.orderNumber
         });
 
         console.log(`✅ Stock increased for ${item.product.name}: ${previousQuantity} → ${newQuantity} (+${item.quantity})`);
