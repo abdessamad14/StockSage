@@ -876,7 +876,7 @@ export default function OfflineInventory() {
                     </TableCell>
                     <TableCell className="text-center">
                       <span className={isLowStock ? "text-red-600 font-bold" : ""}>
-                        {currentStock}
+                        {product.weighable ? currentStock.toFixed(2) : Math.floor(currentStock)}
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
