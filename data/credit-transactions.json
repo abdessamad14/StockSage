@@ -9,5 +9,15 @@
     "balanceAfter": 2160,
     "date": "2025-12-03T17:51:45.637Z",
     "createdAt": "2025-12-03T17:51:45.638Z"
+  },
+  {
+    "id": "credit-1764784601069-lya86nqj7",
+    "customerId": 8,
+    "amount": -2104,
+    "type": "payment",
+    "description": "Paiement de crédit - Dec 03, 2025",
+    "balanceAfter": 0,
+    "date": "2025-12-03T17:56:41.068Z",
+    "createdAt": "2025-12-03T17:56:41.069Z"
   }
 ]

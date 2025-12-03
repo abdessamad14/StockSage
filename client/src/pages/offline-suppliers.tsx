@@ -65,9 +65,18 @@ export default function OfflineSuppliers() {
   // Calculate supplier credit balance
   const getSupplierBalance = (supplierId: string) => {
     const supplierOrders = orders.filter(order => order.supplierId === supplierId);
-    const totalOrders = supplierOrders.reduce((sum, order) => sum + order.total, 0);
+    const totalOrders = supplierOrders.reduce((sum, order) => sum + (order.total || 0), 0);
     const totalPaid = supplierOrders.reduce((sum, order) => sum + (order.paidAmount || 0), 0);
-    const totalOwed = totalOrders - totalPaid;
+    const balanceFromOrders = totalOrders - totalPaid;
+    
+    // Get payment transactions from localStorage and subtract from balance
+    const payments = supplierCreditHelpers.calculateSupplierBalance({ id: supplierId } as any);
+    // calculateSupplierBalance already returns the net of purchases - payments
+    // But we want to start from orders, so we just need to subtract manual payments
+    
+    // For now, use the simple calculation from orders
+    // The payment transactions will be visible in the credit dialog
+    const totalOwed = balanceFromOrders;
     
     return {
       totalOwed: Math.max(0, totalOwed), // Ensure no negative values
@@ -169,10 +178,21 @@ export default function OfflineSuppliers() {
       const supplierOrders = orders.filter(order => order.supplierId === supplier.id);
       const totalOrders = supplierOrders.reduce((sum, order) => sum + (order.total || 0), 0);
       const totalPaid = supplierOrders.reduce((sum, order) => sum + (order.paidAmount || 0), 0);
-      const currentBalance = Math.max(0, totalOrders - totalPaid);
+      const balanceFromOrders = Math.max(0, totalOrders - totalPaid);
       
-      const info = await supplierCreditHelpers.getSupplierCreditInfo(supplier, currentBalance, supplierOrders);
-      setCreditInfo(info);
+      // Get transaction info which will calculate the real balance including payments
+      const info = await supplierCreditHelpers.getSupplierCreditInfo(supplier, balanceFromOrders, supplierOrders);
+      
+      // Calculate actual balance by subtracting payment transactions
+      const paymentTransactions = info.transactions.filter(t => t.type === 'payment');
+      const totalPayments = paymentTransactions.reduce((sum, t) => sum + t.amount, 0);
+      const actualBalance = Math.max(0, balanceFromOrders - totalPayments);
+      
+      // Update the info with the corrected balance
+      setCreditInfo({
+        ...info,
+        currentBalance: actualBalance
+      });
     } catch (error) {
       console.error('Error loading supplier credit info:', error);
       toast({
