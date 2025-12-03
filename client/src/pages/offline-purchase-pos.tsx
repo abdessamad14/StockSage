@@ -856,66 +856,86 @@ export default function OfflinePurchasePOS() {
                 </div>
               </div>
 
-              {/* Recent Orders List */}
-              <div className="bg-white rounded-xl shadow-sm border p-4">
-                <h3 className="font-bold text-lg mb-4">{t('recent_orders')}</h3>
-                <div className="space-y-2">
-                  {orders && orders.length > 0 ? (
-                    orders.slice(0, 10).map((order: any) => {
+              {/* Recent Orders Table */}
+              {orders && orders.length > 0 ? (
+                <div className="bg-white/95 rounded-2xl border border-blue-200 overflow-hidden shadow-lg">
+                  {/* Table Header */}
+                  <div className="bg-gradient-to-r from-blue-500/15 via-indigo-500/15 to-purple-500/15 border-b border-blue-200 px-4 py-3">
+                    <div className="grid grid-cols-6 gap-4 text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                      <div>{t('order_number')}</div>
+                      <div>{t('time')}</div>
+                      <div>{t('items')}</div>
+                      <div>{t('amount')}</div>
+                      <div>{t('payment')}</div>
+                      <div>{t('status')}</div>
+                    </div>
+                  </div>
+                  
+                  {/* Table Body */}
+                  <div className="divide-y divide-blue-100">
+                    {orders.slice(0, 10).map((order: any) => {
                       const supplier = suppliers.find(s => s.id === order.supplierId);
                       return (
-                        <div 
-                          key={order.id} 
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                        <div
+                          key={order.id}
+                          className="grid grid-cols-6 gap-4 px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors"
+                          onClick={() => loadPurchaseOrder(order)}
                         >
-                          <div 
-                            onClick={() => loadPurchaseOrder(order)}
-                            className="flex items-center gap-3 flex-1 cursor-pointer"
-                          >
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                              <Truck className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <div className="font-semibold text-sm">{order.orderNumber}</div>
-                              <div className="text-xs text-gray-600">
-                                {supplier?.name || t('no_supplier')} • {new Date(order.date).toLocaleDateString()}
-                              </div>
-                            </div>
+                          <div className="text-sm font-bold text-blue-600">
+                            {order.orderNumber}
                           </div>
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <div className="font-bold text-sm">{order.total?.toFixed(2)} DH</div>
-                              <div className={`text-xs px-2 py-1 rounded ${
-                                order.status === 'received' ? 'bg-green-100 text-green-700' :
-                                order.status === 'ordered' ? 'bg-blue-100 text-blue-700' :
-                                'bg-gray-100 text-gray-700'
-                              }`}>
-                                {order.status}
-                              </div>
+                          <div className="text-sm text-slate-800">
+                            {new Date(order.date).toLocaleTimeString('fr-FR', { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}
+                          </div>
+                          <div className="text-sm text-slate-800">
+                            {supplier?.name || t('no_supplier')}
+                          </div>
+                          <div className="text-sm font-semibold text-red-600">
+                            {order.total?.toFixed(0)} DH
+                          </div>
+                          <div className="text-sm text-slate-800 capitalize">
+                            {order.paymentMethod === 'cash' ? t('cash') : 
+                             order.paymentMethod === 'credit' ? t('credit') : 
+                             order.paymentMethod === 'card' ? t('card_payment') : order.paymentMethod || 'Espèces'}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className={`text-xs px-3 py-1 rounded-full font-semibold ${
+                                order.status === 'received' 
+                                  ? 'bg-green-100 text-green-700' 
+                                  : order.status === 'ordered' 
+                                    ? 'bg-blue-100 text-blue-700' 
+                                    : 'bg-gray-100 text-gray-700'
+                              }`}
+                            >
+                              {order.status === 'received' ? 'Payée' : order.status}
                             </div>
                             <Button
                               size="sm"
-                              variant="outline"
+                              variant="ghost"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 printPurchaseReceipt(order);
                               }}
-                              className="h-8 w-8 p-0"
+                              className="h-7 w-7 p-0 hover:bg-blue-100"
                             >
-                              <Printer className="h-4 w-4" />
+                              <Printer className="h-4 w-4 text-blue-600" />
                             </Button>
                           </div>
                         </div>
                       );
-                    })
-                  ) : (
-                    <div className="text-center py-8 text-gray-400">
-                      <Package className="h-12 w-12 mx-auto mb-2" />
-                      <p>{t('no_orders_created')}</p>
-                    </div>
-                  )}
+                    })}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-sm border p-8 text-center">
+                  <Package className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-gray-500">{t('no_orders_created')}</p>
+                </div>
+              )}
             </div>
           )}
         </div>
