@@ -4,13 +4,13 @@ Set fso = CreateObject("Scripting.FileSystemObject")
 ' Get the directory where this script is located
 scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
 
-' Create desktop shortcut
+' Create desktop shortcut that opens browser directly
 Set desktopShortcut = WshShell.CreateShortcut(WshShell.SpecialFolders("Desktop") & "\Igoodar.lnk")
-desktopShortcut.TargetPath = scriptDir & "\start.bat"
+desktopShortcut.TargetPath = scriptDir & "\open-igoodar.vbs"
 desktopShortcut.WorkingDirectory = scriptDir
 desktopShortcut.IconLocation = scriptDir & "\nodejs\node.exe,0"
-desktopShortcut.Description = "Start Igoodar POS System"
-desktopShortcut.WindowStyle = 7  ' Minimized
+desktopShortcut.Description = "Open Igoodar at http://localhost:5003"
+desktopShortcut.WindowStyle = 1  ' Normal (to show browser)
 desktopShortcut.Save
 
 ' Create Start Menu shortcuts
@@ -21,13 +21,13 @@ If Not fso.FolderExists(startMenuFolder) Then
     fso.CreateFolder(startMenuFolder)
 End If
 
-' Create Start Menu - Igoodar shortcut
+' Create Start Menu - Igoodar shortcut (opens browser directly)
 Set startMenuShortcut = WshShell.CreateShortcut(startMenuFolder & "\Igoodar.lnk")
-startMenuShortcut.TargetPath = scriptDir & "\start.bat"
+startMenuShortcut.TargetPath = scriptDir & "\open-igoodar.vbs"
 startMenuShortcut.WorkingDirectory = scriptDir
 startMenuShortcut.IconLocation = scriptDir & "\nodejs\node.exe,0"
-startMenuShortcut.Description = "Start Igoodar POS System"
-startMenuShortcut.WindowStyle = 7  ' Minimized
+startMenuShortcut.Description = "Open Igoodar at http://localhost:5003"
+startMenuShortcut.WindowStyle = 1  ' Normal
 startMenuShortcut.Save
 
 ' Create Start Menu - Debug Install shortcut

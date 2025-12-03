@@ -83,12 +83,28 @@ async function main() {
     console.log('🗃️  Initialising SQLite database...');
     await runCommand('node', ['scripts/init-sqlite.js', '--seed'], { cwd: projectRoot });
 
+    // Create desktop shortcuts automatically (Windows only)
+    if (process.platform === 'win32') {
+      console.log('\n🔗 Creating desktop shortcuts...');
+      try {
+        // Use cscript to run VBScript silently (no admin required)
+        await runCommand('cscript', ['//Nologo', 'create-shortcuts.vbs'], { cwd: projectRoot });
+        console.log('✅ Desktop shortcut created successfully!');
+        console.log('   → Look for "Igoodar" icon on your desktop');
+      } catch (error) {
+        console.log('⚠️  Could not create shortcuts automatically');
+        console.log('   → Run create-shortcuts.vbs manually after installation');
+      }
+    }
+
     console.log('\n✅ StockSage is ready!');
     console.log('   Default user credentials:');
     console.log('     • Admin - Username: admin, Password: admin123, PIN: 1234');
     console.log('     • Cashier - Username: cashier, Password: cashier123, PIN: 5678');
     console.log('     • Tenant ID: tenant_1');
-    console.log('\n   Start the application with: npm start');
+    console.log('\n   Start the application:');
+    console.log('     • Double-click "Igoodar" desktop icon');
+    console.log('     • Or run: npm start');
   } catch (error) {
     console.error('\n❌ Setup failed:', error.message || error);
     process.exit(1);
