@@ -120,6 +120,9 @@ export default function OfflinePOS() {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('percentage');
   const [barcodeBuffer, setBarcodeBuffer] = useState('');
+  const [dateFilter, setDateFilter] = useState<string>('today');
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
   const [lastKeyTime, setLastKeyTime] = useState(Date.now());
   const [rightSidebarView, setRightSidebarView] = useState<'orders' | 'products'>('orders');
   const [todaysOrders, setTodaysOrders] = useState<OfflineSale[]>([]);
@@ -156,6 +159,86 @@ export default function OfflinePOS() {
       })
       .slice(0, 8);
   }, [quickSearchTerm, products]);
+
+  // Filter orders by date
+  const filteredOrders = useMemo(() => {
+    if (!todaysOrders) return [];
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    return todaysOrders.filter((order: OfflineSale) => {
+      const orderDate = new Date(order.date);
+      const orderDay = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+
+      switch (dateFilter) {
+        case 'today':
+          return orderDay.getTime() === today.getTime();
+        
+        case 'yesterday':
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          return orderDay.getTime() === yesterday.getTime();
+        
+        case 'this_week':
+          const startOfWeek = new Date(today);
+          startOfWeek.setDate(today.getDate() - today.getDay());
+          return orderDay >= startOfWeek;
+        
+        case 'last_week':
+          const startOfLastWeek = new Date(today);
+          startOfLastWeek.setDate(today.getDate() - today.getDay() - 7);
+          const endOfLastWeek = new Date(startOfLastWeek);
+          endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
+          return orderDay >= startOfLastWeek && orderDay <= endOfLastWeek;
+        
+        case 'this_month':
+          return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+        
+        case 'last_month':
+          const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          return orderDate.getMonth() === lastMonth.getMonth() && orderDate.getFullYear() === lastMonth.getFullYear();
+        
+        case 'last_3_months':
+          const threeMonthsAgo = new Date(now);
+          threeMonthsAgo.setMonth(now.getMonth() - 3);
+          return orderDate >= threeMonthsAgo;
+        
+        case 'this_year':
+          return orderDate.getFullYear() === now.getFullYear();
+        
+        case 'custom':
+          if (!customStartDate || !customEndDate) return true;
+          const start = new Date(customStartDate);
+          const end = new Date(customEndDate);
+          end.setHours(23, 59, 59, 999); // Include full end day
+          return orderDate >= start && orderDate <= end;
+        
+        default:
+          return true;
+      }
+    });
+  }, [todaysOrders, dateFilter, customStartDate, customEndDate]);
+
+  // Calculate turnover stats from filtered orders
+  const filteredTurnover = useMemo(() => {
+    const total = filteredOrders.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const paid = filteredOrders
+      .filter(sale => sale.paymentMethod !== 'credit' && sale.paidAmount >= sale.totalAmount)
+      .reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const credit = filteredOrders
+      .filter(sale => sale.paymentMethod === 'credit')
+      .reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const unpaid = total - paid - credit;
+    
+    return {
+      total,
+      paid,
+      unpaid,
+      credit,
+      ordersCount: filteredOrders.length
+    };
+  }, [filteredOrders]);
 
   // Function to refresh product stocks from primary warehouse
   const refreshProductStocks = async (productsData: OfflineProduct[], locations: OfflineStockLocation[]) => {
@@ -325,44 +408,14 @@ export default function OfflinePOS() {
     }
   };
 
-  // Load today's orders and calculate turnover
+  // Load all orders (not just today's) for filtering
   const loadTodaysOrders = async () => {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
       const allSales = await databaseSalesStorage.getAll();
       console.log('All sales from database:', allSales);
       
-      const todaysSales = allSales.filter(sale => {
-        const saleDate = new Date(sale.date);
-        return saleDate >= today && saleDate < tomorrow;
-      });
-      
-      console.log('Today\'s sales:', todaysSales);
-      console.log('Sample sale items:', todaysSales[0]?.items);
-      
-      setTodaysOrders(todaysSales);
-      
-      // Calculate turnover statistics
-      const total = todaysSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
-      const paid = todaysSales
-        .filter(sale => sale.paymentMethod !== 'credit' && sale.paidAmount >= sale.totalAmount)
-        .reduce((sum, sale) => sum + sale.totalAmount, 0);
-      const credit = todaysSales
-        .filter(sale => sale.paymentMethod === 'credit')
-        .reduce((sum, sale) => sum + sale.totalAmount, 0);
-      const unpaid = total - paid - credit;
-      
-      setTodaysTurnover({
-        total,
-        paid,
-        unpaid,
-        credit,
-        ordersCount: todaysSales.length
-      });
+      // Store all orders, filtering will happen in useMemo
+      setTodaysOrders(allSales);
     } catch (error) {
       console.error('Error loading today\'s orders:', error);
     }
@@ -1947,19 +2000,19 @@ export default function OfflinePOS() {
           {rightSidebarView === 'orders' && (
             <div className="mt-4 grid grid-cols-4 gap-3">
               {[{
-                value: todaysTurnover.ordersCount,
+                value: filteredTurnover.ordersCount,
                 label: t('offline_pos_orders_stat_label'),
                 gradient: 'from-[#3a86ff] via-[#4cc9f0] to-[#4895ef]'
               }, {
-                value: `${todaysTurnover.total.toFixed(0)} DH`,
+                value: `${filteredTurnover.total.toFixed(0)} DH`,
                 label: t('offline_pos_total_revenue_label'),
                 gradient: 'from-[#0f866c] via-[#14b8a6] to-[#0ea5e9]'
               }, {
-                value: `${todaysTurnover.paid.toFixed(0)} DH`,
+                value: `${filteredTurnover.paid.toFixed(0)} DH`,
                 label: t('offline_pos_paid_stat_label'),
                 gradient: 'from-[#f4a259] via-[#f76c5e] to-[#ef476f]'
               }, {
-                value: `${todaysTurnover.credit.toFixed(0)} DH`,
+                value: `${filteredTurnover.credit.toFixed(0)} DH`,
                 label: t('offline_pos_credit_stat_label'),
                 gradient: 'from-[#ff9f1c] via-[#ff6d00] to-[#d00000]'
               }].map((card, index) => (
@@ -2179,8 +2232,111 @@ export default function OfflinePOS() {
             </>
           ) : (
             /* Orders View */
-            <div className="p-4">
-              {todaysOrders.length === 0 ? (
+            <div className="p-4 space-y-4">
+              {/* Date Filter */}
+              <div className="bg-white rounded-xl shadow-sm border p-4">
+                <h3 className="font-bold text-sm mb-3 text-slate-700">Filtrer par date</h3>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'today' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('today')}
+                    className="text-xs"
+                  >
+                    Aujourd'hui
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'yesterday' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('yesterday')}
+                    className="text-xs"
+                  >
+                    Hier
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'this_week' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('this_week')}
+                    className="text-xs"
+                  >
+                    Cette semaine
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'last_week' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('last_week')}
+                    className="text-xs"
+                  >
+                    Semaine dernière
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'this_month' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('this_month')}
+                    className="text-xs"
+                  >
+                    Ce mois
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'last_month' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('last_month')}
+                    className="text-xs"
+                  >
+                    Mois dernier
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'last_3_months' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('last_3_months')}
+                    className="text-xs"
+                  >
+                    3 derniers mois
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'this_year' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('this_year')}
+                    className="text-xs"
+                  >
+                    Cette année
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'custom' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('custom')}
+                    className="text-xs"
+                  >
+                    Personnalisé
+                  </Button>
+                </div>
+                
+                {/* Custom Date Range */}
+                {dateFilter === 'custom' && (
+                  <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t">
+                    <div>
+                      <label className="text-xs text-slate-600 mb-1 block">Date de début</label>
+                      <Input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-600 mb-1 block">Date de fin</label>
+                      <Input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {filteredOrders.length === 0 ? (
                 <div className="text-center py-16 text-[#0f866c] bg-white/80 border border-[#f4c36a]/40 rounded-2xl">
                   <Clock className="h-16 w-16 mx-auto mb-4 text-[#f4a259]" />
                   <h3 className="text-lg font-semibold mb-2">{t('offline_pos_no_orders_today_title')}</h3>
@@ -2202,7 +2358,7 @@ export default function OfflinePOS() {
                   
                   {/* Table Body */}
                   <div className="divide-y divide-[#f4c36a]/30">
-                    {todaysOrders.map((order) => (
+                    {filteredOrders.map((order) => (
                       <div
                         key={order.id}
                         className="grid grid-cols-6 gap-4 px-4 py-3 hover:bg-[#fff4e3] cursor-pointer transition-colors"
