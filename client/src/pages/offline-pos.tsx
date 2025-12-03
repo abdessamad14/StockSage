@@ -42,7 +42,8 @@ import {
   BarChart3,
   FileText,
   Warehouse,
-  ShoppingBag
+  ShoppingBag,
+  Info
 } from 'lucide-react';
 
 // Import offline storage and types
@@ -147,6 +148,10 @@ export default function OfflinePOS() {
   const [loadingCreditInfo, setLoadingCreditInfo] = useState(false);
   const [creditAmount, setCreditAmount] = useState(0);
   const [creditNote, setCreditNote] = useState('');
+
+  // Product info modal state
+  const [productInfoOpen, setProductInfoOpen] = useState(false);
+  const [selectedProductInfo, setSelectedProductInfo] = useState<OfflineProduct | null>(null);
   const [quickSearchTerm, setQuickSearchTerm] = useState('');
 
   const quickSearchResults = useMemo(() => {
@@ -1483,6 +1488,16 @@ export default function OfflinePOS() {
                     </td>
                     <td className="px-2 py-2">
                       <div className="font-medium text-sm truncate flex items-center gap-1">
+                        <button
+                          onClick={() => {
+                            setSelectedProductInfo(item.product);
+                            setProductInfoOpen(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 flex-shrink-0"
+                          title={t('view_product_info')}
+                        >
+                          <Info className="w-4 h-4" />
+                        </button>
                         {item.product.name}
                         {item.unitPrice < item.product.costPrice && (
                           <span
@@ -2729,6 +2744,92 @@ export default function OfflinePOS() {
         onConfirm={handleWeighableConfirm}
       />
     )}
+
+    {/* Product Info Modal */}
+    <Dialog open={productInfoOpen} onOpenChange={setProductInfoOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold flex items-center gap-2">
+            <Package className="w-5 h-5" />
+            {selectedProductInfo?.name}
+          </DialogTitle>
+        </DialogHeader>
+        {selectedProductInfo && (
+          <div className="space-y-4">
+            {/* Barcode */}
+            {selectedProductInfo.barcode && (
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-sm text-gray-600">{t('barcode')}:</span>
+                <span className="font-mono font-medium">{selectedProductInfo.barcode}</span>
+              </div>
+            )}
+
+            {/* Cost Price */}
+            <div className="flex justify-between items-center py-2 border-b">
+              <span className="text-sm text-gray-600">{t('cost_price')}:</span>
+              <span className="font-semibold">{selectedProductInfo.costPrice.toFixed(2)} DH</span>
+            </div>
+
+            {/* Selling Price */}
+            <div className="flex justify-between items-center py-2 border-b bg-blue-50 px-3 rounded">
+              <span className="text-sm font-medium text-blue-900">{t('selling_price')}:</span>
+              <div className="text-right">
+                <div className="font-bold text-lg text-blue-900">{selectedProductInfo.sellingPrice.toFixed(2)} DH</div>
+                <div className="text-xs text-green-600">
+                  {t('margin')}: {((selectedProductInfo.sellingPrice - selectedProductInfo.costPrice) / selectedProductInfo.costPrice * 100).toFixed(1)}%
+                  ({(selectedProductInfo.sellingPrice - selectedProductInfo.costPrice).toFixed(2)} DH)
+                </div>
+              </div>
+            </div>
+
+            {/* Semi-Wholesale Price */}
+            {selectedProductInfo.semiWholesalePrice && selectedProductInfo.semiWholesalePrice > 0 && (
+              <div className="flex justify-between items-center py-2 border-b bg-amber-50 px-3 rounded">
+                <span className="text-sm font-medium text-amber-900">{t('semi_wholesale_price')}:</span>
+                <div className="text-right">
+                  <div className="font-bold text-lg text-amber-900">{selectedProductInfo.semiWholesalePrice.toFixed(2)} DH</div>
+                  <div className="text-xs text-green-600">
+                    {t('margin')}: {((selectedProductInfo.semiWholesalePrice - selectedProductInfo.costPrice) / selectedProductInfo.costPrice * 100).toFixed(1)}%
+                    ({(selectedProductInfo.semiWholesalePrice - selectedProductInfo.costPrice).toFixed(2)} DH)
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Wholesale Price */}
+            {selectedProductInfo.wholesalePrice && selectedProductInfo.wholesalePrice > 0 && (
+              <div className="flex justify-between items-center py-2 border-b bg-purple-50 px-3 rounded">
+                <span className="text-sm font-medium text-purple-900">{t('wholesale_price')}:</span>
+                <div className="text-right">
+                  <div className="font-bold text-lg text-purple-900">{selectedProductInfo.wholesalePrice.toFixed(2)} DH</div>
+                  <div className="text-xs text-green-600">
+                    {t('margin')}: {((selectedProductInfo.wholesalePrice - selectedProductInfo.costPrice) / selectedProductInfo.costPrice * 100).toFixed(1)}%
+                    ({(selectedProductInfo.wholesalePrice - selectedProductInfo.costPrice).toFixed(2)} DH)
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Warning if any price is below cost */}
+            {(selectedProductInfo.sellingPrice < selectedProductInfo.costPrice || 
+              (selectedProductInfo.semiWholesalePrice && selectedProductInfo.semiWholesalePrice < selectedProductInfo.costPrice) ||
+              (selectedProductInfo.wholesalePrice && selectedProductInfo.wholesalePrice < selectedProductInfo.costPrice)) && (
+              <div className="bg-red-50 border border-red-200 rounded p-3">
+                <div className="flex items-center gap-2 text-red-700">
+                  <span className="text-xl">⚠️</span>
+                  <span className="text-sm font-medium">{t('price_below_cost_warning')}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setProductInfoOpen(false)}>
+            {t('close')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     {/* Delete Confirmation Dialog */}
     <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

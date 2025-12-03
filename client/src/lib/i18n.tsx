@@ -79,6 +79,12 @@ const frTranslations: TranslationDictionary = {
   'filters': 'Filtres',
   'all_categories': 'Toutes les catégories',
   'price': 'Prix',
+  'semi_wholesale_price': 'Prix semi-gros',
+  'wholesale_price': 'Prix gros',
+  'margin': 'Marge',
+  'view_product_info': 'Voir les informations du produit',
+  'price_below_cost_warning': 'Attention : Prix inférieur au coût d\'achat',
+  'close': 'Fermer',
   
   // Barcode scanner
   'scan_code': 'Scanner un code-barres',
@@ -908,6 +914,12 @@ const arTranslations: TranslationDictionary = {
   'filters': 'تصفية',
   'all_categories': 'جميع الفئات',
   'price': 'السعر',
+  'semi_wholesale_price': 'سعر النصف جملة',
+  'wholesale_price': 'سعر الجملة',
+  'margin': 'هامش الربح',
+  'view_product_info': 'عرض معلومات المنتج',
+  'price_below_cost_warning': 'تحذير: السعر أقل من تكلفة الشراء',
+  'close': 'إغلاق',
   
   // Barcode scanner
   'scan_code': 'مسح الباركود',
