@@ -1,0 +1,13 @@
+[
+  {
+    "id": "credit-1764784305638-b2d3fbn2o",
+    "customerId": 8,
+    "amount": 56,
+    "saleId": "64",
+    "type": "credit_sale",
+    "description": "Credit sale - Invoice #64",
+    "balanceAfter": 2160,
+    "date": "2025-12-03T17:51:45.637Z",
+    "createdAt": "2025-12-03T17:51:45.638Z"
+  }
+]
