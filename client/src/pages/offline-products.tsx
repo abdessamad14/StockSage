@@ -343,6 +343,7 @@ export default function OfflineProducts() {
         semiWholesalePrice: data.semiWholesalePrice ?? undefined,
         wholesalePrice: data.wholesalePrice ?? undefined,
         image: selectedImage ?? undefined,
+        weighable: data.weighable ?? false, // Explicitly include weighable field
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
@@ -391,6 +392,7 @@ export default function OfflineProducts() {
         semiWholesalePrice: data.semiWholesalePrice ?? undefined,
         wholesalePrice: data.wholesalePrice ?? undefined,
         image: selectedImage ?? undefined,
+        weighable: data.weighable ?? false, // Explicitly include weighable field
         updatedAt: new Date().toISOString()
       });
 

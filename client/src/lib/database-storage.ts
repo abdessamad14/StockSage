@@ -343,6 +343,7 @@ export const databaseProductStorage = {
         minStockLevel: product.minStockLevel,
         unit: product.unit,
         image: product.image,
+        weighable: product.weighable ?? false, // Include weighable field
         active: product.active !== false
       })
     });
@@ -361,6 +362,7 @@ export const databaseProductStorage = {
       minStockLevel: created.minStockLevel ?? undefined,
       unit: created.unit ?? undefined,
       image: created.image ?? undefined,
+      weighable: created.weighable ?? false, // Include weighable in response
       active: created.active !== false,
       createdAt: created.createdAt,
       updatedAt: created.updatedAt
@@ -505,6 +507,7 @@ export const databaseProductStorage = {
       minStockLevel: updated.minStockLevel ?? undefined,
       unit: updated.unit ?? undefined,
       image: updated.image ?? undefined,
+      weighable: updated.weighable ?? false, // Include weighable in response
       active: updated.active !== false,
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt
