@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { ThermalReceiptPrinter, ReceiptData } from '@/lib/thermal-receipt-printer';
 import { useOfflineAuth } from '@/hooks/use-offline-auth';
+import { useOfflineSales } from '@/hooks/use-offline-sales';
 import { useI18n } from '@/lib/i18n';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { 
@@ -81,7 +83,8 @@ interface NumericInputState {
 
 export default function OfflinePOS() {
   const { toast } = useToast();
-  const { user, logout } = useOfflineAuth();
+  const { user, logout, canDeleteSales } = useOfflineAuth();
+  const { deleteSale } = useOfflineSales();
   const { t } = useI18n();
   
   // State variables
@@ -123,6 +126,8 @@ export default function OfflinePOS() {
   const [dateFilter, setDateFilter] = useState<string>('today');
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<OfflineSale | null>(null);
   const [lastKeyTime, setLastKeyTime] = useState(Date.now());
   const [rightSidebarView, setRightSidebarView] = useState<'orders' | 'products'>('orders');
   const [todaysOrders, setTodaysOrders] = useState<OfflineSale[]>([]);
@@ -790,6 +795,30 @@ export default function OfflinePOS() {
       title: t('product_added'),
       description: t('product_added_to_cart', { name: product.name })
     });
+  };
+
+  const handleDeleteSaleOrder = async () => {
+    if (!orderToDelete) return;
+
+    try {
+      await deleteSale(orderToDelete.id);
+      await loadTodaysOrders();
+      
+      toast({
+        title: t('success'),
+        description: t('order_deleted_successfully')
+      });
+      
+      setDeleteConfirmOpen(false);
+      setOrderToDelete(null);
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      toast({
+        title: t('error'),
+        description: t('failed_to_delete_order'),
+        variant: 'destructive'
+      });
+    }
   };
 
   const formatPriceValue = (value?: number | null) => {
@@ -2339,13 +2368,14 @@ export default function OfflinePOS() {
                 <div className="bg-white/95 rounded-2xl border border-[#f4c36a]/40 overflow-hidden shadow-lg">
                   {/* Table Header */}
                   <div className="bg-gradient-to-r from-[#0f866c]/15 via-[#f4a259]/15 to-[#c1121f]/15 border-b border-[#f4c36a]/30 px-4 py-3">
-                    <div className="grid grid-cols-6 gap-4 text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                    <div className="grid grid-cols-7 gap-4 text-xs font-semibold text-slate-700 uppercase tracking-wide">
                       <div>{t('pos_order_number')}</div>
                       <div>{t('time')}</div>
                       <div>{t('items')}</div>
                       <div>{t('amount')}</div>
                       <div>{t('payment')}</div>
                       <div>{t('status')}</div>
+                      <div>{t('actions')}</div>
                     </div>
                   </div>
                   
@@ -2354,10 +2384,12 @@ export default function OfflinePOS() {
                     {filteredOrders.map((order) => (
                       <div
                         key={order.id}
-                        className="grid grid-cols-6 gap-4 px-4 py-3 hover:bg-[#fff4e3] cursor-pointer transition-colors"
-                        onClick={() => loadOrderIntoCart(order)}
+                        className="grid grid-cols-7 gap-4 px-4 py-3 hover:bg-[#fff4e3] transition-colors"
                       >
-                        <div className="text-sm font-bold text-[#0f866c]">
+                        <div 
+                          className="text-sm font-bold text-[#0f866c] cursor-pointer"
+                          onClick={() => loadOrderIntoCart(order)}
+                        >
                           #{order.id}
                         </div>
                         <div className="text-sm text-slate-800">
@@ -2392,6 +2424,22 @@ export default function OfflinePOS() {
                             {order.paymentMethod === 'credit' ? t('credit') :
                              order.paidAmount >= order.totalAmount ? t('payment_status_paid') : t('payment_status_unpaid')}
                           </Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {canDeleteSales && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOrderToDelete(order);
+                                setDeleteConfirmOpen(true);
+                              }}
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -2679,6 +2727,25 @@ export default function OfflinePOS() {
         onConfirm={handleWeighableConfirm}
       />
     )}
+
+    {/* Delete Confirmation Dialog */}
+    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('confirm_delete')}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t('confirm_delete_order_message')}
+            {orderToDelete && ` #${orderToDelete.id}`}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDeleteSaleOrder} className="bg-red-600 hover:bg-red-700">
+            {t('delete')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }

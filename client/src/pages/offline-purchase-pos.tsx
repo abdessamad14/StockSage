@@ -4,6 +4,7 @@ import { useOfflineProducts } from "@/hooks/use-offline-products";
 import { useOfflinePurchaseOrders } from "@/hooks/use-offline-purchase-orders";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
+import { useOfflineAuth } from "@/hooks/use-offline-auth";
 import { ThermalReceiptPrinter } from '@/lib/thermal-receipt-printer';
 import { 
   OfflineSupplier, 
@@ -26,6 +27,7 @@ import {
   DialogTitle,
   DialogFooter
 } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { 
   Search,
   ShoppingCart,
@@ -56,9 +58,10 @@ interface PurchaseCartItem {
 export default function OfflinePurchasePOS() {
   const { suppliers, loading: suppliersLoading } = useOfflineSuppliers();
   const { products, loading: productsLoading } = useOfflineProducts();
-  const { orders, createOrder, generateOrderNumber } = useOfflinePurchaseOrders();
+  const { orders, createOrder, deleteOrder, generateOrderNumber } = useOfflinePurchaseOrders();
   const { toast } = useToast();
   const { t } = useI18n();
+  const { canDeleteSales } = useOfflineAuth();
 
   // State
   const [selectedSupplier, setSelectedSupplier] = useState<OfflineSupplier | null>(null);
@@ -77,6 +80,8 @@ export default function OfflinePurchasePOS() {
   const [dateFilter, setDateFilter] = useState<string>('today');
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<any>(null);
 
   // Load stock locations
   useEffect(() => {
@@ -232,6 +237,30 @@ export default function OfflinePurchasePOS() {
       description: `${product.name} ${t('added_to_cart')}`,
       duration: 1000
     });
+  };
+
+  // Handle delete purchase order
+  const handleDeletePurchaseOrder = async () => {
+    if (!orderToDelete) return;
+
+    try {
+      await deleteOrder(orderToDelete.id);
+      
+      toast({
+        title: t('success'),
+        description: t('order_deleted_successfully')
+      });
+      
+      setDeleteConfirmOpen(false);
+      setOrderToDelete(null);
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      toast({
+        title: t('error'),
+        description: t('failed_to_delete_order'),
+        variant: 'destructive'
+      });
+    }
   };
 
   // Update cart item quantity
@@ -1095,13 +1124,14 @@ export default function OfflinePurchasePOS() {
                 <div className="bg-white/95 rounded-2xl border border-blue-200 overflow-hidden shadow-lg">
                   {/* Table Header */}
                   <div className="bg-gradient-to-r from-blue-500/15 via-indigo-500/15 to-purple-500/15 border-b border-blue-200 px-4 py-3">
-                    <div className="grid grid-cols-6 gap-4 text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                    <div className="grid grid-cols-7 gap-4 text-xs font-semibold text-slate-700 uppercase tracking-wide">
                       <div>{t('order_number')}</div>
                       <div>{t('time')}</div>
                       <div>{t('items')}</div>
                       <div>{t('amount')}</div>
                       <div>{t('payment')}</div>
                       <div>{t('status')}</div>
+                      <div>{t('actions')}</div>
                     </div>
                   </div>
                   
@@ -1112,10 +1142,12 @@ export default function OfflinePurchasePOS() {
                       return (
                         <div
                           key={order.id}
-                          className="grid grid-cols-6 gap-4 px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors"
-                          onClick={() => loadPurchaseOrder(order)}
+                          className="grid grid-cols-7 gap-4 px-4 py-3 hover:bg-blue-50 transition-colors"
                         >
-                          <div className="text-sm font-bold text-blue-600">
+                          <div 
+                            className="text-sm font-bold text-blue-600 cursor-pointer"
+                            onClick={() => loadPurchaseOrder(order)}
+                          >
                             {order.orderNumber}
                           </div>
                           <div className="text-sm text-slate-800">
@@ -1160,6 +1192,22 @@ export default function OfflinePurchasePOS() {
                             >
                               <Printer className="h-4 w-4 text-blue-600" />
                             </Button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {canDeleteSales && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOrderToDelete(order);
+                                  setDeleteConfirmOpen(true);
+                                }}
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       );
@@ -1381,6 +1429,25 @@ export default function OfflinePurchasePOS() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('confirm_delete')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('confirm_delete_order_message')}
+              {orderToDelete && ` ${orderToDelete.orderNumber}`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeletePurchaseOrder} className="bg-red-600 hover:bg-red-700">
+              {t('delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
