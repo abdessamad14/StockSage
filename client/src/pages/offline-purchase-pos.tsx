@@ -713,12 +713,6 @@ export default function OfflinePurchasePOS() {
               >
                 {t('clear_cart')}
               </Button>
-              <Button
-                onClick={() => window.location.href = '/orders-history'}
-                variant="outline"
-              >
-                {t('orders')}
-              </Button>
             </div>
           </div>
         </div>
