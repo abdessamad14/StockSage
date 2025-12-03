@@ -2228,7 +2228,7 @@ export default function OfflinePOS() {
             <div className="p-4 space-y-4">
               {/* Date Filter */}
               <div className="bg-white rounded-xl shadow-sm border p-4">
-                <h3 className="font-bold text-sm mb-3 text-slate-700">Filtrer par date</h3>
+                <h3 className="font-bold text-sm mb-3 text-slate-700">{t('filter_by_date')}</h3>
                 <div className="flex flex-wrap gap-2 mb-3">
                   <Button
                     size="sm"
