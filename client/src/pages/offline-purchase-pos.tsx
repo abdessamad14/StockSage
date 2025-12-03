@@ -352,7 +352,22 @@ export default function OfflinePurchasePOS() {
         description: t('purchase_order_created')
       });
 
-      setLastOrder(newOrder);
+      // Store complete order details for receipt before clearing
+      setLastOrder({
+        ...newOrder,
+        supplier: selectedSupplier,
+        items: cart.map(item => ({
+          productName: item.product.name,
+          quantity: item.quantity,
+          unitCost: item.unitCost,
+          totalCost: item.totalCost
+        })),
+        subtotal: subtotal,
+        total: total,
+        paymentMethod: paymentMethod,
+        paidAmount: paidAmount
+      });
+      
       setIsCheckoutOpen(false);
       setIsReceiptOpen(true);
       clearCart();
@@ -915,17 +930,21 @@ export default function OfflinePurchasePOS() {
               
               <div>
                 <h4 className="font-medium mb-2">{t('supplier')}:</h4>
-                <p className="text-sm">{selectedSupplier?.name || t('no_supplier')}</p>
+                <p className="text-sm">{lastOrder.supplier?.name || t('no_supplier')}</p>
               </div>
 
               <div>
                 <h4 className="font-medium mb-2">{t('items')}:</h4>
-                {cart.map(item => (
-                  <div key={item.product.id} className="flex justify-between text-sm mb-1">
-                    <span>{item.product.name} x{item.quantity}</span>
-                    <span>{item.totalCost.toFixed(2)} DH</span>
-                  </div>
-                ))}
+                {lastOrder.items && lastOrder.items.length > 0 ? (
+                  lastOrder.items.map((item: any, index: number) => (
+                    <div key={index} className="flex justify-between text-sm mb-1">
+                      <span>{item.productName} x{item.quantity}</span>
+                      <span>{item.totalCost.toFixed(2)} DH</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-400">{t('no_items')}</p>
+                )}
               </div>
               
               <Separator />
@@ -933,26 +952,26 @@ export default function OfflinePurchasePOS() {
               <div className="space-y-1">
                 <div className="flex justify-between">
                   <span>{t('subtotal')}:</span>
-                  <span>{subtotal.toFixed(2)} DH</span>
+                  <span>{(lastOrder.subtotal || 0).toFixed(2)} DH</span>
                 </div>
                 <div className="flex justify-between font-bold">
                   <span>{t('total')}:</span>
-                  <span>{total.toFixed(2)} DH</span>
+                  <span>{(lastOrder.total || 0).toFixed(2)} DH</span>
                 </div>
                 <div className="flex justify-between">
                   <span>{t('payment_method')}:</span>
-                  <span>{paymentMethod}</span>
+                  <span>{lastOrder.paymentMethod || 'credit'}</span>
                 </div>
-                {paymentMethod !== 'credit' && (
+                {lastOrder.paymentMethod !== 'credit' && (
                   <>
                     <div className="flex justify-between">
                       <span>{t('paid')}:</span>
-                      <span>{paidAmount.toFixed(2)} DH</span>
+                      <span>{(lastOrder.paidAmount || 0).toFixed(2)} DH</span>
                     </div>
-                    {paidAmount < total && (
+                    {lastOrder.paidAmount < lastOrder.total && (
                       <div className="flex justify-between text-red-600">
                         <span>{t('remaining')}:</span>
-                        <span>{(total - paidAmount).toFixed(2)} DH</span>
+                        <span>{(lastOrder.total - lastOrder.paidAmount).toFixed(2)} DH</span>
                       </div>
                     )}
                   </>
