@@ -560,7 +560,7 @@ export default function OfflineProducts() {
     }
   };
 
-  const openProductDialog = (product?: OfflineProduct) => {
+  const openProductDialog = async (product?: OfflineProduct) => {
     if (product) {
       setEditingProduct(product);
       setSelectedImage(product.image || null);
@@ -579,8 +579,24 @@ export default function OfflineProducts() {
         }
       }
       
-      // Get actual warehouse stock quantity instead of product.quantity
-      const actualQuantity = getWarehouseStock(product.id);
+      // CRITICAL: Fetch fresh stock quantity directly from database, not cached state
+      let actualQuantity = 0;
+      if (primaryWarehouse) {
+        try {
+          const freshStock = await offlineProductStockStorage.getByProductAndLocation(
+            product.id,
+            String(primaryWarehouse.id)
+          );
+          actualQuantity = freshStock?.quantity || 0;
+          console.log(`✅ Fresh stock for ${product.name}: ${actualQuantity}`);
+        } catch (error) {
+          console.error('Error fetching fresh stock:', error);
+          // Fallback to cached value
+          actualQuantity = getWarehouseStock(product.id);
+        }
+      } else {
+        actualQuantity = getWarehouseStock(product.id);
+      }
       
       productForm.reset({
         name: product.name,
@@ -591,7 +607,7 @@ export default function OfflineProducts() {
         sellingPrice: product.sellingPrice,
         semiWholesalePrice: product.semiWholesalePrice || 0,
         wholesalePrice: product.wholesalePrice || 0,
-        quantity: actualQuantity, // Use warehouse stock instead of product.quantity
+        quantity: actualQuantity, // Use FRESH warehouse stock from database
         minStockLevel: product.minStockLevel || 0,
         unit: product.unit || "",
         image: product.image || "",
