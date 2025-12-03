@@ -649,14 +649,41 @@ router.delete('/orders/:id', async (req, res) => {
 });
 
 // Order Items API
-router.get('/order-items/:orderId', async (req, res) => {
+router.get('/order-items', async (req, res) => {
+  try {
+    const allItems = await db.select().from(orderItems);
+    res.json(allItems);
+  } catch (error) {
+    console.error('Error fetching all order items:', error);
+    res.status(500).json({ error: 'Failed to fetch order items' });
+  }
+});
+
+router.get('/order-items/order/:orderId', async (req, res) => {
   try {
     const { orderId } = req.params;
+    console.log('Fetching order items for order ID:', orderId);
     const items = await db.select().from(orderItems).where(eq(orderItems.orderId, parseInt(orderId)));
+    console.log('Found items:', items);
     res.json(items);
   } catch (error) {
     console.error('Error fetching order items:', error);
     res.status(500).json({ error: 'Failed to fetch order items' });
+  }
+});
+
+router.post('/order-items', async (req, res) => {
+  try {
+    console.log('Creating order item:', req.body);
+    const newItem = await db.insert(orderItems).values({
+      tenantId: 'default',
+      ...req.body
+    }).returning();
+    console.log('Order item created:', newItem[0]);
+    res.json(newItem[0]);
+  } catch (error) {
+    console.error('Error creating order item:', error);
+    res.status(500).json({ error: 'Failed to create order item' });
   }
 });
 

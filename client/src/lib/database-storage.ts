@@ -1741,32 +1741,75 @@ export const offlineInventoryCountStorage = {
   }
 };
 
-// Local storage for purchase order items (fallback when API not available)
+// Database storage for purchase order items with API backend
 export const offlinePurchaseOrderItemStorage = {
   async getAll(): Promise<OfflineOrderItem[]> {
     try {
-      const items = JSON.parse(localStorage.getItem('orderItems') || '[]');
+      const apiBase = getApiBase();
+      const response = await fetch(`${apiBase}/order-items`);
+      if (!response.ok) throw new Error('Failed to fetch order items');
+      const items = await response.json();
       return items;
     } catch (error) {
-      console.error('Error fetching order items from localStorage:', error);
-      return [];
+      console.error('Error fetching order items from API:', error);
+      // Fallback to localStorage
+      try {
+        const items = JSON.parse(localStorage.getItem('orderItems') || '[]');
+        return items;
+      } catch (e) {
+        return [];
+      }
     }
   },
 
   async getByOrderId(orderId: string): Promise<OfflineOrderItem[]> {
     try {
-      const allItems = await this.getAll();
-      return allItems.filter(item => item.orderId === orderId);
+      console.log('Fetching items for order ID:', orderId);
+      const apiBase = getApiBase();
+      const response = await fetch(`${apiBase}/order-items/order/${orderId}`);
+      if (!response.ok) {
+        console.warn('API request failed, falling back to localStorage');
+        throw new Error('Failed to fetch order items');
+      }
+      const items = await response.json();
+      console.log('Items fetched from API:', items);
+      return items;
     } catch (error) {
-      console.error('Error fetching order items by order ID:', error);
-      return [];
+      console.error('Error fetching order items by order ID from API:', error);
+      // Fallback to localStorage
+      try {
+        const allItems = await this.getAll();
+        const filtered = allItems.filter(item => String(item.orderId) === String(orderId));
+        console.log('Items fetched from localStorage:', filtered);
+        return filtered;
+      } catch (e) {
+        return [];
+      }
     }
   },
 
   async create(item: Omit<OfflineOrderItem, 'id'>): Promise<OfflineOrderItem> {
     try {
-      console.log('Creating order item in localStorage:', item);
+      console.log('Creating order item via API:', item);
       
+      const apiBase = getApiBase();
+      const response = await fetch(`${apiBase}/order-items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item)
+      });
+      
+      if (!response.ok) {
+        console.warn('API request failed, falling back to localStorage');
+        throw new Error('Failed to create order item');
+      }
+      
+      const newItem = await response.json();
+      console.log('Order item created successfully via API:', newItem);
+      return newItem;
+    } catch (error) {
+      console.error('Error creating order item via API, using localStorage:', error);
+      // Fallback to localStorage
       const allItems = await this.getAll();
       const newItem: OfflineOrderItem = {
         ...item,
@@ -1776,11 +1819,8 @@ export const offlinePurchaseOrderItemStorage = {
       allItems.push(newItem);
       localStorage.setItem('orderItems', JSON.stringify(allItems));
       
-      console.log('Order item created successfully:', newItem);
+      console.log('Order item created in localStorage:', newItem);
       return newItem;
-    } catch (error) {
-      console.error('Error creating order item:', error);
-      throw error;
     }
   },
 
