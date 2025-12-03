@@ -9,8 +9,38 @@ const router = express.Router();
 // Products API
 router.get('/products', async (req, res) => {
   try {
+    // Get all products
     const allProducts = await db.select().from(products);
-    res.json(allProducts);
+    
+    // Get primary warehouse
+    const primaryWarehouse = await db.select().from(stockLocations)
+      .where(eq(stockLocations.isPrimary, true))
+      .limit(1);
+    
+    if (primaryWarehouse.length > 0) {
+      const warehouseId = String(primaryWarehouse[0].id);
+      
+      // Get all stock records for primary warehouse
+      const stockRecords = await db.select().from(productStock)
+        .where(eq(productStock.locationId, warehouseId));
+      
+      // Create a map of productId -> stock quantity
+      const stockMap = new Map();
+      stockRecords.forEach(stock => {
+        stockMap.set(stock.productId, stock.quantity);
+      });
+      
+      // Merge stock quantities with products
+      const productsWithStock = allProducts.map(product => ({
+        ...product,
+        quantity: stockMap.get(product.id) ?? product.quantity ?? 0
+      }));
+      
+      res.json(productsWithStock);
+    } else {
+      // No primary warehouse, return products as-is
+      res.json(allProducts);
+    }
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ error: 'Failed to fetch products' });
