@@ -2375,7 +2375,9 @@ export default function OfflinePOS() {
                         <div className="text-sm text-slate-800 capitalize">
                           {order.paymentMethod === 'cash' ? t('cash') : 
                            order.paymentMethod === 'credit' ? t('credit') : 
-                           order.paymentMethod === 'card' ? t('card_payment') : order.paymentMethod}
+                           order.paymentMethod === 'card' ? t('card_payment') : 
+                           order.paymentMethod === 'bank_check' ? t('bank_check') : 
+                           order.paymentMethod}
                         </div>
                         <div>
                           <Badge 

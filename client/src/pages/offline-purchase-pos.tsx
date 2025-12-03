@@ -1133,7 +1133,9 @@ export default function OfflinePurchasePOS() {
                           <div className="text-sm text-slate-800 capitalize">
                             {order.paymentMethod === 'cash' ? t('cash') : 
                              order.paymentMethod === 'credit' ? t('credit') : 
-                             order.paymentMethod === 'card' ? t('card_payment') : order.paymentMethod || 'Espèces'}
+                             order.paymentMethod === 'card' ? t('card_payment') : 
+                             order.paymentMethod === 'bank_check' ? t('bank_check') : 
+                             order.paymentMethod || 'Espèces'}
                           </div>
                           <div className="flex items-center gap-2">
                             <div 
@@ -1336,7 +1338,12 @@ export default function OfflinePurchasePOS() {
                 </div>
                 <div className="flex justify-between">
                   <span>{t('payment_method')}:</span>
-                  <span>{lastOrder.paymentMethod || 'credit'}</span>
+                  <span>
+                    {lastOrder.paymentMethod === 'cash' ? t('cash') : 
+                     lastOrder.paymentMethod === 'credit' ? t('credit') : 
+                     lastOrder.paymentMethod === 'bank_check' ? t('bank_check') : 
+                     lastOrder.paymentMethod || 'credit'}
+                  </span>
                 </div>
                 {lastOrder.paymentMethod !== 'credit' && (
                   <>
