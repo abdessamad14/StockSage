@@ -2236,7 +2236,7 @@ export default function OfflinePOS() {
                     onClick={() => setDateFilter('today')}
                     className="text-xs"
                   >
-                    Aujourd'hui
+                    {t('filter_today')}
                   </Button>
                   <Button
                     size="sm"
@@ -2244,7 +2244,7 @@ export default function OfflinePOS() {
                     onClick={() => setDateFilter('yesterday')}
                     className="text-xs"
                   >
-                    Hier
+                    {t('filter_yesterday')}
                   </Button>
                   <Button
                     size="sm"
@@ -2252,7 +2252,7 @@ export default function OfflinePOS() {
                     onClick={() => setDateFilter('this_week')}
                     className="text-xs"
                   >
-                    Cette semaine
+                    {t('filter_this_week')}
                   </Button>
                   <Button
                     size="sm"
@@ -2260,7 +2260,7 @@ export default function OfflinePOS() {
                     onClick={() => setDateFilter('last_week')}
                     className="text-xs"
                   >
-                    Semaine dernière
+                    {t('filter_last_week')}
                   </Button>
                   <Button
                     size="sm"
@@ -2268,7 +2268,7 @@ export default function OfflinePOS() {
                     onClick={() => setDateFilter('this_month')}
                     className="text-xs"
                   >
-                    Ce mois
+                    {t('filter_this_month')}
                   </Button>
                   <Button
                     size="sm"
@@ -2276,7 +2276,7 @@ export default function OfflinePOS() {
                     onClick={() => setDateFilter('last_month')}
                     className="text-xs"
                   >
-                    Mois dernier
+                    {t('filter_last_month')}
                   </Button>
                   <Button
                     size="sm"
@@ -2284,7 +2284,7 @@ export default function OfflinePOS() {
                     onClick={() => setDateFilter('last_3_months')}
                     className="text-xs"
                   >
-                    3 derniers mois
+                    {t('filter_last_3_months')}
                   </Button>
                   <Button
                     size="sm"
@@ -2292,7 +2292,7 @@ export default function OfflinePOS() {
                     onClick={() => setDateFilter('this_year')}
                     className="text-xs"
                   >
-                    Cette année
+                    {t('filter_this_year')}
                   </Button>
                   <Button
                     size="sm"
@@ -2300,7 +2300,7 @@ export default function OfflinePOS() {
                     onClick={() => setDateFilter('custom')}
                     className="text-xs"
                   >
-                    Personnalisé
+                    {t('filter_custom')}
                   </Button>
                 </div>
                 
@@ -2308,7 +2308,7 @@ export default function OfflinePOS() {
                 {dateFilter === 'custom' && (
                   <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t">
                     <div>
-                      <label className="text-xs text-slate-600 mb-1 block">Date de début</label>
+                      <label className="text-xs text-slate-600 mb-1 block">{t('date_start')}</label>
                       <Input
                         type="date"
                         value={customStartDate}
@@ -2317,7 +2317,7 @@ export default function OfflinePOS() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-slate-600 mb-1 block">Date de fin</label>
+                      <label className="text-xs text-slate-600 mb-1 block">{t('date_end')}</label>
                       <Input
                         type="date"
                         value={customEndDate}
