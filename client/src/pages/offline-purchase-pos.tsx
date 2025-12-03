@@ -4,6 +4,7 @@ import { useOfflineProducts } from "@/hooks/use-offline-products";
 import { useOfflinePurchaseOrders } from "@/hooks/use-offline-purchase-orders";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
+import { ThermalReceiptPrinter } from '@/lib/thermal-receipt-printer';
 import { 
   OfflineSupplier, 
   OfflineProduct,
@@ -247,6 +248,59 @@ export default function OfflinePurchasePOS() {
         title: t('error'),
         description: t('failed_to_load_order'),
         variant: "destructive"
+      });
+    }
+  };
+
+  // Print purchase order receipt
+  const printPurchaseReceipt = async (order: any) => {
+    try {
+      // Get supplier info
+      const supplier = suppliers.find(s => s.id === order.supplierId);
+      
+      // Get order items
+      const orderItems = await offlinePurchaseOrderItemStorage.getByOrderId(order.id);
+      
+      // Format items for receipt
+      const items = [];
+      for (const item of orderItems) {
+        const product = products.find(p => String(p.id) === String(item.productId));
+        if (product) {
+          items.push({
+            name: product.name,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.totalPrice
+          });
+        }
+      }
+
+      const receiptData = {
+        invoiceNumber: order.orderNumber,
+        date: new Date(order.date),
+        items: items,
+        subtotal: order.total || 0,
+        discount: 0,
+        tax: 0,
+        total: order.total || 0,
+        paidAmount: order.paidAmount || 0,
+        change: 0,
+        customerName: supplier?.name || 'Sans fournisseur',
+        paymentMethod: order.paymentMethod || 'credit'
+      };
+
+      await ThermalReceiptPrinter.printReceipt(receiptData);
+      
+      toast({
+        title: t('success'),
+        description: t('offline_sales_print_success'),
+      });
+    } catch (error) {
+      console.error('Print error:', error);
+      toast({
+        title: t('offline_sales_print_error_title'),
+        description: error instanceof Error ? error.message : t('offline_sales_print_error_desc'),
+        variant: "destructive",
       });
     }
   };
@@ -759,10 +813,12 @@ export default function OfflinePurchasePOS() {
                       return (
                         <div 
                           key={order.id} 
-                          onClick={() => loadPurchaseOrder(order)}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                         >
-                          <div className="flex items-center gap-3">
+                          <div 
+                            onClick={() => loadPurchaseOrder(order)}
+                            className="flex items-center gap-3 flex-1 cursor-pointer"
+                          >
                             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                               <Truck className="h-5 w-5 text-blue-600" />
                             </div>
@@ -773,15 +829,28 @@ export default function OfflinePurchasePOS() {
                               </div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="font-bold text-sm">{order.total?.toFixed(2)} DH</div>
-                            <div className={`text-xs px-2 py-1 rounded ${
-                              order.status === 'received' ? 'bg-green-100 text-green-700' :
-                              order.status === 'ordered' ? 'bg-blue-100 text-blue-700' :
-                              'bg-gray-100 text-gray-700'
-                            }`}>
-                              {order.status}
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <div className="font-bold text-sm">{order.total?.toFixed(2)} DH</div>
+                              <div className={`text-xs px-2 py-1 rounded ${
+                                order.status === 'received' ? 'bg-green-100 text-green-700' :
+                                order.status === 'ordered' ? 'bg-blue-100 text-blue-700' :
+                                'bg-gray-100 text-gray-700'
+                              }`}>
+                                {order.status}
+                              </div>
                             </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                printPurchaseReceipt(order);
+                              }}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       );
@@ -979,7 +1048,19 @@ export default function OfflinePurchasePOS() {
               </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                if (lastOrder) {
+                  await printPurchaseReceipt(lastOrder);
+                }
+              }}
+              disabled={!lastOrder}
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              {t('print_receipt')}
+            </Button>
             <Button onClick={() => setIsReceiptOpen(false)}>
               {t('close')}
             </Button>
