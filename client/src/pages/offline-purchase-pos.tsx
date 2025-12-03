@@ -207,8 +207,11 @@ export default function OfflinePurchasePOS() {
       // Convert order items to cart items
       const cartItems: PurchaseCartItem[] = [];
       for (const item of orderItems) {
-        const product = products.find(p => p.id === item.productId);
-        console.log('Processing item:', item, 'Product found:', product);
+        // Fix type mismatch - compare both as strings
+        const product = products.find(p => String(p.id) === String(item.productId));
+        console.log('Processing item:', item, 'Looking for productId:', item.productId, 'Type:', typeof item.productId);
+        console.log('Product found:', product);
+        console.log('Available products count:', products.length);
         if (product) {
           cartItems.push({
             product,
@@ -217,7 +220,8 @@ export default function OfflinePurchasePOS() {
             totalCost: item.totalPrice
           });
         } else {
-          console.warn('Product not found for item:', item);
+          console.warn('❌ Product not found for item:', item);
+          console.warn('Product IDs in list:', products.map(p => `${p.id} (${typeof p.id})`).slice(0, 5));
         }
       }
       
