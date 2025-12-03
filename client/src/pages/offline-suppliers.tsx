@@ -4,6 +4,7 @@ import { useOfflinePurchaseOrders } from "@/hooks/use-offline-purchase-orders";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { OfflineSupplier } from "@/lib/offline-storage";
+import { supplierCreditHelpers, SupplierCreditTransaction } from "@/lib/database-storage";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -12,11 +13,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Truck, Search, Plus, Edit, Trash2, Phone, Mail, MapPin, User, CreditCard, DollarSign, Receipt } from "lucide-react";
+import { Truck, Search, Plus, Edit, Trash2, Phone, Mail, MapPin, User, CreditCard, DollarSign, Receipt, History } from "lucide-react";
+import { format } from "date-fns";
 
 type Translator = (key: string, params?: { [key: string]: string | number }) => string;
 
@@ -42,10 +45,22 @@ export default function OfflineSuppliers() {
   const { toast } = useToast();
   const supplierSchema = useMemo(() => buildSupplierSchema(t), [t]);
   const formatCurrency = (value?: number) => `${(value ?? 0).toFixed(2)} ${t('currency')}`;
+  const formatSignedCurrency = (value: number) => `${value > 0 ? '+' : value < 0 ? '-' : ''}${formatCurrency(Math.abs(value))}`;
   
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<OfflineSupplier | null>(null);
+  const [selectedSupplier, setSelectedSupplier] = useState<OfflineSupplier | null>(null);
+  const [isCreditDialogOpen, setIsCreditDialogOpen] = useState(false);
+  const [creditAmount, setCreditAmount] = useState(0);
+  const [creditNote, setCreditNote] = useState("");
+  const [creditInfo, setCreditInfo] = useState<{
+    currentBalance: number;
+    creditLimit: number;
+    availableCredit: number;
+    transactions: SupplierCreditTransaction[];
+  } | null>(null);
+  const [loadingCreditInfo, setLoadingCreditInfo] = useState(false);
 
   // Calculate supplier credit balance
   const getSupplierBalance = (supplierId: string) => {
@@ -137,12 +152,74 @@ export default function OfflineSuppliers() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (supplier: OfflineSupplier) => {
-    if (confirm(t('supplier_delete_confirm', { name: supplier.name }))) {
-      deleteSupplier(supplier.id);
+  const handleDelete = (supplierId: string) => {
+    if (window.confirm(t('confirm_delete_supplier'))) {
+      deleteSupplier(supplierId);
       toast({
         title: t('success'),
         description: t('supplier_deleted_successfully')
+      });
+    }
+  };
+
+  const loadCreditInfo = async (supplier: OfflineSupplier) => {
+    setLoadingCreditInfo(true);
+    try {
+      const info = await supplierCreditHelpers.getSupplierCreditInfo(supplier);
+      setCreditInfo(info);
+    } catch (error) {
+      console.error('Error loading supplier credit info:', error);
+      toast({
+        title: t('error'),
+        description: t('credit_load_error'),
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingCreditInfo(false);
+    }
+  };
+
+  const handleCreditPayment = async () => {
+    if (!selectedSupplier) {
+      toast({
+        title: t('error'),
+        description: t('credit_no_supplier_selected'),
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (creditAmount <= 0) {
+      toast({
+        title: t('error'),
+        description: t('credit_amount_invalid'),
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await supplierCreditHelpers.recordSupplierPayment(
+        selectedSupplier,
+        creditAmount,
+        creditNote
+      );
+
+      toast({
+        title: t('success'),
+        description: t('supplier_payment_recorded_successfully', { amount: formatCurrency(creditAmount) })
+      });
+
+      // Reload credit info
+      await loadCreditInfo(selectedSupplier);
+      setCreditAmount(0);
+      setCreditNote("");
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      toast({
+        title: t('error'),
+        description: t('credit_payment_error'),
+        variant: "destructive"
       });
     }
   };
@@ -316,6 +393,18 @@ export default function OfflineSuppliers() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={async () => {
+                          setSelectedSupplier(supplier);
+                          setIsCreditDialogOpen(true);
+                          await loadCreditInfo(supplier);
+                        }}
+                        title={t('manage_credit')}
+                      >
+                        <CreditCard className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleEdit(supplier)}
                         title={t('edit')}
                       >
@@ -324,7 +413,7 @@ export default function OfflineSuppliers() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDelete(supplier)}
+                        onClick={() => handleDelete(supplier.id)}
                         title={t('delete')}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -458,6 +547,131 @@ export default function OfflineSuppliers() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Supplier Credit Management Dialog */}
+      <Dialog open={isCreditDialogOpen} onOpenChange={setIsCreditDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{t('supplier_credit_management_title', { name: selectedSupplier?.name ?? '' })}</DialogTitle>
+          </DialogHeader>
+          
+          {loadingCreditInfo ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="overview">{t('credit_overview')}</TabsTrigger>
+                <TabsTrigger value="payment">{t('record_payment')}</TabsTrigger>
+                <TabsTrigger value="history">{t('transaction_history')}</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-red-600" />
+                        {t('amount_owed_to_supplier')}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-red-600">
+                        {formatCurrency(creditInfo?.currentBalance || 0)}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="payment" className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">{t('payment_amount')}</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={creditAmount || ''}
+                      onChange={(e) => setCreditAmount(parseFloat(e.target.value) || 0)}
+                      placeholder={t('enter_payment_amount')}
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      {t('current_balance')}: <span className="font-semibold text-red-600">{formatCurrency(creditInfo?.currentBalance || 0)}</span>
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">{t('note')}</label>
+                    <Textarea
+                      value={creditNote}
+                      onChange={(e) => setCreditNote(e.target.value)}
+                      placeholder={t('add_payment_note')}
+                      rows={3}
+                    />
+                  </div>
+
+                  <Button 
+                    onClick={handleCreditPayment}
+                    disabled={creditAmount <= 0}
+                    className="w-full"
+                  >
+                    {t('record_payment_button')}
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="history" className="space-y-4">
+                <div className="border rounded-lg">
+                  {creditInfo && creditInfo.transactions.length > 0 ? (
+                    <div className="divide-y">
+                      {creditInfo.transactions.map((transaction) => (
+                        <div key={transaction.id} className="p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-medium">
+                                {transaction.type === 'credit_purchase' ? t('credit_purchase') : t('payment')}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {format(new Date(transaction.date), 'PPpp')}
+                              </div>
+                              {transaction.note && (
+                                <div className="text-sm text-gray-500 mt-1">{transaction.note}</div>
+                              )}
+                            </div>
+                            <div className={`font-bold ${
+                              transaction.type === 'credit_purchase' ? 'text-red-600' : 'text-green-600'
+                            }`}>
+                              {transaction.type === 'credit_purchase' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>{t('no_credit_transactions')}</p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsCreditDialogOpen(false);
+              setCreditInfo(null);
+              setCreditAmount(0);
+              setCreditNote("");
+            }}>
+              {t('close')}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

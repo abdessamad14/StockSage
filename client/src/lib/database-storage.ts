@@ -2165,6 +2165,150 @@ export const creditHelpers = {
   }
 };
 
+// Supplier Credit Transaction Interface
+export interface SupplierCreditTransaction {
+  id: string;
+  supplierId: string;
+  type: 'credit_purchase' | 'payment' | 'adjustment';
+  amount: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  note?: string;
+  date: string;
+  createdAt: string;
+}
+
+// In-memory supplier credit transaction storage (with localStorage persistence)
+const SUPPLIER_CREDIT_TRANSACTIONS_KEY = 'stocksage_supplier_credit_transactions';
+
+const supplierCreditTransactionStorage = {
+  getAll: (): SupplierCreditTransaction[] => {
+    try {
+      const stored = localStorage.getItem(SUPPLIER_CREDIT_TRANSACTIONS_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      return [];
+    }
+  },
+
+  save: (transactions: SupplierCreditTransaction[]) => {
+    try {
+      localStorage.setItem(SUPPLIER_CREDIT_TRANSACTIONS_KEY, JSON.stringify(transactions));
+    } catch (error) {
+      console.error('Error saving supplier credit transactions:', error);
+    }
+  },
+
+  getBySupplierId: (supplierId: string): SupplierCreditTransaction[] => {
+    const allTransactions = supplierCreditTransactionStorage.getAll();
+    return allTransactions.filter(t => t.supplierId === supplierId)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  },
+
+  create: (transaction: Omit<SupplierCreditTransaction, 'id' | 'createdAt'>): SupplierCreditTransaction => {
+    const newTransaction: SupplierCreditTransaction = {
+      ...transaction,
+      id: `supplier-credit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date().toISOString()
+    };
+    
+    const transactions = supplierCreditTransactionStorage.getAll();
+    transactions.push(newTransaction);
+    supplierCreditTransactionStorage.save(transactions);
+    
+    return newTransaction;
+  }
+};
+
+// Supplier credit helper functions
+export const supplierCreditHelpers = {
+  calculateSupplierBalance: (supplier: OfflineSupplier): number => {
+    const transactions = supplierCreditTransactionStorage.getBySupplierId(supplier.id);
+    const balance = transactions.reduce((sum, t) => {
+      if (t.type === 'credit_purchase') {
+        return sum + t.amount; // Increase owed amount
+      } else if (t.type === 'payment') {
+        return sum - t.amount; // Decrease owed amount
+      }
+      return sum;
+    }, 0);
+    return Math.max(0, balance);
+  },
+
+  recordSupplierPayment: async (
+    supplierIdOrSupplier: string | OfflineSupplier,
+    amount: number,
+    note?: string
+  ) => {
+    try {
+      let supplierId: string;
+      if (typeof supplierIdOrSupplier === 'string') {
+        supplierId = supplierIdOrSupplier;
+      } else {
+        supplierId = supplierIdOrSupplier.id;
+      }
+
+      const currentBalance = supplierCreditHelpers.calculateSupplierBalance(
+        typeof supplierIdOrSupplier === 'string' ? { id: supplierId } as OfflineSupplier : supplierIdOrSupplier
+      );
+      const balanceAfter = Math.max(0, currentBalance - amount);
+
+      // Create supplier credit transaction record
+      const transaction = supplierCreditTransactionStorage.create({
+        supplierId,
+        type: 'payment',
+        amount: amount,
+        balanceBefore: currentBalance,
+        balanceAfter: balanceAfter,
+        note: note || `Payment of ${amount.toFixed(2)} DH`,
+        date: new Date().toISOString()
+      });
+
+      console.log('Supplier payment transaction created:', transaction);
+      return transaction;
+    } catch (error) {
+      console.error('Error recording supplier payment:', error);
+      throw error;
+    }
+  },
+
+  getSupplierCreditInfo: async (supplierIdOrSupplier: string | OfflineSupplier) => {
+    try {
+      let supplier: OfflineSupplier;
+      
+      if (typeof supplierIdOrSupplier === 'string') {
+        const suppliers = await offlineSupplierStorage.getAll();
+        const found = suppliers.find(s => s.id === supplierIdOrSupplier);
+        if (!found) {
+          throw new Error('Supplier not found');
+        }
+        supplier = found;
+      } else {
+        supplier = supplierIdOrSupplier;
+      }
+
+      // Get credit transactions from localStorage
+      const transactions = supplierCreditTransactionStorage.getBySupplierId(supplier.id);
+      const currentBalance = supplierCreditHelpers.calculateSupplierBalance(supplier);
+
+      return {
+        currentBalance: currentBalance,
+        creditLimit: 0, // Suppliers typically don't have credit limits
+        availableCredit: 0,
+        transactions: transactions
+      };
+    } catch (error) {
+      console.error('Error getting supplier credit info:', error);
+      return {
+        currentBalance: 0,
+        creditLimit: 0,
+        availableCredit: 0,
+        transactions: []
+      };
+    }
+  }
+};
+
 export const salesPeriodHelpers = {
   getCurrentPeriod: async (): Promise<OfflineSalesPeriod | null> => {
     try {
