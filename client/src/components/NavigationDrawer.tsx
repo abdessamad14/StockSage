@@ -128,14 +128,6 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
             </Link>
           )}
           
-          {/* Sales History */}
-          {canViewSalesHistory && (
-            <Link href="/sales-history" className={linkClasses('/sales-history')}>
-              <Receipt className="w-6 h-6 mr-3" />
-              <span>{t('sales_history')}</span>
-            </Link>
-          )}
-          
           {/* User Management */}
           {canManageUsers && (
             <Link href="/users" className={linkClasses('/users')}>

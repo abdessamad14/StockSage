@@ -15,7 +15,6 @@ import OfflineSuppliers from "@/pages/offline-suppliers";
 import OfflinePurchasePOS from "@/pages/offline-purchase-pos";
 import OfflineReports from "@/pages/offline-reports";
 import OfflineSettings from "@/pages/offline-settings";
-import OfflineSalesHistory from "@/pages/offline-sales-history";
 import UserManagement from "@/pages/user-management";
 import { I18nProvider } from "@/lib/i18n";
 import { OfflineAuthProvider } from "@/hooks/use-offline-auth";
@@ -35,7 +34,6 @@ function Router() {
           <Route path="/suppliers" component={OfflineSuppliers} />
           <Route path="/orders" component={OfflinePurchasePOS} />
           <Route path="/reports" component={OfflineReports} />
-          <Route path="/sales-history" component={OfflineSalesHistory} />
           <Route path="/settings" component={OfflineSettings} />
           <Route path="/users" component={UserManagement} />
           <Route component={NotFound} />

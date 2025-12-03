@@ -2082,13 +2082,6 @@ export default function OfflinePOS() {
               {t('inventory').toUpperCase()}
             </Button>
             <Button
-              onClick={() => window.location.href = '/sales-history'}
-              className="h-12 bg-gradient-to-br from-[#118ab2] via-[#0e7490] to-[#073b4c] text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg border border-[#073b4c]/40"
-            >
-              <FileText className="h-4 w-4" />
-              {t('sales_history').toUpperCase()}
-            </Button>
-            <Button
               onClick={() => window.location.href = '/reports'}
               className="h-12 bg-gradient-to-br from-[#4361ee] via-[#4895ef] to-[#3a0ca3] text-white font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-lg border border-[#3a0ca3]/40"
             >
