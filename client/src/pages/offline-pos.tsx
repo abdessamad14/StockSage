@@ -1443,7 +1443,9 @@ export default function OfflinePOS() {
                           <div>
                             <div className="font-semibold text-slate-800 line-clamp-1">
                               {product.name}
-                              <span className="ml-2 text-xs font-normal text-slate-500">({getProductStock(product.id)} {t('available')})</span>
+                              <span className="ml-2 text-xs font-normal text-slate-500">
+                                ({(product as any).weighable ? getProductStock(product.id).toFixed(2) : Math.floor(getProductStock(product.id))} {t('available')})
+                              </span>
                             </div>
                             <div className="text-[10px] text-slate-500">
                               {product.barcode || t('offline_pos_barcode_missing')}
