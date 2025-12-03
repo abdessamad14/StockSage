@@ -2272,13 +2272,17 @@ export const supplierCreditHelpers = {
     }
   },
 
-  getSupplierCreditInfo: async (supplierIdOrSupplier: string | OfflineSupplier) => {
+  getSupplierCreditInfo: async (
+    supplierIdOrSupplier: string | OfflineSupplier,
+    balanceFromOrders?: number,
+    orders?: any[]
+  ) => {
     try {
       let supplier: OfflineSupplier;
       
       if (typeof supplierIdOrSupplier === 'string') {
-        const suppliers = await offlineSupplierStorage.getAll();
-        const found = suppliers.find(s => s.id === supplierIdOrSupplier);
+        const suppliers = await databaseSupplierStorage.getAll();
+        const found = suppliers.find((s: any) => s.id === supplierIdOrSupplier);
         if (!found) {
           throw new Error('Supplier not found');
         }
@@ -2287,15 +2291,35 @@ export const supplierCreditHelpers = {
         supplier = supplierIdOrSupplier;
       }
 
-      // Get credit transactions from localStorage
+      // Get credit transactions (payments made) from localStorage
       const transactions = supplierCreditTransactionStorage.getBySupplierId(supplier.id);
-      const currentBalance = supplierCreditHelpers.calculateSupplierBalance(supplier);
+      
+      // Use balance from orders if provided, otherwise calculate from transactions
+      let currentBalance = balanceFromOrders !== undefined ? balanceFromOrders : 0;
+      
+      // If orders are provided, create transaction history from them
+      const orderTransactions: SupplierCreditTransaction[] = orders?.map((order: any) => ({
+        id: `order-${order.id}`,
+        supplierId: supplier.id,
+        type: 'credit_purchase' as const,
+        amount: order.total || 0,
+        balanceBefore: 0,
+        balanceAfter: 0,
+        note: `Purchase Order #${order.orderNumber || order.id}`,
+        date: order.date || new Date().toISOString(),
+        createdAt: order.createdAt || order.date || new Date().toISOString()
+      })) || [];
+
+      // Combine order transactions with payment transactions
+      const allTransactions = [...orderTransactions, ...transactions].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
 
       return {
         currentBalance: currentBalance,
         creditLimit: 0, // Suppliers typically don't have credit limits
         availableCredit: 0,
-        transactions: transactions
+        transactions: allTransactions
       };
     } catch (error) {
       console.error('Error getting supplier credit info:', error);

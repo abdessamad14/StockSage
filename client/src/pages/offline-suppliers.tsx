@@ -165,7 +165,13 @@ export default function OfflineSuppliers() {
   const loadCreditInfo = async (supplier: OfflineSupplier) => {
     setLoadingCreditInfo(true);
     try {
-      const info = await supplierCreditHelpers.getSupplierCreditInfo(supplier);
+      // Calculate balance from purchase orders
+      const supplierOrders = orders.filter(order => order.supplierId === supplier.id);
+      const totalOrders = supplierOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+      const totalPaid = supplierOrders.reduce((sum, order) => sum + (order.paidAmount || 0), 0);
+      const currentBalance = Math.max(0, totalOrders - totalPaid);
+      
+      const info = await supplierCreditHelpers.getSupplierCreditInfo(supplier, currentBalance, supplierOrders);
       setCreditInfo(info);
     } catch (error) {
       console.error('Error loading supplier credit info:', error);
