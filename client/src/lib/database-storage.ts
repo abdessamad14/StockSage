@@ -2137,21 +2137,42 @@ export const creditHelpers = {
         customer = customerIdOrCustomer;
       }
 
-      // Get credit transactions from localStorage
-      const transactions = creditTransactionStorage.getByCustomerId(customer.id);
+      // Get credit transactions from DATABASE first, then merge with localStorage
+      let transactions: CreditTransaction[] = [];
+      
+      try {
+        // Fetch from database API
+        const dbTransactions = await apiCall<CreditTransaction[]>(`/customer-credits/${customer.id}`);
+        transactions = dbTransactions || [];
+        console.log('Fetched transactions from database:', transactions.length);
+      } catch (apiError) {
+        console.warn('Failed to fetch transactions from database, using localStorage:', apiError);
+        // Fallback to localStorage if API fails
+        transactions = creditTransactionStorage.getByCustomerId(customer.id);
+      }
+      
+      // Also get any localStorage-only transactions and merge
+      const localTransactions = creditTransactionStorage.getByCustomerId(customer.id);
+      const dbTransactionIds = new Set(transactions.map(t => t.id));
+      const localOnlyTransactions = localTransactions.filter(t => !dbTransactionIds.has(t.id));
+      
+      // Merge and sort by date
+      const allTransactions = [...transactions, ...localOnlyTransactions].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
       
       console.log('Credit info loaded:', {
         currentBalance: customer.creditBalance || 0,
         creditLimit: customer.creditLimit || 0,
         availableCredit: (customer.creditLimit || 0) - (customer.creditBalance || 0),
-        transactions: transactions
+        transactions: allTransactions.length
       });
       
       return {
         currentBalance: customer.creditBalance || 0,
         creditLimit: customer.creditLimit || 0,
         availableCredit: (customer.creditLimit || 0) - (customer.creditBalance || 0),
-        transactions: transactions
+        transactions: allTransactions
       };
     } catch (error) {
       console.error('Error getting customer credit info:', error);

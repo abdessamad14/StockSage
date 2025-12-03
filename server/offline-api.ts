@@ -1397,6 +1397,76 @@ router.delete('/users/:id', async (req, res) => {
   }
 });
 
+// Customer Credit Transactions API
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { join } from 'path';
+
+const CREDIT_TRANSACTIONS_FILE = join(process.cwd(), 'data', 'credit-transactions.json');
+
+// Helper functions for credit transactions file storage
+function getCreditTransactions() {
+  try {
+    if (existsSync(CREDIT_TRANSACTIONS_FILE)) {
+      const data = readFileSync(CREDIT_TRANSACTIONS_FILE, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('Error reading credit transactions file:', error);
+  }
+  return [];
+}
+
+function saveCreditTransactions(transactions: any[]) {
+  try {
+    writeFileSync(CREDIT_TRANSACTIONS_FILE, JSON.stringify(transactions, null, 2));
+  } catch (error) {
+    console.error('Error saving credit transactions:', error);
+  }
+}
+
+router.get('/customer-credits', async (req, res) => {
+  try {
+    const transactions = getCreditTransactions();
+    res.json(transactions);
+  } catch (error) {
+    console.error('Error fetching credit transactions:', error);
+    res.status(500).json({ error: 'Failed to fetch credit transactions' });
+  }
+});
+
+router.get('/customer-credits/:customerId', async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const allTransactions = getCreditTransactions();
+    const customerTransactions = allTransactions.filter(
+      (t: any) => String(t.customerId) === String(customerId)
+    );
+    res.json(customerTransactions);
+  } catch (error) {
+    console.error('Error fetching customer credit transactions:', error);
+    res.status(500).json({ error: 'Failed to fetch credit transactions' });
+  }
+});
+
+router.post('/customer-credits', async (req, res) => {
+  try {
+    const transaction = {
+      id: `credit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      ...req.body,
+      createdAt: new Date().toISOString()
+    };
+    
+    const transactions = getCreditTransactions();
+    transactions.push(transaction);
+    saveCreditTransactions(transactions);
+    
+    res.json(transaction);
+  } catch (error) {
+    console.error('Error creating credit transaction:', error);
+    res.status(500).json({ error: 'Failed to create credit transaction' });
+  }
+});
+
 // Network printer endpoint
 router.post('/print-network', async (req, res) => {
   try {
