@@ -119,6 +119,23 @@ export default function OfflinePurchasePOS() {
     );
   }, [cart, searchQuery]);
 
+  // Quick search results for adding products
+  const quickSearchResults = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return [];
+    }
+
+    const normalizedQuery = searchQuery.toLowerCase();
+    return products
+      .filter((product) => {
+        const matchesName = product.name.toLowerCase().includes(normalizedQuery);
+        const matchesBarcode = product.barcode?.toLowerCase().includes(normalizedQuery);
+        const isActive = product.active !== false;
+        return (matchesName || matchesBarcode) && isActive;
+      })
+      .slice(0, 8);
+  }, [searchQuery, products]);
+
   // Filter orders by date
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
@@ -199,6 +216,17 @@ export default function OfflinePurchasePOS() {
       }]);
     }
 
+    toast({
+      title: t('product_added'),
+      description: `${product.name} ${t('added_to_cart')}`,
+      duration: 1000
+    });
+  };
+
+  // Handle quick add from search results
+  const handleQuickAdd = (product: OfflineProduct) => {
+    addToCart(product);
+    setSearchQuery('');
     toast({
       title: t('product_added'),
       description: `${product.name} ${t('added_to_cart')}`,
@@ -635,7 +663,47 @@ export default function OfflinePurchasePOS() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && quickSearchResults.length > 0) {
+                  event.preventDefault();
+                  handleQuickAdd(quickSearchResults[0]);
+                }
+              }}
             />
+            {searchQuery && (
+              <div className="absolute z-30 mt-1 w-full rounded-md border border-blue-300 bg-white shadow-lg max-h-[400px] overflow-y-auto">
+                {quickSearchResults.length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-slate-500">
+                    {t('product_not_found')}
+                  </div>
+                ) : (
+                  quickSearchResults.map((product) => (
+                    <button
+                      key={product.id}
+                      type="button"
+                      onClick={() => handleQuickAdd(product)}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm text-slate-900">
+                            {product.name}
+                          </div>
+                          <div className="text-xs text-slate-500 mt-0.5">
+                            {product.barcode || 'Sans code-barres'}
+                          </div>
+                        </div>
+                        <div className="text-right ml-3">
+                          <div className="text-sm font-semibold text-blue-600">
+                            {(product.costPrice || 0).toFixed(2)} DH
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
 
