@@ -12,7 +12,11 @@ type OfflineAuthContextType = {
   canManageProducts: boolean;
   canManageCustomers: boolean;
   canManageSuppliers: boolean;
+  canManageOrders: boolean;
   canViewReports: boolean;
+  canManageInventory: boolean;
+  canManageSettings: boolean;
+  canViewSalesHistory: boolean;
   canManageUsers: boolean;
   canDeleteSales: boolean;
 };
@@ -70,8 +74,29 @@ export function OfflineAuthProvider({ children }: { children: ReactNode }) {
     return user !== null && user.active;
   };
 
-  const canViewReports = (user: OfflineUser | null): boolean => {
+  const canManageOrders = (user: OfflineUser | null): boolean => {
+    // Both admin and cashier can manage orders
     return user !== null && user.active;
+  };
+
+  const canViewReports = (user: OfflineUser | null): boolean => {
+    // Only admin can view reports
+    return user !== null && user.active && user.role === 'admin';
+  };
+
+  const canManageInventory = (user: OfflineUser | null): boolean => {
+    // Only admin can manage inventory
+    return user !== null && user.active && user.role === 'admin';
+  };
+
+  const canManageSettings = (user: OfflineUser | null): boolean => {
+    // Only admin can manage settings
+    return user !== null && user.active && user.role === 'admin';
+  };
+
+  const canViewSalesHistory = (user: OfflineUser | null): boolean => {
+    // Only admin can view sales history
+    return user !== null && user.active && user.role === 'admin';
   };
 
   const canManageUsers = (user: OfflineUser | null): boolean => {
@@ -93,7 +118,11 @@ export function OfflineAuthProvider({ children }: { children: ReactNode }) {
         canManageProducts: canManageProducts(user),
         canManageCustomers: canManageCustomers(user),
         canManageSuppliers: canManageSuppliers(user),
+        canManageOrders: canManageOrders(user),
         canViewReports: canViewReports(user),
+        canManageInventory: canManageInventory(user),
+        canManageSettings: canManageSettings(user),
+        canViewSalesHistory: canViewSalesHistory(user),
         canManageUsers: canManageUsers(user),
         canDeleteSales: canDeleteSales(user),
       }}

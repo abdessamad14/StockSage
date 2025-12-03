@@ -25,14 +25,22 @@ interface NavigationDrawerProps {
 export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
   const { t, language, setLanguage } = useI18n();
   const { settings } = useOfflineSettings();
-  const { user, logout, canManageUsers, canUsePOS, canManageProducts, canManageCustomers, canManageSuppliers, canViewReports } = useOfflineAuth();
+  const { 
+    user, 
+    logout, 
+    canManageUsers, 
+    canUsePOS, 
+    canManageProducts, 
+    canManageCustomers, 
+    canManageSuppliers, 
+    canManageOrders,
+    canViewReports,
+    canManageInventory,
+    canManageSettings,
+    canViewSalesHistory
+  } = useOfflineAuth();
   const [location] = useLocation();
   const isRTL = language === 'ar';
-
-  // Use auth permissions
-  const canManageInventory = true;
-  const canViewSalesHistory = true;
-  const canManageSettings = true;
 
   const isActive = (path: string) => {
     return location === path;
@@ -115,10 +123,12 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           )}
           
           {/* Orders */}
-          <Link href="/orders" className={linkClasses('/orders')}>
-            <ClipboardList className="w-6 h-6 mr-3" />
-            <span>{t('orders')}</span>
-          </Link>
+          {canManageOrders && (
+            <Link href="/orders" className={linkClasses('/orders')}>
+              <ClipboardList className="w-6 h-6 mr-3" />
+              <span>{t('orders')}</span>
+            </Link>
+          )}
 
           {/* Reports */}
           {canViewReports && (
