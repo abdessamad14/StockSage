@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Package, Search, Plus, Edit, Trash2, Tag, Filter, Upload, X, Image, Eye, EyeOff, Scale } from "lucide-react";
+import { Package, Search, Plus, Edit, Trash2, Tag, Filter, Upload, X, Image, Eye, EyeOff, Scale, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 const productSchema = z.object({
@@ -65,6 +65,7 @@ export default function OfflineProducts() {
   const [barcodeBuffer, setBarcodeBuffer] = useState('');
   const [lastKeyTime, setLastKeyTime] = useState(0);
   const [productStocks, setProductStocks] = useState<Record<string, number>>({});
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
 
   // Get primary warehouse
   const primaryWarehouse = stockLocations.find(loc => loc.isPrimary) || stockLocations[0];
@@ -332,6 +333,7 @@ export default function OfflineProducts() {
 
   // Product handlers
   const handleCreateProduct = async (data: ProductFormData) => {
+    setIsSavingProduct(true);
     try {
       await createProduct({
         ...data,
@@ -364,12 +366,15 @@ export default function OfflineProducts() {
         description: t('failed_to_create_product'),
         variant: "destructive"
       });
+    } finally {
+      setIsSavingProduct(false);
     }
   };
 
   const handleUpdateProduct = async (data: ProductFormData) => {
     if (!editingProduct) return;
     
+    setIsSavingProduct(true);
     try {
       // Get current stock quantity before update
       const currentStock = getWarehouseStock(editingProduct.id);
@@ -413,6 +418,8 @@ export default function OfflineProducts() {
         description: t('failed_to_update_product'),
         variant: "destructive"
       });
+    } finally {
+      setIsSavingProduct(false);
     }
   };
 
@@ -1235,11 +1242,24 @@ export default function OfflineProducts() {
             </form>
           </Form>
           <DialogFooter className="flex-shrink-0 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => setIsProductDialogOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setIsProductDialogOpen(false)} disabled={isSavingProduct}>
               {t('cancel')}
             </Button>
-            <Button type="submit" onClick={() => productForm.handleSubmit(editingProduct ? handleUpdateProduct : handleCreateProduct)()}>
-              {editingProduct ? t('update') : t('create')} {t('product')}
+            <Button 
+              type="submit" 
+              onClick={() => productForm.handleSubmit(editingProduct ? handleUpdateProduct : handleCreateProduct)()}
+              disabled={isSavingProduct}
+            >
+              {isSavingProduct ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t('saving')}...
+                </>
+              ) : (
+                <>
+                  {editingProduct ? t('update') : t('create')} {t('product')}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
