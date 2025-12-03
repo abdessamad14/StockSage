@@ -48,26 +48,27 @@ router.post('/products', async (req, res) => {
     const product = newProduct[0];
     console.log('Product created:', product);
     
-    // If product has initial quantity > 0, create stock records in principal warehouse
+    // Always create stock record in principal warehouse (even for quantity 0)
+    // Get the principal warehouse
+    const principalWarehouse = await db.select().from(stockLocations)
+      .where(eq(stockLocations.isPrimary, true))
+      .limit(1);
+    
+    const warehouseId = String(principalWarehouse[0]?.id || 1);
+    
+    // Create product stock record in principal warehouse
+    await db.insert(productStock).values({
+      tenantId: 'default',
+      productId: product.id,
+      locationId: warehouseId,
+      quantity: product.quantity || 0,
+      minStockLevel: product.minStockLevel || 0
+    });
+    
+    console.log(`Created stock record for product ${product.id} in warehouse ${warehouseId} with quantity ${product.quantity || 0}`);
+    
+    // Only create inventory adjustment if initial quantity > 0
     if (product.quantity > 0) {
-      // Get the principal warehouse
-      const principalWarehouse = await db.select().from(stockLocations)
-        .where(eq(stockLocations.isPrimary, true))
-        .limit(1);
-      
-      const warehouseId = String(principalWarehouse[0]?.id || 1);
-      
-      // Create product stock record in principal warehouse
-      await db.insert(productStock).values({
-        tenantId: 'default',
-        productId: product.id,
-        locationId: warehouseId,
-        quantity: product.quantity,
-        minStockLevel: product.minStockLevel || 0
-      });
-      
-      console.log(`Created stock record for product ${product.id} in warehouse ${warehouseId} with quantity ${product.quantity}`);
-      
       // Create inventory adjustment record for initial stock
       const adjustment = await db.insert(inventoryAdjustments).values({
         tenantId: 'default',
