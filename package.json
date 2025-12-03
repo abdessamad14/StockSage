@@ -19,6 +19,7 @@
     "db:repair": "node scripts/repair-database.js",
     "db:fix-settings": "node scripts/fix-settings-schema.js",
     "db:test-users": "node scripts/test-user-creation.js",
+    "db:fix-stock": "node scripts/fix-missing-stock-records.js",
     "seed:test": "node scripts/seed-test-data.js",
     "seed:comprehensive": "node scripts/seed-comprehensive-test-data.js",
     "db:push": "drizzle-kit push",
