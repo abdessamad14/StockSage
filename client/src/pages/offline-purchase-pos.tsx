@@ -74,6 +74,9 @@ export default function OfflinePurchasePOS() {
   const [stockLocations, setStockLocations] = useState<any[]>([]);
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("");
   const [productSearchQuery, setProductSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState<string>('today');
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
 
   // Load stock locations
   useEffect(() => {
@@ -115,6 +118,66 @@ export default function OfflinePurchasePOS() {
       (item.product.barcode && item.product.barcode.toLowerCase().includes(query))
     );
   }, [cart, searchQuery]);
+
+  // Filter orders by date
+  const filteredOrders = useMemo(() => {
+    if (!orders) return [];
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    return orders.filter((order: any) => {
+      const orderDate = new Date(order.date);
+      const orderDay = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+
+      switch (dateFilter) {
+        case 'today':
+          return orderDay.getTime() === today.getTime();
+        
+        case 'yesterday':
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          return orderDay.getTime() === yesterday.getTime();
+        
+        case 'this_week':
+          const startOfWeek = new Date(today);
+          startOfWeek.setDate(today.getDate() - today.getDay());
+          return orderDay >= startOfWeek;
+        
+        case 'last_week':
+          const startOfLastWeek = new Date(today);
+          startOfLastWeek.setDate(today.getDate() - today.getDay() - 7);
+          const endOfLastWeek = new Date(startOfLastWeek);
+          endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
+          return orderDay >= startOfLastWeek && orderDay <= endOfLastWeek;
+        
+        case 'this_month':
+          return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+        
+        case 'last_month':
+          const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          return orderDate.getMonth() === lastMonth.getMonth() && orderDate.getFullYear() === lastMonth.getFullYear();
+        
+        case 'last_3_months':
+          const threeMonthsAgo = new Date(now);
+          threeMonthsAgo.setMonth(now.getMonth() - 3);
+          return orderDate >= threeMonthsAgo;
+        
+        case 'this_year':
+          return orderDate.getFullYear() === now.getFullYear();
+        
+        case 'custom':
+          if (!customStartDate || !customEndDate) return true;
+          const start = new Date(customStartDate);
+          const end = new Date(customEndDate);
+          end.setHours(23, 59, 59, 999); // Include full end day
+          return orderDate >= start && orderDate <= end;
+        
+        default:
+          return true;
+      }
+    });
+  }, [orders, dateFilter, customStartDate, customEndDate]);
 
   // Add product to cart
   const addToCart = (product: OfflineProduct) => {
@@ -821,13 +884,116 @@ export default function OfflinePurchasePOS() {
           ) : (
             /* Purchase Orders View with Summaries */
             <div className="space-y-4">
+              {/* Date Filter */}
+              <div className="bg-white rounded-xl shadow-sm border p-4">
+                <h3 className="font-bold text-sm mb-3 text-slate-700">Filtrer par date</h3>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'today' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('today')}
+                    className="text-xs"
+                  >
+                    Aujourd'hui
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'yesterday' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('yesterday')}
+                    className="text-xs"
+                  >
+                    Hier
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'this_week' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('this_week')}
+                    className="text-xs"
+                  >
+                    Cette semaine
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'last_week' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('last_week')}
+                    className="text-xs"
+                  >
+                    Semaine dernière
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'this_month' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('this_month')}
+                    className="text-xs"
+                  >
+                    Ce mois
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'last_month' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('last_month')}
+                    className="text-xs"
+                  >
+                    Mois dernier
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'last_3_months' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('last_3_months')}
+                    className="text-xs"
+                  >
+                    3 derniers mois
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'this_year' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('this_year')}
+                    className="text-xs"
+                  >
+                    Cette année
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={dateFilter === 'custom' ? 'default' : 'outline'}
+                    onClick={() => setDateFilter('custom')}
+                    className="text-xs"
+                  >
+                    Personnalisé
+                  </Button>
+                </div>
+                
+                {/* Custom Date Range */}
+                {dateFilter === 'custom' && (
+                  <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t">
+                    <div>
+                      <label className="text-xs text-slate-600 mb-1 block">Date de début</label>
+                      <Input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-600 mb-1 block">Date de fin</label>
+                      <Input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Summary Cards */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-xl shadow-lg">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm opacity-80">{t('total_orders')}</p>
-                      <h3 className="text-3xl font-bold">{orders?.length || 0}</h3>
+                      <h3 className="text-3xl font-bold">{filteredOrders?.length || 0}</h3>
                     </div>
                     <Package className="h-12 w-12 opacity-50" />
                   </div>
@@ -837,7 +1003,7 @@ export default function OfflinePurchasePOS() {
                     <div>
                       <p className="text-sm opacity-80">{t('total_value')}</p>
                       <h3 className="text-3xl font-bold">
-                        {orders?.reduce((sum: number, o: any) => sum + (o.total || 0), 0).toFixed(2) || '0.00'} DH
+                        {filteredOrders?.reduce((sum: number, o: any) => sum + (o.total || 0), 0).toFixed(2) || '0.00'} DH
                       </h3>
                     </div>
                     <TrendingUp className="h-12 w-12 opacity-50" />
@@ -848,7 +1014,7 @@ export default function OfflinePurchasePOS() {
                     <div>
                       <p className="text-sm opacity-80">{t('pending')}</p>
                       <h3 className="text-3xl font-bold">
-                        {orders?.filter((o: any) => o.status === 'draft' || o.status === 'pending').length || 0}
+                        {filteredOrders?.filter((o: any) => o.status === 'draft' || o.status === 'pending').length || 0}
                       </h3>
                     </div>
                     <Clock className="h-12 w-12 opacity-50" />
@@ -857,7 +1023,7 @@ export default function OfflinePurchasePOS() {
               </div>
 
               {/* Recent Orders Table */}
-              {orders && orders.length > 0 ? (
+              {filteredOrders && filteredOrders.length > 0 ? (
                 <div className="bg-white/95 rounded-2xl border border-blue-200 overflow-hidden shadow-lg">
                   {/* Table Header */}
                   <div className="bg-gradient-to-r from-blue-500/15 via-indigo-500/15 to-purple-500/15 border-b border-blue-200 px-4 py-3">
@@ -873,7 +1039,7 @@ export default function OfflinePurchasePOS() {
                   
                   {/* Table Body */}
                   <div className="divide-y divide-blue-100">
-                    {orders.slice(0, 10).map((order: any) => {
+                    {filteredOrders.slice(0, 10).map((order: any) => {
                       const supplier = suppliers.find(s => s.id === order.supplierId);
                       return (
                         <div
