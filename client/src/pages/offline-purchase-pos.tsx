@@ -468,7 +468,53 @@ export default function OfflinePurchasePOS() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => window.print()}
+                  onClick={async () => {
+                    if (cart.length === 0) {
+                      toast({
+                        title: t('cart_empty'),
+                        description: 'Ajoutez des produits avant d\'imprimer',
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    try {
+                      const items = cart.map(item => ({
+                        name: item.product.name,
+                        quantity: item.quantity,
+                        unitPrice: item.unitCost,
+                        totalPrice: item.totalCost
+                      }));
+
+                      const receiptData = {
+                        invoiceNumber: 'PREVIEW-' + Date.now(),
+                        date: new Date(),
+                        items: items,
+                        subtotal: subtotal,
+                        discount: 0,
+                        tax: 0,
+                        total: total,
+                        paidAmount: 0,
+                        change: 0,
+                        customerName: selectedSupplier?.name || 'Sans fournisseur',
+                        paymentMethod: 'preview'
+                      };
+
+                      await ThermalReceiptPrinter.printReceipt(receiptData);
+                      
+                      toast({
+                        title: t('success'),
+                        description: t('offline_sales_print_success'),
+                      });
+                    } catch (error) {
+                      console.error('Print error:', error);
+                      toast({
+                        title: t('offline_sales_print_error_title'),
+                        description: error instanceof Error ? error.message : t('offline_sales_print_error_desc'),
+                        variant: "destructive",
+                      });
+                    }
+                  }}
                   className="text-white hover:bg-white/20"
                 >
                   <Printer className="h-5 w-5" />
