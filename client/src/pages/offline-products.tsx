@@ -579,6 +579,9 @@ export default function OfflineProducts() {
         }
       }
       
+      // Get actual warehouse stock quantity instead of product.quantity
+      const actualQuantity = getWarehouseStock(product.id);
+      
       productForm.reset({
         name: product.name,
         barcode: product.barcode || "",
@@ -588,7 +591,7 @@ export default function OfflineProducts() {
         sellingPrice: product.sellingPrice,
         semiWholesalePrice: product.semiWholesalePrice || 0,
         wholesalePrice: product.wholesalePrice || 0,
-        quantity: product.quantity,
+        quantity: actualQuantity, // Use warehouse stock instead of product.quantity
         minStockLevel: product.minStockLevel || 0,
         unit: product.unit || "",
         image: product.image || "",
