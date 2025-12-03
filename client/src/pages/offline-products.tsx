@@ -4,6 +4,7 @@ import { useOfflineStockLocations } from "@/hooks/use-offline-stock-locations";
 import { useOfflineStockTransactions } from "@/hooks/use-offline-stock-transactions";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
+import { useOfflineAuth } from "@/hooks/use-offline-auth";
 import { OfflineProduct, OfflineCategory, OfflineProductStock, offlineCategoryStorage, offlineProductStockStorage } from "@/lib/database-storage";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -52,6 +53,7 @@ export default function OfflineProducts() {
   const { createTransaction } = useOfflineStockTransactions();
   const { t } = useI18n();
   const { toast } = useToast();
+  const { canDeleteProducts } = useOfflineAuth();
   
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
@@ -863,15 +865,17 @@ export default function OfflineProducts() {
                       >
                         {product.active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9 text-red-600 border-red-200 hover:bg-red-50"
-                        onClick={() => handleDeleteProduct(product.id)}
-                        title={t('delete')}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      {canDeleteProducts && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9 text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => handleDeleteProduct(product.id)}
+                          title={t('delete')}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );

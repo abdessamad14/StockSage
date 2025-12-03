@@ -18,6 +18,7 @@ type OfflineAuthContextType = {
   canManageSettings: boolean;
   canViewSalesHistory: boolean;
   canManageUsers: boolean;
+  canDeleteProducts: boolean;
   canDeleteSales: boolean;
 };
 
@@ -103,6 +104,11 @@ export function OfflineAuthProvider({ children }: { children: ReactNode }) {
     return user !== null && user.active && user.role === 'admin';
   };
 
+  const canDeleteProducts = (user: OfflineUser | null): boolean => {
+    // Only admin can delete products
+    return user !== null && user.active && user.role === 'admin';
+  };
+
   const canDeleteSales = (user: OfflineUser | null): boolean => {
     return user !== null && user.active && user.role === 'admin';
   };
@@ -124,6 +130,7 @@ export function OfflineAuthProvider({ children }: { children: ReactNode }) {
         canManageSettings: canManageSettings(user),
         canViewSalesHistory: canViewSalesHistory(user),
         canManageUsers: canManageUsers(user),
+        canDeleteProducts: canDeleteProducts(user),
         canDeleteSales: canDeleteSales(user),
       }}
     >
