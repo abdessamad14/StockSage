@@ -296,16 +296,21 @@ export default function OfflinePurchasePOS() {
       };
 
       const newOrder = await createOrder(orderData);
+      console.log('✅ Purchase order created:', newOrder);
+      console.log('📦 Creating order items for orderId:', newOrder.id, 'Type:', typeof newOrder.id);
 
       // Create order items and update stock
       for (const item of cart) {
-        await offlinePurchaseOrderItemStorage.create({
+        const orderItemData = {
           orderId: newOrder.id,
           productId: item.product.id,
           quantity: item.quantity,
           unitPrice: item.unitCost,
           totalPrice: item.totalCost
-        });
+        };
+        console.log('Creating order item:', orderItemData);
+        const createdItem = await offlinePurchaseOrderItemStorage.create(orderItemData);
+        console.log('✅ Order item created:', createdItem);
 
         // UPDATE STOCK - INCREASE quantity for purchases
         const currentStock = await offlineProductStockStorage.getByProductAndLocation(

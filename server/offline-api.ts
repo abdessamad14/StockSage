@@ -662,28 +662,40 @@ router.get('/order-items', async (req, res) => {
 router.get('/order-items/order/:orderId', async (req, res) => {
   try {
     const { orderId } = req.params;
-    console.log('Fetching order items for order ID:', orderId);
-    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, parseInt(orderId)));
-    console.log('Found items:', items);
+    const orderIdNum = parseInt(orderId);
+    console.log('🔍 Fetching order items for order ID:', orderId, '(parsed:', orderIdNum, ')');
+    
+    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderIdNum));
+    console.log('📦 Found', items.length, 'items:', items);
+    
     res.json(items);
   } catch (error) {
-    console.error('Error fetching order items:', error);
+    console.error('❌ Error fetching order items:', error);
     res.status(500).json({ error: 'Failed to fetch order items' });
   }
 });
 
 router.post('/order-items', async (req, res) => {
   try {
-    console.log('Creating order item:', req.body);
-    const newItem = await db.insert(orderItems).values({
+    const itemData = {
       tenantId: 'default',
-      ...req.body
-    }).returning();
-    console.log('Order item created:', newItem[0]);
+      orderId: parseInt(req.body.orderId), // Ensure numeric
+      productId: parseInt(req.body.productId), // Ensure numeric
+      quantity: parseFloat(req.body.quantity),
+      unitPrice: parseFloat(req.body.unitPrice),
+      totalPrice: parseFloat(req.body.totalPrice)
+    };
+    
+    console.log('📝 Creating order item:', itemData);
+    
+    const newItem = await db.insert(orderItems).values(itemData).returning();
+    
+    console.log('✅ Order item created successfully:', newItem[0]);
     res.json(newItem[0]);
-  } catch (error) {
-    console.error('Error creating order item:', error);
-    res.status(500).json({ error: 'Failed to create order item' });
+  } catch (error: any) {
+    console.error('❌ Error creating order item:', error);
+    console.error('Request body was:', req.body);
+    res.status(500).json({ error: 'Failed to create order item', details: error?.message || 'Unknown error' });
   }
 });
 
