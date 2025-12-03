@@ -60,7 +60,7 @@ export default function OfflinePurchasePOS() {
 
   // State
   const [selectedSupplier, setSelectedSupplier] = useState<OfflineSupplier | null>(null);
-  const [rightSidebarView, setRightSidebarView] = useState<'products' | 'orders'>('products');
+  const [rightSidebarView, setRightSidebarView] = useState<'products' | 'orders'>('orders');
   const [cart, setCart] = useState<PurchaseCartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit' | 'bank_check'>('credit');
@@ -180,20 +180,35 @@ export default function OfflinePurchasePOS() {
   // Load purchase order into cart
   const loadPurchaseOrder = async (order: any) => {
     try {
+      console.log('Loading purchase order:', order);
+      
       // Set supplier
       const supplier = suppliers.find(s => s.id === order.supplierId);
       setSelectedSupplier(supplier || null);
+      console.log('Supplier set:', supplier);
 
       // Set warehouse
       setSelectedWarehouse(order.warehouseId || "");
 
       // Load order items
       const orderItems = await offlinePurchaseOrderItemStorage.getByOrderId(order.id);
+      console.log('Order items fetched:', orderItems);
+      
+      if (!orderItems || orderItems.length === 0) {
+        console.warn('No order items found for order:', order.id);
+        toast({
+          title: t('warning'),
+          description: 'Cette commande ne contient aucun article',
+          variant: "destructive"
+        });
+        return;
+      }
       
       // Convert order items to cart items
       const cartItems: PurchaseCartItem[] = [];
       for (const item of orderItems) {
         const product = products.find(p => p.id === item.productId);
+        console.log('Processing item:', item, 'Product found:', product);
         if (product) {
           cartItems.push({
             product,
@@ -201,9 +216,12 @@ export default function OfflinePurchasePOS() {
             unitCost: item.unitPrice,
             totalCost: item.totalPrice
           });
+        } else {
+          console.warn('Product not found for item:', item);
         }
       }
       
+      console.log('Cart items created:', cartItems);
       setCart(cartItems);
       setNotes(order.notes || "");
       
@@ -216,7 +234,7 @@ export default function OfflinePurchasePOS() {
       
       toast({
         title: t('success'),
-        description: `${t('order')} ${order.orderNumber} ${t('loaded')}`,
+        description: `${t('order')} ${order.orderNumber} ${t('loaded')} - ${cartItems.length} article(s)`,
         duration: 2000
       });
     } catch (error) {
