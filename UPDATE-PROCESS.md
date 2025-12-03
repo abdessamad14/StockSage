@@ -4,6 +4,8 @@
 
 Your update process is now **fully automatic** and **smooth**!
 
+**Important:** No Windows Service is created. Igoodar runs as a regular application.
+
 ---
 
 ## 🎯 How It Works
@@ -40,6 +42,18 @@ npm run setup
 - Click "Igoodar" icon
 - Browser opens at http://localhost:5003
 - Ready to use immediately!
+
+### **How to Run Igoodar:**
+
+**Option 1: Desktop Shortcut** (Easiest)
+- Double-click "Igoodar" icon on desktop
+- Browser opens automatically
+
+**Option 2: Manual Start**
+- Double-click `start.bat` in installation folder
+- Or run: `npm start`
+
+**Note:** Igoodar does NOT auto-start with Windows. You need to start it manually when needed.
 
 ---
 
