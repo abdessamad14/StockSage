@@ -281,15 +281,17 @@ export default function OfflinePurchasePOS() {
     }
 
     try {
-      // Create purchase order
+      // Create purchase order - goods received immediately
+      const now = new Date();
       const orderData = {
         orderNumber: generateOrderNumber(),
         supplierId: selectedSupplier.id,
         warehouseId: selectedWarehouse,
-        status: 'draft',
+        status: 'received', // Goods are received immediately
         notes: notes || null,
-        date: new Date(),
-        orderDate: new Date(),
+        date: now,
+        orderDate: now,
+        receivedDate: now.toISOString(), // Add received date as ISO string
         total: total,
         totalAmount: total,
         paymentMethod: paymentMethod,
