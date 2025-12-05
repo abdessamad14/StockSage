@@ -319,16 +319,14 @@ export default function InventoryCountPage() {
             // Update warehouse-specific stock quantity
             await offlineProductStockStorage.updateQuantity(item.productId, activeCount.locationId, newQuantity);
 
-            // Only update main product quantity if this is the primary warehouse
-            const location = locations.find(l => l.id === activeCount.locationId);
-            if (location?.isPrimary) {
-              const updatedProduct = {
-                ...product,
-                quantity: newQuantity,
-                updatedAt: new Date().toISOString()
-              };
-              await offlineProductStorage.update(product.id, updatedProduct);
-            }
+            // ALWAYS update main product quantity during inventory count
+            // This ensures the "Gestion des Stocks" page shows the correct quantity
+            const updatedProduct = {
+              ...product,
+              quantity: newQuantity,
+              updatedAt: new Date().toISOString()
+            };
+            await offlineProductStorage.update(product.id, updatedProduct);
 
             // Create stock transaction for audit trail
             if (difference !== 0) {
