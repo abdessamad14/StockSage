@@ -263,16 +263,37 @@ export default function OfflinePurchasePOS() {
     }
   };
 
-  // Update cart item quantity
-  const updateQuantity = (productId: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
+  // Update cart item quantity - supports x*y format (packages * items per package)
+  const updateQuantity = (productId: string, newQuantity: number | string) => {
+    let calculatedQuantity: number;
+    
+    // Handle string input for multiplication (e.g., "3*24" = 72)
+    if (typeof newQuantity === 'string') {
+      const trimmed = newQuantity.trim();
+      
+      // Check if it contains multiplication
+      if (trimmed.includes('*')) {
+        const parts = trimmed.split('*').map(p => parseFloat(p.trim()));
+        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+          calculatedQuantity = parts[0] * parts[1];
+        } else {
+          return; // Invalid format, don't update
+        }
+      } else {
+        calculatedQuantity = parseFloat(trimmed) || 0;
+      }
+    } else {
+      calculatedQuantity = newQuantity;
+    }
+    
+    if (calculatedQuantity <= 0) {
       removeFromCart(productId);
       return;
     }
 
     setCart(cart.map(item =>
       item.product.id === productId
-        ? { ...item, quantity: newQuantity, totalCost: newQuantity * item.unitCost }
+        ? { ...item, quantity: calculatedQuantity, totalCost: calculatedQuantity * item.unitCost }
         : item
     ));
   };
@@ -767,10 +788,11 @@ export default function OfflinePurchasePOS() {
                           <Minus className="h-3 w-3" />
                         </Button>
                         <Input
-                          type="number"
+                          type="text"
                           value={item.quantity}
-                          onChange={(e) => updateQuantity(item.product.id, parseFloat(e.target.value) || 0)}
-                          className="w-16 h-7 text-center text-sm"
+                          onChange={(e) => updateQuantity(item.product.id, e.target.value)}
+                          placeholder="9 ou 3*3"
+                          className="w-20 h-7 text-center text-sm"
                         />
                         <Button
                           variant="ghost"
