@@ -389,7 +389,7 @@ export default function InventoryCountPage() {
         locationId: formData.locationId,
         status: 'draft',
         startDate: new Date().toISOString(),
-        description: formData.description || '',
+        notes: formData.description || '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
