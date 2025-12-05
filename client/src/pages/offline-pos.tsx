@@ -132,6 +132,8 @@ export default function OfflinePOS() {
   const [lastKeyTime, setLastKeyTime] = useState(Date.now());
   const [rightSidebarView, setRightSidebarView] = useState<'orders' | 'products'>('orders');
   const [todaysOrders, setTodaysOrders] = useState<OfflineSale[]>([]);
+  const [isViewingFinishedOrder, setIsViewingFinishedOrder] = useState(false);
+  const [loadedOrderId, setLoadedOrderId] = useState<number | null>(null);
   const [todaysTurnover, setTodaysTurnover] = useState({
     total: 0,
     paid: 0,
@@ -479,9 +481,13 @@ export default function OfflinePOS() {
       setCart(cartItems);
       setSelectedCustomer(null); // Reset customer selection
       
+      // Mark as viewing finished order (read-only mode)
+      setIsViewingFinishedOrder(true);
+      setLoadedOrderId(Number(sale.id));
+      
       toast({
         title: t('order_loaded'),
-        description: t('order_loaded_description', { id: sale.id, count: cartItems.length }),
+        description: t('order_loaded_description', { id: sale.id, count: cartItems.length }) + ' - ' + t('read_only_mode'),
       });
     } catch (error) {
       console.error('Error loading order into cart:', error);
@@ -853,6 +859,8 @@ export default function OfflinePOS() {
     setSelectedCustomer(null);
     setDiscountAmount(0);
     setPaidAmount(0);
+    setIsViewingFinishedOrder(false);
+    setLoadedOrderId(null);
   };
 
   const updateCartItemPrice = (productId: string, newPrice: number) => {
@@ -1312,7 +1320,21 @@ export default function OfflinePOS() {
       <PanelGroup direction="horizontal">
       {/* Left Panel - Invoice Table */}
       <Panel defaultSize={50} minSize={30}>
-      <div className="bg-white/85 backdrop-blur shadow-xl flex flex-col h-full">
+      <div className="bg-white/85 backdrop-blur shadow-xl flex flex-col h-full relative">
+        {/* Finished Order Stamp - Diagonal Watermark */}
+        {isViewingFinishedOrder && (
+          <div className="absolute inset-0 pointer-events-none z-50 flex items-center justify-center">
+            <div className="transform -rotate-45 bg-red-600/10 border-8 border-red-600 px-20 py-10 rounded-xl">
+              <div className="text-7xl font-black text-red-600 uppercase tracking-widest opacity-80">
+                TERMINÉ
+              </div>
+              <div className="text-2xl font-bold text-red-600 text-center mt-2 opacity-80">
+                Commande #{loadedOrderId}
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Invoice Header */}
         <div className="bg-gradient-to-r from-[#c1121f] via-[#f4a259] to-[#0f866c] text-white p-4 flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -1522,6 +1544,7 @@ export default function OfflinePOS() {
                     <td className="px-2 py-2 text-center">
                       <input
                           type="text"
+                          disabled={isViewingFinishedOrder}
                           value={quantityInputs[item.product.id] ?? ((item.product as any).weighable ? item.quantity.toFixed(3) : item.quantity.toString())}
                           onChange={(e) => {
                             const value = e.target.value;
@@ -1595,6 +1618,7 @@ export default function OfflinePOS() {
                     <td className="px-2 py-2 text-right">
                       <input
                           type="text"
+                          disabled={isViewingFinishedOrder}
                           value={priceInputs[item.product.id] ?? ((item.product as any).weighable ? item.totalPrice.toFixed(2) : item.unitPrice.toString())}
                           onChange={(e) => {
                             const value = e.target.value;
@@ -1660,7 +1684,8 @@ export default function OfflinePOS() {
                         variant="ghost"
                         size="sm"
                         onClick={() => removeFromCart(item.product.id)}
-                        className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                        disabled={isViewingFinishedOrder}
+                        className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -1771,9 +1796,9 @@ export default function OfflinePOS() {
                       await processSale('cash', amount);
                     }}
                     className={`h-14 p-0 border-2 border-gray-300 transition-all relative overflow-hidden rounded-lg ${
-                      amount < total ? 'opacity-50' : 'hover:scale-105 hover:shadow-lg'
+                      amount < total || isViewingFinishedOrder ? 'opacity-50' : 'hover:scale-105 hover:shadow-lg'
                     }`}
-                    disabled={amount < total}
+                    disabled={amount < total || isViewingFinishedOrder}
                   >
                     {/* Full Banknote Background */}
                     <img 
@@ -1875,12 +1900,13 @@ export default function OfflinePOS() {
                   });
                 }
               }}
+              disabled={isViewingFinishedOrder || !selectedCustomer}
               className={`h-10 text-xs font-bold border-2 transition-all ${
                 paymentMethod === 'credit' 
                   ? 'bg-purple-600 border-purple-800 shadow-lg transform scale-105' 
                   : 'bg-purple-500 border-purple-600 hover:bg-purple-600'
               } text-white ${
-                !selectedCustomer ? 'opacity-50' : ''
+                !selectedCustomer || isViewingFinishedOrder ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
               📋 {t('credit').toUpperCase()}
