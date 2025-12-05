@@ -2401,11 +2401,11 @@ export default function OfflinePOS() {
                     {filteredOrders.map((order) => (
                       <div
                         key={order.id}
-                        className="grid grid-cols-7 gap-4 px-4 py-3 hover:bg-[#fff4e3] transition-colors"
+                        className="grid grid-cols-7 gap-4 px-4 py-3 hover:bg-[#fff4e3] transition-colors cursor-pointer"
+                        onClick={() => loadOrderIntoCart(order)}
                       >
                         <div 
-                          className="text-sm font-bold text-[#0f866c] cursor-pointer"
-                          onClick={() => loadOrderIntoCart(order)}
+                          className="text-sm font-bold text-[#0f866c]"
                         >
                           #{order.id}
                         </div>
