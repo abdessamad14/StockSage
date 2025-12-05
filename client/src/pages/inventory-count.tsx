@@ -288,31 +288,24 @@ export default function InventoryCountPage() {
       // Get all count items for this count
       const items = await offlineInventoryCountItemStorage.getByCountId(activeCount.id);
       
-      // For uncounted items, automatically use the expected quantity
-      const unCountedItems = items.filter(item => 
+      // Count items that were actually counted vs skipped
+      const countedItems = items.filter(item => 
+        item.actualQuantity !== undefined && item.actualQuantity !== null
+      );
+      const skippedItems = items.filter(item => 
         item.actualQuantity === undefined || item.actualQuantity === null
       );
       
-      if (unCountedItems.length > 0) {
-        // Auto-fill uncounted items with their expected quantity
-        for (const unCountedItem of unCountedItems) {
-          await offlineInventoryCountItemStorage.update(unCountedItem.id, {
-            actualQuantity: unCountedItem.expectedQuantity
-          });
-        }
-        
+      if (skippedItems.length > 0) {
         toast({
           title: t('info'),
-          description: `${unCountedItems.length} produit(s) non compté(s) gardent leur quantité attendue`,
+          description: `${countedItems.length} produit(s) compté(s), ${skippedItems.length} produit(s) non compté(s) ignoré(s)`,
           duration: 3000
         });
       }
       
-      // Reload items after auto-fill
-      const allItems = await offlineInventoryCountItemStorage.getByCountId(activeCount.id);
-      
-      // Process each item (now all have actualQuantity)
-      for (const item of allItems) {
+      // Process only counted items (skip uncounted items entirely)
+      for (const item of countedItems) {
         if (item.actualQuantity !== undefined && item.actualQuantity !== null) {
           const product = products.find(p => p.id === item.productId);
           if (!product) continue;
