@@ -51,6 +51,7 @@ import {
 interface PurchaseCartItem {
   product: OfflineProduct;
   quantity: number;
+  quantityInput?: string; // Raw input string for x*y format
   unitCost: number;
   totalCost: number;
 }
@@ -208,7 +209,12 @@ export default function OfflinePurchasePOS() {
     if (existingItem) {
       setCart(cart.map(item => 
         item.product.id === product.id
-          ? { ...item, quantity: item.quantity + 1, totalCost: (item.quantity + 1) * item.unitCost }
+          ? { 
+              ...item, 
+              quantity: item.quantity + 1, 
+              quantityInput: String(item.quantity + 1),
+              totalCost: (item.quantity + 1) * item.unitCost 
+            }
           : item
       ));
     } else {
@@ -216,6 +222,7 @@ export default function OfflinePurchasePOS() {
       setCart([...cart, {
         product,
         quantity: 1,
+        quantityInput: '1',
         unitCost,
         totalCost: unitCost
       }]);
@@ -264,26 +271,30 @@ export default function OfflinePurchasePOS() {
   };
 
   // Update cart item quantity - supports x*y format (packages * items per package)
-  const updateQuantity = (productId: string, newQuantity: number | string) => {
+  const updateQuantityInput = (productId: string, inputValue: string) => {
+    // Just update the input string, don't calculate yet
+    setCart(cart.map(item =>
+      item.product.id === productId
+        ? { ...item, quantityInput: inputValue }
+        : item
+    ));
+  };
+
+  const calculateAndUpdateQuantity = (productId: string, inputValue: string) => {
     let calculatedQuantity: number;
+    const trimmed = inputValue.trim();
     
-    // Handle string input for multiplication (e.g., "3*24" = 72)
-    if (typeof newQuantity === 'string') {
-      const trimmed = newQuantity.trim();
-      
-      // Check if it contains multiplication
-      if (trimmed.includes('*')) {
-        const parts = trimmed.split('*').map(p => parseFloat(p.trim()));
-        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-          calculatedQuantity = parts[0] * parts[1];
-        } else {
-          return; // Invalid format, don't update
-        }
+    // Check if it contains multiplication (e.g., "3*24")
+    if (trimmed.includes('*')) {
+      const parts = trimmed.split('*').map(p => parseFloat(p.trim()));
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        calculatedQuantity = parts[0] * parts[1];
       } else {
-        calculatedQuantity = parseFloat(trimmed) || 0;
+        // Invalid format, keep current quantity
+        return;
       }
     } else {
-      calculatedQuantity = newQuantity;
+      calculatedQuantity = parseFloat(trimmed) || 0;
     }
     
     if (calculatedQuantity <= 0) {
@@ -293,9 +304,33 @@ export default function OfflinePurchasePOS() {
 
     setCart(cart.map(item =>
       item.product.id === productId
-        ? { ...item, quantity: calculatedQuantity, totalCost: calculatedQuantity * item.unitCost }
+        ? { 
+            ...item, 
+            quantity: calculatedQuantity, 
+            quantityInput: String(calculatedQuantity), // Show calculated result
+            totalCost: calculatedQuantity * item.unitCost 
+          }
         : item
     ));
+  };
+
+  const updateQuantity = (productId: string, delta: number) => {
+    // For +/- buttons, work directly with quantity
+    setCart(cart.map(item => {
+      if (item.product.id === productId) {
+        const newQty = item.quantity + delta;
+        if (newQty <= 0) {
+          return item; // Don't update, will be removed
+        }
+        return {
+          ...item,
+          quantity: newQty,
+          quantityInput: String(newQty),
+          totalCost: newQty * item.unitCost
+        };
+      }
+      return item;
+    }));
   };
 
   // Update cart item cost
@@ -359,6 +394,7 @@ export default function OfflinePurchasePOS() {
           cartItems.push({
             product,
             quantity: item.quantity,
+            quantityInput: String(item.quantity),
             unitCost: item.unitPrice,
             totalCost: item.totalPrice
           });
@@ -782,22 +818,29 @@ export default function OfflinePurchasePOS() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.product.id, -1)}
                           className="h-7 w-7 p-0"
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
                         <Input
                           type="text"
-                          value={item.quantity}
-                          onChange={(e) => updateQuantity(item.product.id, e.target.value)}
-                          placeholder="9 ou 3*3"
-                          className="w-20 h-7 text-center text-sm"
+                          value={item.quantityInput || item.quantity}
+                          onChange={(e) => updateQuantityInput(item.product.id, e.target.value)}
+                          onBlur={(e) => calculateAndUpdateQuantity(item.product.id, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              calculateAndUpdateQuantity(item.product.id, e.currentTarget.value);
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          placeholder="9 ou 3*24"
+                          className="w-24 h-7 text-center text-sm"
                         />
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.product.id, 1)}
                           className="h-7 w-7 p-0"
                         >
                           <Plus className="h-3 w-3" />
