@@ -288,22 +288,31 @@ export default function InventoryCountPage() {
       // Get all count items for this count
       const items = await offlineInventoryCountItemStorage.getByCountId(activeCount.id);
       
-      // Check if all items have been counted
+      // For uncounted items, automatically use the expected quantity
       const unCountedItems = items.filter(item => 
         item.actualQuantity === undefined || item.actualQuantity === null
       );
       
       if (unCountedItems.length > 0) {
+        // Auto-fill uncounted items with their expected quantity
+        for (const unCountedItem of unCountedItems) {
+          await offlineInventoryCountItemStorage.update(unCountedItem.id, {
+            actualQuantity: unCountedItem.expectedQuantity
+          });
+        }
+        
         toast({
-          title: t('error'),
-          description: t('inventory_count_remaining_items', { count: unCountedItems.length.toString() }),
-          variant: 'destructive'
+          title: t('info'),
+          description: `${unCountedItems.length} produit(s) non compté(s) gardent leur quantité attendue`,
+          duration: 3000
         });
-        return;
       }
       
-      // Process each counted item
-      for (const item of items) {
+      // Reload items after auto-fill
+      const allItems = await offlineInventoryCountItemStorage.getByCountId(activeCount.id);
+      
+      // Process each item (now all have actualQuantity)
+      for (const item of allItems) {
         if (item.actualQuantity !== undefined && item.actualQuantity !== null) {
           const product = products.find(p => p.id === item.productId);
           if (!product) continue;
