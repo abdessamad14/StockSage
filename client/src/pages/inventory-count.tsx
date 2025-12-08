@@ -654,7 +654,6 @@ export default function InventoryCountPage() {
             <Button 
               onClick={handleCompleteCount}
               className="bg-green-600 hover:bg-green-700"
-              disabled={activeProgress < 100}
             >
               <CheckCircle className="w-4 h-4 mr-2" />
               {t('inventory_count_complete_button', { progress: activeProgress.toString() })}
