@@ -78,3 +78,34 @@ data/machine.id
 installer-build/stocksage-*/
 installer-build/output/
 installer-build/installer.nsi
+
+# Secure executable build artifacts (internal only)
+server-compiled/
+server-obfuscated/
+build-exe/
+
+# Internal documentation (not for customers)
+BUILD-SECURE-EXECUTABLE.md
+BUILD-COMPLETE.md
+DEBUG-INSTALLER.md
+DEPLOYMENT.md
+DEV-VS-PRODUCTION.md
+FINAL-DEPLOYMENT-SUMMARY.md
+FIX-NODEJS-V16.md
+FIX-WINDOWS-BINARIES.md
+INSTALLATION-SUCCESS.md
+INSTALLER-READY.md
+LICENSE-SYSTEM-GUIDE.md
+NO-SERVICE-MODE.md
+OFFLINE-INSTALL.md
+OFFLINE-INSTALLATION-GUIDE.md
+PACKAGING.md
+PROJECT_CONTEXT.md
+QUICK-DEBUG-GUIDE.md
+QUICK-START-LICENSE.md
+RUNNING-MODES.md
+SHORTCUTS-GUIDE.md
+UPDATE-GUIDE.md
+UPDATE-PROCESS.md
+UPDATE-QUICK-REFERENCE.md
+ADD-DELETE-ORDERS.md

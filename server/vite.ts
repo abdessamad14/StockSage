@@ -83,7 +83,16 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "..", "dist", "public");
+  // Detect if running inside pkg snapshot
+  // @ts-ignore - pkg adds this property at runtime
+  const isPkg = typeof process.pkg !== 'undefined';
+  
+  // If running in pkg, dist folder is external to the snapshot
+  // Use process.cwd() to find it in the executable's directory
+  // Otherwise, use __dirname for normal Node.js execution
+  const distPath = isPkg 
+    ? path.resolve(process.cwd(), "dist", "public")
+    : path.resolve(__dirname, "..", "dist", "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
