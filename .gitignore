@@ -83,6 +83,8 @@ installer-build/installer.nsi
 server-compiled/
 server-obfuscated/
 build-exe/
+installer-complete/
+installer-secure/
 
 # Internal documentation (not for customers)
 BUILD-SECURE-EXECUTABLE.md
