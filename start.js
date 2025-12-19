@@ -58,11 +58,15 @@ function checkBuildAndContinue() {
 function checkDatabase() {
   // Check if database exists
   const dbPath = join(process.cwd(), 'data', 'stocksage.db');
+  
+  // Use the current Node.js executable (works with portable Node.js)
+  const nodeExe = process.execPath;
+  
   if (!existsSync(dbPath)) {
     console.log('📦 Initializing database...');
     
     // Run database initialization
-    const initProcess = spawn('node', ['scripts/init-sqlite.js'], {
+    const initProcess = spawn(nodeExe, ['scripts/init-sqlite.js'], {
       stdio: 'inherit',
       cwd: process.cwd()
     });
@@ -79,7 +83,7 @@ function checkDatabase() {
     console.log('✅ Database found, checking schema...');
     
     // Always run schema migration check on startup to ensure schema is up-to-date
-    const migrateProcess = spawn('node', ['scripts/init-sqlite.js', '--no-seed'], {
+    const migrateProcess = spawn(nodeExe, ['scripts/init-sqlite.js', '--no-seed'], {
       stdio: 'inherit',
       cwd: process.cwd()
     });
@@ -97,8 +101,26 @@ function checkDatabase() {
 }
 
 function startServer() {
-  // Run tsx using the portable Node.js
-  const serverPath = join(process.cwd(), 'server', 'index.ts');
+  // Use the current Node.js executable (works with portable Node.js)
+  const nodeExe = process.execPath;
+  
+  // In production installer: server/ contains obfuscated .js files
+  // In development: server/ contains .ts files
+  let serverPath;
+  const jsPath = join(process.cwd(), 'server', 'index.js');
+  const tsPath = join(process.cwd(), 'server', 'index.ts');
+  
+  if (existsSync(jsPath)) {
+    serverPath = jsPath;
+    console.log('🔒 Starting production server...');
+  } else if (existsSync(tsPath)) {
+    serverPath = tsPath;
+    console.log('🔧 Starting development server...');
+  } else {
+    console.error('❌ Server entry point not found!');
+    console.error('   Expected: server/index.js or server/index.ts');
+    process.exit(1);
+  }
   
   // Set production environment
   const env = {
@@ -106,20 +128,26 @@ function startServer() {
     NODE_ENV: 'production'
   };
   
-  // Use the portable Node.js to run tsx
+  // For TypeScript files, we need tsx; for JS files, run directly
   let command, args;
-  
-  if (process.platform === 'win32') {
-    // On Windows, use the portable nodejs\node.exe to run tsx
-    const nodeExe = join(process.cwd(), 'nodejs', 'node.exe');
-    const tsxJs = join(process.cwd(), 'node_modules', 'tsx', 'dist', 'cli.mjs');
-    command = nodeExe;
-    args = [tsxJs, serverPath];
+  if (serverPath.endsWith('.ts')) {
+    // TypeScript - need tsx
+    if (process.platform === 'win32') {
+      const tsxJs = join(process.cwd(), 'node_modules', 'tsx', 'dist', 'cli.mjs');
+      command = nodeExe;
+      args = [tsxJs, serverPath];
+    } else {
+      command = 'npx';
+      args = ['tsx', serverPath];
+    }
   } else {
-    // On Unix, use npx
-    command = 'npx';
-    args = ['tsx', serverPath];
+    // JavaScript (obfuscated) - run directly with Node
+    command = nodeExe;
+    args = [serverPath];
   }
+  
+  console.log(`📍 Server path: ${serverPath}`);
+  console.log(`🚀 Command: ${command}`);
   
   // Start the server
   const serverProcess = spawn(command, args, {

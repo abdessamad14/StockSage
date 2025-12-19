@@ -57,7 +57,7 @@ Section "Install"
   
   ; Install all files
   DetailPrint "Installing Igoodar..."
-  File /r "/Users/abdessamadabba/repos/StockSage/packages/stocksage-simple-20251219182629\*.*"
+  File /r "/Users/abdessamadabba/repos/StockSage/packages/stocksage-simple-20251219184711\*.*"
   
   ; Restore data
   IfFileExists "$INSTDIR\data_backup\stocksage.db" 0 no_restore
