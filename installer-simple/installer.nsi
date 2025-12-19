@@ -57,7 +57,7 @@ Section "Install"
   
   ; Install all files
   DetailPrint "Installing Igoodar..."
-  File /r "/Users/abdessamadabba/repos/StockSage/packages/stocksage-simple-20251219151131\*.*"
+  File /r "/Users/abdessamadabba/repos/StockSage/packages/stocksage-simple-20251219182629\*.*"
   
   ; Restore data
   IfFileExists "$INSTDIR\data_backup\stocksage.db" 0 no_restore
@@ -77,16 +77,18 @@ Section "Install"
     DetailPrint "Database initialized"
   db_exists:
   
-  ; Create startup scripts
+  ; Create startup scripts that use PORTABLE Node.js (not system Node)
   FileOpen $0 "$INSTDIR\start.bat" w
   FileWrite $0 '@echo off$\r$\n'
   FileWrite $0 'cd /d "%~dp0"$\r$\n'
+  FileWrite $0 'echo Starting Igoodar...$\r$\n'
   FileWrite $0 'if not exist data\stocksage.db ($\r$\n'
   FileWrite $0 '  echo Initializing database...$\r$\n'
-  FileWrite $0 '  nodejs\node.exe scripts\init-sqlite.js$\r$\n'
+  FileWrite $0 '  "%~dp0nodejs\node.exe" scripts\init-sqlite.js$\r$\n'
   FileWrite $0 ')$\r$\n'
   FileWrite $0 'title Igoodar Server$\r$\n'
-  FileWrite $0 'nodejs\node.exe start.js$\r$\n'
+  FileWrite $0 '"%~dp0nodejs\node.exe" start.js$\r$\n'
+  FileWrite $0 'pause$\r$\n'
   FileClose $0
   
   ; Silent startup for auto-start

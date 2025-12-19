@@ -5,14 +5,15 @@
  * Allows building truly offline Windows installer from Mac
  */
 
-import https from 'https';
-import { createWriteStream, existsSync, mkdirSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, unlinkSync, cpSync } from 'fs';
 import { join } from 'path';
 import { execSync } from 'child_process';
 
 const projectRoot = process.cwd();
 const BETTER_SQLITE3_VERSION = '11.7.0';
-const BINARY_URL = `https://github.com/WiseLibs/better-sqlite3/releases/download/v${BETTER_SQLITE3_VERSION}/better-sqlite3-v${BETTER_SQLITE3_VERSION}-napi-v6-win32-x64.tar.gz`;
+// node-v115 is Node MODULE_VERSION 115 (Node v20.x)
+// node-v108 is Node MODULE_VERSION 108 (Node v16.x/v18.x)
+const BINARY_URL = `https://github.com/WiseLibs/better-sqlite3/releases/download/v${BETTER_SQLITE3_VERSION}/better-sqlite3-v${BETTER_SQLITE3_VERSION}-node-v115-win32-x64.tar.gz`;
 
 const windowsBinaryDir = join(projectRoot, '.windows-binaries');
 const tempFile = join(windowsBinaryDir, 'temp.tar.gz');
@@ -23,58 +24,36 @@ if (!existsSync(windowsBinaryDir)) {
   mkdirSync(windowsBinaryDir, { recursive: true });
 }
 
-console.log('  📥 Downloading from GitHub releases...');
-
-function followRedirects(url, maxRedirects = 5) {
-  return new Promise((resolve, reject) => {
-    if (maxRedirects === 0) {
-      return reject(new Error('Too many redirects'));
-    }
-
-    https.get(url, (res) => {
-      if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 308) {
-        return followRedirects(res.headers.location, maxRedirects - 1)
-          .then(resolve)
-          .catch(reject);
-      } else if (res.statusCode === 200) {
-        resolve(res);
-      } else {
-        reject(new Error(`HTTP ${res.statusCode}: ${res.statusMessage}`));
-      }
-    }).on('error', reject);
-  });
-}
+console.log('  📥 Downloading Windows binary for Node v20...');
 
 async function download() {
   try {
-    // Download tar.gz
-    const response = await followRedirects(BINARY_URL);
-    const file = createWriteStream(tempFile);
-    
-    let downloadedBytes = 0;
-    response.on('data', (chunk) => {
-      downloadedBytes += chunk.length;
+    // Download tar.gz using curl (more reliable than Node HTTPS on Mac)
+    console.log(`  📦 Downloading from: ${BINARY_URL}`);
+    execSync(`curl -k -L -o "${tempFile}" "${BINARY_URL}"`, {
+      stdio: 'inherit'
     });
     
-    await new Promise((resolve, reject) => {
-      response.pipe(file);
-      file.on('finish', () => {
-        file.close();
-        console.log(`  ✓ Downloaded ${(downloadedBytes / 1024).toFixed(0)} KB`);
-        resolve();
-      });
-      file.on('error', reject);
-      response.on('error', reject);
-    });
-
+    console.log('  ✓ Download complete');
     console.log('  📦 Extracting binary...');
 
     // Extract using system tar command (available on Mac)
-    execSync(`tar -xzf "${tempFile}" -C "${windowsBinaryDir}" "build/Release/better_sqlite3.node" --strip-components=2`, {
+    execSync(`tar -xzf "${tempFile}" -C "${windowsBinaryDir}"`, {
       stdio: 'pipe'
     });
+    
+    // Find the extracted .node file (directly in build/Release/)
+    const extractedFile = join(windowsBinaryDir, 'build', 'Release', 'better_sqlite3.node');
+    if (existsSync(extractedFile)) {
+      // Move to expected location
+      cpSync(extractedFile, outputFile);
+      // Clean up extracted build folder
+      execSync(`rm -rf "${join(windowsBinaryDir, 'build')}"`, { stdio: 'pipe' });
+    } else {
+      throw new Error(`Extracted file not found at: ${extractedFile}`);
+    }
 
-    // Clean up
+    // Clean up temp file
     if (existsSync(tempFile)) {
       unlinkSync(tempFile);
     }

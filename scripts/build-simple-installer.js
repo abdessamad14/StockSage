@@ -30,33 +30,44 @@ console.log('========================================\n');
 // Step 0: Get Windows binary for better-sqlite3
 console.log('📥 Step 0/5: Preparing Windows-compatible database driver...');
 
-// Check if Windows binary exists in node_modules (from npm prebuild)
-const npmWindowsBinary = join(projectRoot, 'node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node.win.v18.5.0');
+// Need binary for Node v20 (portable nodejs is v20)
 const windowsBinaryDir = join(projectRoot, '.windows-binaries');
 const windowsBinaryPath = join(windowsBinaryDir, 'better_sqlite3.node');
 
-if (existsSync(npmWindowsBinary)) {
-  console.log('  ✓ Found Windows binary in node_modules');
-  // Copy to .windows-binaries for reuse
-  if (!existsSync(windowsBinaryDir)) {
-    mkdirSync(windowsBinaryDir, { recursive: true });
-  }
-  cpSync(npmWindowsBinary, windowsBinaryPath);
-  console.log('  ✓ Windows binary ready for offline installation');
-} else if (existsSync(windowsBinaryPath)) {
-  console.log('  ✓ Using cached Windows binary');
+let foundBinary = false;
+
+// Check if we already have the Windows binary downloaded
+if (existsSync(windowsBinaryPath)) {
+  console.log('  ✓ Using cached Windows binary for Node v20');
+  foundBinary = true;
 } else {
-  console.error('\n  ❌ Windows binary not found!');
-  console.error('  \n  📥 To get Windows binary:');
-  console.error('  1. On Windows PC with Node.js:');
-  console.error('     npm install better-sqlite3@11.7.0');
-  console.error('  2. Copy from: node_modules\\better-sqlite3\\build\\Release\\better_sqlite3.node');
-  console.error(`  3. Place in: ${windowsBinaryPath}`);
-  console.error('  4. Or: Delete node_modules and run npm install again\n');
-  console.error('  The installer package will work but requires internet on Windows to download the binary.\n');
+  console.log('  ⚠️  Windows binary not found');
+  console.log('  📥 Downloading Node v20 Windows binary from GitHub...\n');
   
-  // Don't exit - continue but warn user
-  console.log('  ⚠️  Continuing without Windows binary - installer will need internet');
+  try {
+    execSync('node scripts/download-windows-sqlite-binary.js', {
+      stdio: 'inherit',
+      cwd: projectRoot
+    });
+    
+    if (existsSync(windowsBinaryPath)) {
+      console.log('\n  ✅ Windows binary downloaded successfully!');
+      foundBinary = true;
+    }
+  } catch (error) {
+    console.error('\n  ❌ Download failed!');
+    console.error('  \n  📥 Manual solution:');
+    console.error('  1. On Windows PC with Node.js v20:');
+    console.error('     npm install better-sqlite3@11.7.0');
+    console.error('  2. Copy: node_modules\\better-sqlite3\\build\\Release\\better_sqlite3.node');
+    console.error(`  3. To: ${windowsBinaryPath}`);
+    console.error('  4. Run build:installer again\n');
+  }
+}
+
+if (!foundBinary) {
+  console.error('  ⚠️  WARNING: No Windows binary available!');
+  console.error('  ⚠️  Installation will fail on Windows\n');
 }
 console.log('✅ Preparation complete\n');
 
@@ -282,16 +293,18 @@ Section "Install"
     DetailPrint "Database initialized"
   db_exists:
   
-  ; Create startup scripts
+  ; Create startup scripts that use PORTABLE Node.js (not system Node)
   FileOpen $0 "$INSTDIR\\start.bat" w
   FileWrite $0 '@echo off$\\r$\\n'
   FileWrite $0 'cd /d "%~dp0"$\\r$\\n'
+  FileWrite $0 'echo Starting Igoodar...$\\r$\\n'
   FileWrite $0 'if not exist data\\stocksage.db ($\\r$\\n'
   FileWrite $0 '  echo Initializing database...$\\r$\\n'
-  FileWrite $0 '  nodejs\\node.exe scripts\\init-sqlite.js$\\r$\\n'
+  FileWrite $0 '  "%~dp0nodejs\\node.exe" scripts\\init-sqlite.js$\\r$\\n'
   FileWrite $0 ')$\\r$\\n'
   FileWrite $0 'title Igoodar Server$\\r$\\n'
-  FileWrite $0 'nodejs\\node.exe start.js$\\r$\\n'
+  FileWrite $0 '"%~dp0nodejs\\node.exe" start.js$\\r$\\n'
+  FileWrite $0 'pause$\\r$\\n'
   FileClose $0
   
   ; Silent startup for auto-start
