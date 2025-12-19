@@ -90,11 +90,12 @@ if (existsSync(serverCompiledDir)) {
 mkdirSync(serverCompiledDir, { recursive: true });
 
 try {
-  // Transpile all TypeScript files to ES modules (package.json has "type": "module")
-  const transpileCmd = `npx esbuild server/**/*.ts --outdir=server-compiled --platform=node --format=esm --target=node18 --loader:.node=copy`;
-  execSync(transpileCmd, { stdio: 'inherit', cwd: projectRoot });
+  // Bundle server entry point (resolves all imports)
+  // Mark all node_modules as external to avoid bundling them
+  const bundleCmd = `npx esbuild server/index.ts --bundle --outfile=server-compiled/index.js --platform=node --format=esm --target=node18 --packages=external --loader:.node=copy`;
+  execSync(bundleCmd, { stdio: 'inherit', cwd: projectRoot });
   
-  // Also copy any existing .js files (like license.js)
+  // Also copy any standalone .js files that might be needed
   const jsFiles = ['server/license.js', 'server/license-routes.js', 'server/network-printer.js'];
   for (const file of jsFiles) {
     const src = join(projectRoot, file);
@@ -105,9 +106,9 @@ try {
     }
   }
   
-  console.log('✅ Server transpilation complete\n');
+  console.log('✅ Server bundling complete\n');
 } catch (error) {
-  console.error('❌ Server transpilation failed');
+  console.error('❌ Server bundling failed');
   process.exit(1);
 }
 
