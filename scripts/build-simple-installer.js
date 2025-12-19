@@ -90,8 +90,8 @@ if (existsSync(serverCompiledDir)) {
 mkdirSync(serverCompiledDir, { recursive: true });
 
 try {
-  // Transpile all TypeScript files
-  const transpileCmd = `npx esbuild server/**/*.ts --outdir=server-compiled --platform=node --format=cjs --target=node18 --loader:.node=copy`;
+  // Transpile all TypeScript files to ES modules (package.json has "type": "module")
+  const transpileCmd = `npx esbuild server/**/*.ts --outdir=server-compiled --platform=node --format=esm --target=node18 --loader:.node=copy`;
   execSync(transpileCmd, { stdio: 'inherit', cwd: projectRoot });
   
   // Also copy any existing .js files (like license.js)
