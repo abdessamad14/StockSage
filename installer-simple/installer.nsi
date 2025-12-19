@@ -57,7 +57,7 @@ Section "Install"
   
   ; Install all files
   DetailPrint "Installing Igoodar..."
-  File /r "/Users/abdessamadabba/repos/StockSage/packages/stocksage-simple-20251219145421\*.*"
+  File /r "/Users/abdessamadabba/repos/StockSage/packages/stocksage-simple-20251219151131\*.*"
   
   ; Restore data
   IfFileExists "$INSTDIR\data_backup\stocksage.db" 0 no_restore
@@ -66,17 +66,8 @@ Section "Install"
     RMDir /r "$INSTDIR\data_backup"
   no_restore:
   
-  ; Fix better-sqlite3 for Windows (reinstall with correct binary)
-  DetailPrint "Installing Windows-compatible database driver..."
-  SetOutPath "$INSTDIR"
-  nsExec::ExecToLog '"$INSTDIR\nodejs\npm.cmd" install better-sqlite3@11.7.0 --force'
-  Pop $0
-  ${If} $0 != 0
-    DetailPrint "Warning: Database driver installation had issues"
-    MessageBox MB_YESNO "Database driver installation had issues.$\n$\nThis may be due to no internet connection.$\n$\nDo you want to continue anyway?" IDYES continue_install
-      Abort
-    continue_install:
-  ${EndIf}
+  ; Database driver already included (Windows-compatible binary)
+  DetailPrint "Windows-compatible database driver included"
   
   ; Initialize database if needed
   IfFileExists "$INSTDIR\data\stocksage.db" db_exists

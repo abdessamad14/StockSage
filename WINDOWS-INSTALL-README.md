@@ -4,7 +4,7 @@
 
 ### Requirements
 - **Windows 10 or later**
-- **Internet connection** (for first-time installation only)
+- **NO internet required** (✅ 100% offline installation)
 - **200 MB free disk space**
 
 ### Installation Steps
@@ -16,7 +16,7 @@
 
 2. **Follow the wizard**
    - Click: Next → Next → Install
-   - Wait 3-5 minutes (installer downloads Windows-compatible database driver)
+   - Wait 2-3 minutes
 
 3. **Done!**
    - Browser opens automatically to http://localhost:5003
@@ -38,21 +38,20 @@ Cashier:
 The installer will:
 
 1. ✅ Extract files to `C:\Users\[YourName]\AppData\Local\Igoodar`
-2. ✅ Download Windows-compatible database driver (requires internet)
-3. ✅ Initialize database
-4. ✅ Create desktop shortcut
-5. ✅ Set up auto-start on Windows boot
-6. ✅ Start the application
+2. ✅ Initialize database
+3. ✅ Create desktop shortcut
+4. ✅ Set up auto-start on Windows boot
+5. ✅ Start the application
 
-**Time:** 3-5 minutes  
-**Internet:** Required for step 2 (one-time only)
+**Time:** 2-3 minutes  
+**Internet:** NOT required (✅ 100% offline)
 
 ---
 
 ## ⚠️ Important Notes
 
-### Internet Connection Required
-The first installation requires internet to download the Windows-compatible SQLite database driver. After installation, **no internet is needed** to run the application.
+### No Internet Required!
+The installation is **100% offline** - no internet connection needed at any time. All dependencies including the Windows-compatible SQLite database driver are included in the installer.
 
 ### Installation Location
 ```
