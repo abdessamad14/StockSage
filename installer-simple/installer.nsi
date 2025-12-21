@@ -57,7 +57,7 @@ Section "Install"
   
   ; Install all files
   DetailPrint "Installing Igoodar..."
-  File /r "/Users/abdessamadabba/repos/StockSage/packages/stocksage-simple-20251221115641\*.*"
+  File /r "/Users/abdessamadabba/repos/StockSage/packages/stocksage-simple-20251221121145\*.*"
   
   ; Restore data
   IfFileExists "$INSTDIR\data_backup\stocksage.db" 0 no_restore
@@ -91,19 +91,48 @@ Section "Install"
   FileWrite $0 'pause$\r$\n'
   FileClose $0
   
-  ; Silent startup for auto-start
+  ; Silent startup for auto-start and background running (NO CONSOLE WINDOW)
   FileOpen $0 "$INSTDIR\start-silent.vbs" w
   FileWrite $0 'Set WshShell = CreateObject("WScript.Shell")$\r$\n'
-  FileWrite $0 'WshShell.CurrentDirectory = "$INSTDIR"$\r$\n'
-  FileWrite $0 'WshShell.Run """$INSTDIR\start.bat""", 0, False$\r$\n'
+  FileWrite $0 'Set FSO = CreateObject("Scripting.FileSystemObject")$\r$\n'
+  FileWrite $0 '$\r$\n'
+  FileWrite $0 "' Get the directory where this script is located$\r$\n"
+  FileWrite $0 'InstallDir = "$INSTDIR"$\r$\n'
+  FileWrite $0 'NodeExe = InstallDir & "\nodejs\node.exe"$\r$\n'
+  FileWrite $0 'StartJS = InstallDir & "\start.js"$\r$\n'
+  FileWrite $0 'DataDir = InstallDir & "\data"$\r$\n'
+  FileWrite $0 'DbFile = DataDir & "\stocksage.db"$\r$\n'
+  FileWrite $0 '$\r$\n'
+  FileWrite $0 "' Initialize database if it does not exist$\r$\n"
+  FileWrite $0 'If Not FSO.FileExists(DbFile) Then$\r$\n'
+  FileWrite $0 '  WshShell.CurrentDirectory = InstallDir$\r$\n'
+  FileWrite $0 '  WshShell.Run """" & NodeExe & """ scripts\init-sqlite.js", 0, True$\r$\n'
+  FileWrite $0 'End If$\r$\n'
+  FileWrite $0 '$\r$\n'
+  FileWrite $0 "' Start the server in background (no window)$\r$\n"
+  FileWrite $0 'WshShell.CurrentDirectory = InstallDir$\r$\n'
+  FileWrite $0 'WshShell.Run """" & NodeExe & """ """ & StartJS & """", 0, False$\r$\n'
   FileClose $0
   
   ; Stop script
   FileOpen $0 "$INSTDIR\stop.bat" w
   FileWrite $0 '@echo off$\r$\n'
+  FileWrite $0 'echo Stopping Igoodar...$\r$\n'
   FileWrite $0 'taskkill /F /IM node.exe /FI "WINDOWTITLE eq Igoodar*"$\r$\n'
+  FileWrite $0 'timeout /t 1 >nul$\r$\n'
   FileWrite $0 'echo Igoodar stopped.$\r$\n'
   FileWrite $0 'pause$\r$\n'
+  FileClose $0
+  
+  ; Restart script (stops then starts silently)
+  FileOpen $0 "$INSTDIR\restart.bat" w
+  FileWrite $0 '@echo off$\r$\n'
+  FileWrite $0 'echo Restarting Igoodar...$\r$\n'
+  FileWrite $0 'taskkill /F /IM node.exe /FI "WINDOWTITLE eq Igoodar*" >nul 2>&1$\r$\n'
+  FileWrite $0 'timeout /t 2 >nul$\r$\n'
+  FileWrite $0 'wscript.exe "%~dp0start-silent.vbs"$\r$\n'
+  FileWrite $0 'echo Igoodar restarted in background.$\r$\n'
+  FileWrite $0 'timeout /t 2 >nul$\r$\n'
   FileClose $0
   
   ; Add to Windows startup
@@ -125,23 +154,24 @@ Section "Install"
   FileWrite $0 "URL=http://localhost:5003$\r$\n"
   FileClose $0
   
+  CreateShortcut "$SMPROGRAMS\Igoodar\Restart Igoodar.lnk" "$INSTDIR\restart.bat" "" "$INSTDIR\nodejs\node.exe" 0
   CreateShortcut "$SMPROGRAMS\Igoodar\Stop Igoodar.lnk" "$INSTDIR\stop.bat"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateShortcut "$SMPROGRAMS\Igoodar\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
   
-  ; Start the application
-  DetailPrint "Starting Igoodar..."
-  Exec '"$INSTDIR\start.bat"'
+  ; Start the application (silently in background - no console window)
+  DetailPrint "Starting Igoodar in background..."
+  Exec 'wscript.exe "$INSTDIR\start-silent.vbs"'
   Sleep 3000
   
   ; Success message
   IfFileExists "$INSTDIR\data_backup\stocksage.db" 0 fresh_msg
-    MessageBox MB_OK "✅ Igoodar updated successfully!$\n$\n✓ Data preserved$\n✓ Server running$\n✓ Opening dashboard...$\n$\nAccess: Double-click Igoodar on desktop"
+    MessageBox MB_OK "✅ Igoodar updated successfully!$\n$\n✓ Data preserved$\n✓ Server running in background$\n✓ No console window$\n✓ Opening dashboard...$\n$\nAccess: Double-click Igoodar on desktop"
     Sleep 1000
     ExecShell "open" "http://localhost:5003"
     Goto done
   fresh_msg:
-    MessageBox MB_OK "✅ Igoodar installed!$\n$\n✓ Server running$\n✓ Auto-starts with Windows$\n✓ Opening dashboard...$\n$\nLogin:$\n• Admin PIN: 1234$\n• Cashier PIN: 5678$\n$\nAccess:$\n• Desktop: Igoodar icon$\n• Browser: http://localhost:5003$\n• Network: http://[PC-IP]:5003"
+    MessageBox MB_OK "✅ Igoodar installed!$\n$\n✓ Server running in background$\n✓ Auto-starts with Windows$\n✓ No console window to close$\n✓ Opening dashboard...$\n$\nLogin:$\n• Admin PIN: 1234$\n• Cashier PIN: 5678$\n$\nAccess:$\n• Desktop: Igoodar icon$\n• Browser: http://localhost:5003$\n• Network: http://[PC-IP]:5003$\n$\nManagement:$\n• Start Menu → Igoodar → Restart/Stop"
     Sleep 1000
     ExecShell "open" "http://localhost:5003"
   done:
