@@ -365,20 +365,28 @@ export default function USBThermalPrinterConfig() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Connection Type Selection */}
+          {/* Printing Method Selection */}
           <div className="space-y-2">
-            <Label htmlFor="connection-type">Connection Type</Label>
+            <Label htmlFor="printing-mode">Printing Method</Label>
             <Select 
-              value={connectionType} 
-              onValueChange={async (value: any) => {
-                setConnectionType(value);
-                // Save printer type to database immediately
+              value={globalSettings?.printingMode || 'SYSTEM'} 
+              onValueChange={async (value: 'SYSTEM' | 'WEBUSB' | 'NETWORK') => {
+                // Save printing mode to database
                 try {
                   await updateSettings({
-                    printerType: value === 'network' ? 'network' : 'usb'
+                    printingMode: value,
+                    // Also update printerType for backward compatibility
+                    printerType: value === 'NETWORK' ? 'network' : (value === 'WEBUSB' ? 'usb' : 'system')
                   });
+                  
+                  // Update local state based on mode
+                  if (value === 'NETWORK') {
+                    setConnectionType('network');
+                  } else if (value === 'WEBUSB') {
+                    setConnectionType('usb');
+                  }
                 } catch (error) {
-                  console.error('Failed to save printer type:', error);
+                  console.error('Failed to save printing mode:', error);
                 }
               }}
             >
@@ -386,14 +394,59 @@ export default function USBThermalPrinterConfig() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="usb">USB Thermal Printer</SelectItem>
-                <SelectItem value="network">Network Printer (IP)</SelectItem>
+                <SelectItem value="SYSTEM">
+                  <div className="flex items-center gap-2">
+                    <Printer className="h-4 w-4" />
+                    <div>
+                      <div className="font-medium">Windows Driver (Default)</div>
+                      <div className="text-xs text-muted-foreground">Use installed printer driver</div>
+                    </div>
+                  </div>
+                </SelectItem>
+                <SelectItem value="WEBUSB">
+                  <div className="flex items-center gap-2">
+                    <Usb className="h-4 w-4" />
+                    <div>
+                      <div className="font-medium">Direct USB (Advanced)</div>
+                      <div className="text-xs text-muted-foreground">WebUSB thermal printer</div>
+                    </div>
+                  </div>
+                </SelectItem>
+                <SelectItem value="NETWORK">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4" />
+                    <div>
+                      <div className="font-medium">Network / IP</div>
+                      <div className="text-xs text-muted-foreground">Network ESC/POS printer</div>
+                    </div>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* USB Thermal Printer Section */}
-          {connectionType === 'usb' && (
+          {/* Warning when switching from WEBUSB to SYSTEM */}
+          {globalSettings?.printingMode === 'SYSTEM' && globalSettings?.printerConnected && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-sm">
+                <strong>Note:</strong> If you previously used Direct USB mode, you may need to uninstall the Zadig driver and reinstall the manufacturer's driver for Windows Driver mode to work properly.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Info about System Print Mode */}
+          {globalSettings?.printingMode === 'SYSTEM' && (
+            <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+              <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <AlertDescription className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Windows Driver Mode:</strong> Uses your installed printer driver. For silent printing, launch the app via the Kiosk shortcut. Make sure your printer is set as the default in Windows.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* USB Thermal Printer Section - Only show for WEBUSB mode */}
+          {globalSettings?.printingMode === 'WEBUSB' && (
           <div className="border rounded-lg p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -576,7 +629,8 @@ export default function USBThermalPrinterConfig() {
           )}
 
           {/* Network Printer Section */}
-          {connectionType === 'network' && <NetworkPrinterTest />}
+          {/* Network Printer Section - Only show for NETWORK mode */}
+          {globalSettings?.printingMode === 'NETWORK' && <NetworkPrinterTest />}
 
           {/* Error Display */}
           {error && (

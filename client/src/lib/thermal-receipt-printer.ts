@@ -37,35 +37,208 @@ export class ThermalReceiptPrinter {
     }
   }
 
-  // Print receipt with fallback options
+  // Print receipt with fallback options (CENTRAL PRINT MANAGER)
   static async printReceipt(receiptData: ReceiptData): Promise<void> {
     const settings = JSON.parse(localStorage.getItem('stocksage_settings') || '{}');
     const currentSettings = settings;
     
-    // Try network printer if configured
-    if (currentSettings?.printerType === 'network' && currentSettings?.printerAddress) {
-      try {
-        await this.printToNetworkPrinter(receiptData, currentSettings);
-        return;
-      } catch (error) {
-        console.warn('Network printer failed:', error);
-        throw new Error(`Imprimante réseau non disponible: ${(error as Error).message}`);
-      }
-    }
+    // Get the printing mode preference
+    const printingMode = currentSettings?.printingMode || 'SYSTEM'; // Default to SYSTEM
     
-    // Try USB thermal printer if configured
-    if (currentSettings?.printerConnected && currentSettings?.printerVendorId && 'usb' in navigator) {
-      try {
-        await this.printToThermalPrinter(receiptData, currentSettings);
-        return;
-      } catch (error) {
-        console.warn('Thermal printer failed:', error);
-        throw new Error('Imprimante thermique non connectée');
-      }
-    }
+    console.log(`[Print Manager] Printing mode: ${printingMode}`);
     
-    // If no thermal printer configured, show message instead of opening print dialog
-    throw new Error('Imprimante thermique non configurée');
+    // Route to appropriate print handler based on mode
+    switch (printingMode) {
+      case 'SYSTEM':
+        // Windows Driver (System Default)
+        try {
+          await this.printViaSystem(receiptData, currentSettings);
+          return;
+        } catch (error) {
+          console.warn('System print failed:', error);
+          throw new Error(`Impression système non disponible: ${(error as Error).message}`);
+        }
+      
+      case 'WEBUSB':
+        // Direct USB (Advanced)
+        if (currentSettings?.printerConnected && currentSettings?.printerVendorId && 'usb' in navigator) {
+          try {
+            await this.printToThermalPrinter(receiptData, currentSettings);
+            return;
+          } catch (error) {
+            console.warn('Thermal printer failed:', error);
+            throw new Error('Imprimante thermique non connectée');
+          }
+        } else {
+          throw new Error('Imprimante USB non configurée ou non connectée');
+        }
+      
+      case 'NETWORK':
+        // Network / IP
+        if (currentSettings?.printerAddress) {
+          try {
+            await this.printToNetworkPrinter(receiptData, currentSettings);
+            return;
+          } catch (error) {
+            console.warn('Network printer failed:', error);
+            throw new Error(`Imprimante réseau non disponible: ${(error as Error).message}`);
+          }
+        } else {
+          throw new Error('Adresse IP de l\'imprimante non configurée');
+        }
+      
+      default:
+        throw new Error('Mode d\'impression non reconnu');
+    }
+  }
+
+  // Print via System Default (Windows Driver) - NEW!
+  static async printViaSystem(receiptData: ReceiptData, settings: any): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        console.log('[System Print] Generating receipt HTML...');
+        
+        // Generate HTML receipt
+        const receiptHTML = this.generateReceiptHTML(receiptData, settings);
+        
+        // Update the hidden printable container
+        const container = document.getElementById('printable-receipt-container');
+        if (!container) {
+          reject(new Error('Printable receipt container not found. Please refresh the page.'));
+          return;
+        }
+        
+        container.innerHTML = receiptHTML;
+        
+        // Give the DOM time to update (ensure receipt is rendered)
+        setTimeout(() => {
+          console.log('[System Print] Triggering window.print()...');
+          
+          // Call window.print() - will be silent if using Kiosk shortcut
+          window.print();
+          
+          // Clean up after a short delay
+          setTimeout(() => {
+            container.innerHTML = '';
+            resolve();
+          }, 500);
+          
+        }, 100);
+        
+      } catch (error: any) {
+        console.error('[System Print] Error:', error);
+        reject(new Error(`System print failed: ${error.message}`));
+      }
+    });
+  }
+
+  // Generate HTML for system print
+  private static generateReceiptHTML(receiptData: ReceiptData, settings: any): string {
+    const businessName = settings?.businessName || 'iGoodar POS';
+    const address = settings?.address || '';
+    const phone = settings?.phone || '';
+    const receiptHeader = settings?.receiptHeader || '';
+    const receiptFooter = settings?.receiptFooter || 'Merci pour votre visite!';
+    
+    const itemsHTML = receiptData.items.map(item => `
+      <tr>
+        <td style="text-align: left;">${item.name}</td>
+        <td style="text-align: center;">${item.quantity}</td>
+        <td style="text-align: right;">${item.unitPrice.toFixed(2)}</td>
+        <td style="text-align: right;"><strong>${item.totalPrice.toFixed(2)}</strong></td>
+      </tr>
+    `).join('');
+    
+    return `
+      <div style="width: 100%; font-family: 'Courier New', monospace; font-size: 12px;">
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 10px;">
+          <h2 style="margin: 0; font-size: 16px; font-weight: bold;">${businessName}</h2>
+          ${address ? `<div>${address}</div>` : ''}
+          ${phone ? `<div>${phone}</div>` : ''}
+          ${receiptHeader ? `<div style="margin-top: 5px;">${receiptHeader}</div>` : ''}
+        </div>
+        
+        <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+        
+        <!-- Invoice Info -->
+        <div style="margin-bottom: 10px;">
+          <div><strong>Facture N°:</strong> ${receiptData.invoiceNumber}</div>
+          <div><strong>Date:</strong> ${receiptData.date.toLocaleString()}</div>
+          ${receiptData.customerName ? `<div><strong>Client:</strong> ${receiptData.customerName}</div>` : ''}
+        </div>
+        
+        <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+        
+        <!-- Items Table -->
+        <table style="width: 100%; margin-bottom: 10px; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 1px solid #000;">
+              <th style="text-align: left; padding: 4px 0;">Article</th>
+              <th style="text-align: center; padding: 4px 0;">Qté</th>
+              <th style="text-align: right; padding: 4px 0;">P.U.</th>
+              <th style="text-align: right; padding: 4px 0;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHTML}
+          </tbody>
+        </table>
+        
+        <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+        
+        <!-- Totals -->
+        <div style="margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span>Sous-total:</span>
+            <span>${receiptData.subtotal.toFixed(2)}</span>
+          </div>
+          ${receiptData.discountAmount ? `
+            <div style="display: flex; justify-content: space-between;">
+              <span>Remise:</span>
+              <span>-${receiptData.discountAmount.toFixed(2)}</span>
+            </div>
+          ` : ''}
+          ${receiptData.taxAmount ? `
+            <div style="display: flex; justify-content: space-between;">
+              <span>TVA:</span>
+              <span>${receiptData.taxAmount.toFixed(2)}</span>
+            </div>
+          ` : ''}
+          <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 14px; font-weight: bold;">
+            <span>TOTAL:</span>
+            <span>${receiptData.total.toFixed(2)}</span>
+          </div>
+        </div>
+        
+        <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+        
+        <!-- Payment Info -->
+        <div style="margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span>Mode de paiement:</span>
+            <span>${receiptData.paymentMethod}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>Montant payé:</span>
+            <span>${receiptData.paidAmount.toFixed(2)}</span>
+          </div>
+          ${receiptData.changeAmount ? `
+            <div style="display: flex; justify-content: space-between;">
+              <span>Monnaie:</span>
+              <span>${receiptData.changeAmount.toFixed(2)}</span>
+            </div>
+          ` : ''}
+        </div>
+        
+        <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+        
+        <!-- Footer -->
+        <div style="text-align: center; margin-top: 10px;">
+          ${receiptFooter}
+        </div>
+      </div>
+    `;
   }
 
   // Print to network printer

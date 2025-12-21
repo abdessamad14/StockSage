@@ -2875,6 +2875,9 @@ export default function OfflinePOS() {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    {/* Hidden container for system print mode (window.print()) */}
+    <div id="printable-receipt-container" aria-hidden="true"></div>
     </>
   );
 }
