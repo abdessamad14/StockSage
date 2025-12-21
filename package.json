@@ -35,7 +35,10 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:all": "npm run test:run && npm run test:e2e"
+    "test:all": "npm run test:run && npm run test:e2e",
+    "deploy": "node scripts/deploy.js",
+    "deploy:installer": "node scripts/deploy.js --installer",
+    "test:ftp": "node scripts/test-ftp.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -131,6 +134,7 @@
     "@vitejs/plugin-react": "^4.3.2",
     "@vitest/ui": "^3.2.4",
     "autoprefixer": "^10.4.20",
+    "basic-ftp": "^5.0.5",
     "drizzle-kit": "^0.30.4",
     "esbuild": "^0.25.0",
     "javascript-obfuscator": "^5.1.0",
