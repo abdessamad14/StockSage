@@ -19,6 +19,7 @@ import UserManagement from "@/pages/user-management";
 import { I18nProvider } from "@/lib/i18n";
 import { OfflineAuthProvider } from "@/hooks/use-offline-auth";
 import { OfflineProtectedRoute } from "@/lib/offline-protected-route";
+import UpdateNotification from "@/components/UpdateNotification";
 
 function Router() {
   return (
@@ -52,6 +53,7 @@ function OfflineApp() {
         <I18nProvider>
           <TooltipProvider>
             <Toaster />
+            <UpdateNotification />
             <Router />
           </TooltipProvider>
         </I18nProvider>

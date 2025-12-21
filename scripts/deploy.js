@@ -91,18 +91,32 @@ function validateConfig() {
 // Get files to deploy
 function getFilesToDeploy() {
   if (deployInstaller) {
-    // Deploy Windows installer
+    // Deploy Windows installer AND version.json
     const installerPath = join(projectRoot, 'installer-simple', 'output', 'igoodar-setup.exe');
+    const versionPath = join(projectRoot, 'version.json');
+    
     if (!existsSync(installerPath)) {
       console.error('❌ Installer not found. Run: npm run build:installer');
       process.exit(1);
     }
-    return [
+    
+    const files = [
       { local: installerPath, remote: 'igoodar-setup.exe' }
     ];
+    
+    // Include version.json if it exists
+    if (existsSync(versionPath)) {
+      files.push({ local: versionPath, remote: 'version.json' });
+    } else {
+      console.warn('⚠️  version.json not found, update notifications will not work');
+    }
+    
+    return files;
   } else {
     // Deploy web application
     const distPath = join(projectRoot, 'dist', 'public');
+    const versionPath = join(projectRoot, 'version.json');
+    
     if (!existsSync(distPath)) {
       console.error('❌ Build not found. Run: npm run build');
       process.exit(1);
@@ -122,6 +136,13 @@ function getFilesToDeploy() {
       }
     }
     scanDirectory(distPath);
+    
+    // Include version.json in web app root for update checking
+    if (existsSync(versionPath)) {
+      files.push({ local: versionPath, remote: 'version.json' });
+      console.log('   ✓ Including version.json for auto-update checking');
+    }
+    
     return files;
   }
 }
