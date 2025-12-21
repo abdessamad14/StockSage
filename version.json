@@ -1,11 +1,11 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "releaseDate": "2024-12-21",
   "downloadUrl": "https://igoodar.com/downloads/igoodar-setup.exe",
   "changelog": [
+    "Fix: Module manquant user-data-path.js au démarrage",
     "Fix: Résolution de l'erreur de mise à jour (fichiers verrouillés)",
-    "Fix: L'installateur détecte et ferme automatiquement l'app",
-    "Fix: Correction de l'URL de téléchargement"
+    "Fix: L'installateur détecte et ferme automatiquement l'app"
   ],
   "minVersion": "1.0.0",
   "critical": true
