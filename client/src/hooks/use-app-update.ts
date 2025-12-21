@@ -29,8 +29,8 @@ interface UpdateStatus {
 const CURRENT_VERSION = '1.0.0';
 
 // Version checking configuration
-// Use relative URL to check from same server where app is hosted
-const VERSION_CHECK_URL = '/version.json';
+// Check version from igoodar.com/updates/
+const VERSION_CHECK_URL = 'https://igoodar.com/updates/version.json';
 const CHECK_INTERVAL = 1000 * 60 * 30; // Check every 30 minutes
 const DISMISSED_KEY = 'igoodar_update_dismissed';
 

@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "releaseDate": "2024-12-21",
-  "downloadUrl": "https://yourdomain.com/downloads/igoodar-setup.exe",
+  "downloadUrl": "https://igoodar.com/updates/igoodar-installer.exe",
   "changelog": [
     "Safe Update Architecture - Data protection during updates",
     "System Default printing mode with window.print()",
