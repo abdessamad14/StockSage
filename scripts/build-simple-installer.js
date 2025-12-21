@@ -249,14 +249,36 @@ Function .onInit
     MessageBox MB_OK|MB_ICONSTOP "Igoodar requires Windows 10 or higher."
     Abort
   \${EndIf}
+  
+  ; Check if Igoodar is running and warn user
+  nsExec::ExecToStack 'tasklist /FI "IMAGENAME eq node.exe" /NH'
+  Pop $0
+  Pop $1
+  \${If} $0 == 0
+    MessageBox MB_YESNO|MB_ICONEXCLAMATION "Igoodar semble être en cours d'exécution.$\\n$\\nVous devez fermer Igoodar avant de continuer l'installation.$\\n$\\nVoulez-vous que l'installateur le ferme automatiquement?" IDYES auto_close
+      MessageBox MB_OK "Veuillez fermer Igoodar manuellement, puis relancer l'installateur."
+      Abort
+    auto_close:
+  \${EndIf}
 FunctionEnd
 
 Section "Install"
   SetOutPath "$INSTDIR"
   
-  ; Stop any running instance
+  ; Stop any running instance (CRITICAL for successful update)
   DetailPrint "Stopping any running Igoodar..."
+  DetailPrint "This may take a few seconds..."
+  
+  ; Kill all node.exe processes (safer for updates)
+  nsExec::ExecToLog 'taskkill /F /IM node.exe'
+  Sleep 3000
+  
+  ; Also try to kill by window title as fallback
   nsExec::ExecToLog 'taskkill /F /IM node.exe /FI "WINDOWTITLE eq Igoodar*"'
+  Sleep 2000
+  
+  ; Wait a bit more to ensure files are released
+  DetailPrint "Waiting for files to be released..."
   Sleep 2000
   
   ; Clean old installation (if exists)
