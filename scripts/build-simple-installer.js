@@ -199,7 +199,9 @@ const configFiles = [
   'start.bat',
   'start.sh',
   'README.md',
-  'LICENSE.txt'
+  'LICENSE.txt',
+  'fix-license-migration.bat', // Script to fix license migration issues
+  'LICENSE-MIGRATION-GUIDE.md' // Guide for users
 ];
 
 for (const file of configFiles) {
