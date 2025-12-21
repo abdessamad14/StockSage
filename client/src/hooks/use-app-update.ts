@@ -26,7 +26,7 @@ interface UpdateStatus {
 }
 
 // Current app version (should match package.json)
-const CURRENT_VERSION = '1.0.0';
+const CURRENT_VERSION = '1.0.1';
 
 // Version checking configuration
 // Check version from igoodar.com/updates/

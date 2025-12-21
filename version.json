@@ -1,14 +1,13 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "releaseDate": "2024-12-21",
-  "downloadUrl": "https://igoodar.com/updates/igoodar-installer.exe",
+  "downloadUrl": "https://igoodar.com/downloads/igoodar-setup.exe",
   "changelog": [
-    "Safe Update Architecture - Data protection during updates",
-    "System Default printing mode with window.print()",
-    "Background service mode - Runs silently without console",
-    "FTP deployment automation to Hostinger"
+    "Fix: Résolution de l'erreur de mise à jour (fichiers verrouillés)",
+    "Fix: L'installateur détecte et ferme automatiquement l'app",
+    "Fix: Correction de l'URL de téléchargement"
   ],
   "minVersion": "1.0.0",
-  "critical": false
+  "critical": true
 }
 
