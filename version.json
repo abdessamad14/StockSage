@@ -1,10 +1,11 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "releaseDate": "2024-12-21",
   "downloadUrl": "https://igoodar.com/downloads/igoodar-setup.exe",
   "changelog": [
+    "Fix: Script de migration de licence inclus (fix-license-migration.bat)",
+    "Fix: Guide de migration détaillé",
     "Fix: Module manquant user-data-path.js au démarrage",
-    "Fix: Résolution de l'erreur de mise à jour (fichiers verrouillés)",
     "Fix: L'installateur détecte et ferme automatiquement l'app"
   ],
   "minVersion": "1.0.0",

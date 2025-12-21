@@ -56,6 +56,46 @@ Section "Install"
   DetailPrint "Waiting for files to be released..."
   Sleep 2000
   
+  ; CRITICAL: Migrate user data BEFORE cleaning old installation
+  IfFileExists "$INSTDIR\data\license.key" 0 skip_migration
+    DetailPrint "⚠️  Found user data in old location - migrating to safe location..."
+    
+    ; Create safe data directory
+    CreateDirectory "$APPDATA\iGoodar"
+    
+    ; Migrate critical files
+    IfFileExists "$INSTDIR\data\license.key" 0 +3
+      DetailPrint "  Migrating license.key..."
+      CopyFiles /SILENT "$INSTDIR\data\license.key" "$APPDATA\iGoodar\license.key"
+    
+    IfFileExists "$INSTDIR\data\stocksage.db" 0 +3
+      DetailPrint "  Migrating stocksage.db..."
+      CopyFiles /SILENT "$INSTDIR\data\stocksage.db" "$APPDATA\iGoodar\stocksage.db"
+    
+    IfFileExists "$INSTDIR\data\stocksage.db-wal" 0 +3
+      DetailPrint "  Migrating stocksage.db-wal..."
+      CopyFiles /SILENT "$INSTDIR\data\stocksage.db-wal" "$APPDATA\iGoodar\stocksage.db-wal"
+    
+    IfFileExists "$INSTDIR\data\stocksage.db-shm" 0 +3
+      DetailPrint "  Migrating stocksage.db-shm..."
+      CopyFiles /SILENT "$INSTDIR\data\stocksage.db-shm" "$APPDATA\iGoodar\stocksage.db-shm"
+    
+    IfFileExists "$INSTDIR\data\machine.id" 0 +3
+      DetailPrint "  Migrating machine.id..."
+      CopyFiles /SILENT "$INSTDIR\data\machine.id" "$APPDATA\iGoodar\machine.id"
+    
+    IfFileExists "$INSTDIR\data\credit-transactions.json" 0 +3
+      DetailPrint "  Migrating credit-transactions.json..."
+      CopyFiles /SILENT "$INSTDIR\data\credit-transactions.json" "$APPDATA\iGoodar\credit-transactions.json"
+    
+    DetailPrint "✅ User data migrated to: $APPDATA\iGoodar"
+    
+    ; Create backup of old data just in case
+    Rename "$INSTDIR\data" "$INSTDIR\data_backup"
+    DetailPrint "  (Old data backed up to data_backup)"
+  
+  skip_migration:
+  
   ; Clean old installation (if exists)
   IfFileExists "$INSTDIR\start.js" 0 fresh_install
     DetailPrint "Removing old version..."
@@ -66,8 +106,7 @@ Section "Install"
     RMDir /r "$INSTDIR\drizzle"
     RMDir /r "$INSTDIR\node_modules"
     RMDir /r "$INSTDIR\nodejs"
-    ; Remove old data folder (data now in %APPDATA%)
-    RMDir /r "$INSTDIR\data"
+    ; Note: data/ was already migrated or renamed to data_backup
     Delete "$INSTDIR\*.bat"
     Delete "$INSTDIR\*.vbs"
     Delete "$INSTDIR\*.js"
@@ -77,7 +116,7 @@ Section "Install"
   
   ; Install all files
   DetailPrint "Installing Igoodar..."
-  File /r "/Users/abdessamadabba/repos/StockSage/packages/stocksage-simple-20251221141112\*.*"
+  File /r "/Users/abdessamadabba/repos/StockSage/packages/stocksage-simple-20251221144117\*.*"
   
   ; Database driver already included (Windows-compatible binary)
   DetailPrint "Windows-compatible database driver included"
@@ -164,7 +203,16 @@ Section "Install"
   Sleep 4000
   
   ; Success message
-  MessageBox MB_OK "✅ Igoodar installed successfully!$\n$\n✓ Server running in background$\n✓ Auto-starts with Windows$\n✓ Data safe in %APPDATA%\iGoodar$\n✓ Updates won't delete your data$\n✓ Opening dashboard...$\n$\nLogin:$\n• Admin PIN: 1234$\n• Cashier PIN: 5678$\n$\nAccess:$\n• Desktop: Igoodar icon$\n• Browser: http://localhost:5003$\n• Network: http://[PC-IP]:5003$\n$\nManagement:$\n• Start Menu → Igoodar → Restart/Stop"
+  IfFileExists "$APPDATA\iGoodar\license.key" show_update_message show_fresh_message
+  
+  show_update_message:
+    MessageBox MB_OK "✅ Igoodar mis à jour avec succès!$\n$\n✓ Vos données ont été migrées vers %APPDATA%\iGoodar$\n✓ Votre licence est préservée$\n✓ Votre base de données est intacte$\n✓ Le serveur tourne en arrière-plan$\n✓ Démarrage automatique avec Windows$\n$\nAccès:$\n• Icône Bureau: Igoodar$\n• Navigateur: http://localhost:5003$\n• Réseau: http://[IP-PC]:5003$\n$\nGestion:$\n• Menu Démarrer → Igoodar → Restart/Stop$\n$\nOuverture du dashboard..."
+    Goto end_message
+  
+  show_fresh_message:
+    MessageBox MB_OK "✅ Igoodar installé avec succès!$\n$\n✓ Serveur en arrière-plan$\n✓ Démarrage automatique$\n✓ Données dans %APPDATA%\iGoodar$\n✓ Les mises à jour ne supprimeront pas vos données$\n✓ Ouverture du dashboard...$\n$\nConnexion:$\n• PIN Admin: 1234$\n• PIN Caissier: 5678$\n$\nAccès:$\n• Bureau: Icône Igoodar$\n• Navigateur: http://localhost:5003$\n• Réseau: http://[IP-PC]:5003$\n$\nGestion:$\n• Menu Démarrer → Igoodar → Restart/Stop"
+  
+  end_message:
   Sleep 1000
   ExecShell "open" "http://localhost:5003"
 SectionEnd
