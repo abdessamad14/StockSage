@@ -204,9 +204,10 @@ for (const file of configFiles) {
   }
 }
 
-// Create data directory
-mkdirSync(join(packagePath, 'data'), { recursive: true });
-console.log('    ✓ data/ (will be initialized on first run)');
+// NOTE: We do NOT create a data/ directory in the installer
+// Data will be stored in %APPDATA%/iGoodar (safe from updates)
+// Database will be created there on first run
+console.log('    ✓ Data will be created in safe location (%APPDATA%/iGoodar)');
 
 console.log('✅ Package created\n');
 
@@ -258,22 +259,20 @@ Section "Install"
   nsExec::ExecToLog 'taskkill /F /IM node.exe /FI "WINDOWTITLE eq Igoodar*"'
   Sleep 2000
   
-  ; Backup existing data
-  IfFileExists "$INSTDIR\\data\\stocksage.db" 0 fresh_install
-    DetailPrint "Backing up existing data..."
-    CreateDirectory "$INSTDIR\\data_backup"
-    CopyFiles /SILENT "$INSTDIR\\data\\*.*" "$INSTDIR\\data_backup"
-    DetailPrint "Data backed up!"
-    
-    ; Clean old files (keep data_backup)
+  ; Clean old installation (if exists)
+  IfFileExists "$INSTDIR\\start.js" 0 fresh_install
     DetailPrint "Removing old version..."
     RMDir /r "$INSTDIR\\dist"
     RMDir /r "$INSTDIR\\server"
     RMDir /r "$INSTDIR\\shared"
     RMDir /r "$INSTDIR\\scripts"
+    RMDir /r "$INSTDIR\\drizzle"
     RMDir /r "$INSTDIR\\node_modules"
     RMDir /r "$INSTDIR\\nodejs"
+    ; Remove old data folder (data now in %APPDATA%)
+    RMDir /r "$INSTDIR\\data"
     Delete "$INSTDIR\\*.bat"
+    Delete "$INSTDIR\\*.vbs"
     Delete "$INSTDIR\\*.js"
     Delete "$INSTDIR\\*.json"
     DetailPrint "Old files removed!"
@@ -283,57 +282,36 @@ Section "Install"
   DetailPrint "Installing Igoodar..."
   File /r "${packagePath}\\*.*"
   
-  ; Restore data
-  IfFileExists "$INSTDIR\\data_backup\\stocksage.db" 0 no_restore
-    DetailPrint "Restoring your data..."
-    CopyFiles /SILENT "$INSTDIR\\data_backup\\*.*" "$INSTDIR\\data"
-    RMDir /r "$INSTDIR\\data_backup"
-  no_restore:
-  
   ; Database driver already included (Windows-compatible binary)
   DetailPrint "Windows-compatible database driver included"
   
-  ; Initialize database if needed
-  IfFileExists "$INSTDIR\\data\\stocksage.db" db_exists
-    DetailPrint "Initializing database..."
-    SetOutPath "$INSTDIR"
-    ExecWait '"$INSTDIR\\nodejs\\node.exe" scripts/init-sqlite.js' $0
-    DetailPrint "Database initialized"
-  db_exists:
+  ; NOTE: Database initialization will happen on first run via start.js
+  ; Data will be stored in %APPDATA%/iGoodar (safe from updates)
+  DetailPrint "User data will be stored in: %APPDATA%\\iGoodar"
   
   ; Create startup scripts that use PORTABLE Node.js (not system Node)
   FileOpen $0 "$INSTDIR\\start.bat" w
   FileWrite $0 '@echo off$\\r$\\n'
   FileWrite $0 'cd /d "%~dp0"$\\r$\\n'
   FileWrite $0 'echo Starting Igoodar...$\\r$\\n'
-  FileWrite $0 'if not exist data\\stocksage.db ($\\r$\\n'
-  FileWrite $0 '  echo Initializing database...$\\r$\\n'
-  FileWrite $0 '  "%~dp0nodejs\\node.exe" scripts\\init-sqlite.js$\\r$\\n'
-  FileWrite $0 ')$\\r$\\n'
   FileWrite $0 'title Igoodar Server$\\r$\\n'
   FileWrite $0 '"%~dp0nodejs\\node.exe" start.js$\\r$\\n'
   FileWrite $0 'pause$\\r$\\n'
   FileClose $0
   
+  ; NOTE: start.js handles data migration and database initialization automatically
+  
   ; Silent startup for auto-start and background running (NO CONSOLE WINDOW)
   FileOpen $0 "$INSTDIR\\start-silent.vbs" w
   FileWrite $0 'Set WshShell = CreateObject("WScript.Shell")$\\r$\\n'
-  FileWrite $0 'Set FSO = CreateObject("Scripting.FileSystemObject")$\\r$\\n'
   FileWrite $0 '$\\r$\\n'
   FileWrite $0 "' Get the directory where this script is located$\\r$\\n"
   FileWrite $0 'InstallDir = "$INSTDIR"$\\r$\\n'
   FileWrite $0 'NodeExe = InstallDir & "\\nodejs\\node.exe"$\\r$\\n'
   FileWrite $0 'StartJS = InstallDir & "\\start.js"$\\r$\\n'
-  FileWrite $0 'DataDir = InstallDir & "\\data"$\\r$\\n'
-  FileWrite $0 'DbFile = DataDir & "\\stocksage.db"$\\r$\\n'
-  FileWrite $0 '$\\r$\\n'
-  FileWrite $0 "' Initialize database if it does not exist$\\r$\\n"
-  FileWrite $0 'If Not FSO.FileExists(DbFile) Then$\\r$\\n'
-  FileWrite $0 '  WshShell.CurrentDirectory = InstallDir$\\r$\\n'
-  FileWrite $0 '  WshShell.Run """" & NodeExe & """ scripts\\init-sqlite.js", 0, True$\\r$\\n'
-  FileWrite $0 'End If$\\r$\\n'
   FileWrite $0 '$\\r$\\n'
   FileWrite $0 "' Start the server in background (no window)$\\r$\\n"
+  FileWrite $0 "' start.js handles data migration and database initialization$\\r$\\n"
   FileWrite $0 'WshShell.CurrentDirectory = InstallDir$\\r$\\n'
   FileWrite $0 'WshShell.Run """" & NodeExe & """ """ & StartJS & """", 0, False$\\r$\\n'
   FileClose $0
@@ -386,23 +364,16 @@ Section "Install"
   ; Start the application (silently in background - no console window)
   DetailPrint "Starting Igoodar in background..."
   Exec 'wscript.exe "$INSTDIR\\start-silent.vbs"'
-  Sleep 3000
+  Sleep 4000
   
   ; Success message
-  IfFileExists "$INSTDIR\\data_backup\\stocksage.db" 0 fresh_msg
-    MessageBox MB_OK "✅ Igoodar updated successfully!$\\n$\\n✓ Data preserved$\\n✓ Server running in background$\\n✓ No console window$\\n✓ Opening dashboard...$\\n$\\nAccess: Double-click Igoodar on desktop"
-    Sleep 1000
-    ExecShell "open" "http://localhost:5003"
-    Goto done
-  fresh_msg:
-    MessageBox MB_OK "✅ Igoodar installed!$\\n$\\n✓ Server running in background$\\n✓ Auto-starts with Windows$\\n✓ No console window to close$\\n✓ Opening dashboard...$\\n$\\nLogin:$\\n• Admin PIN: 1234$\\n• Cashier PIN: 5678$\\n$\\nAccess:$\\n• Desktop: Igoodar icon$\\n• Browser: http://localhost:5003$\\n• Network: http://[PC-IP]:5003$\\n$\\nManagement:$\\n• Start Menu → Igoodar → Restart/Stop"
-    Sleep 1000
-    ExecShell "open" "http://localhost:5003"
-  done:
+  MessageBox MB_OK "✅ Igoodar installed successfully!$\\n$\\n✓ Server running in background$\\n✓ Auto-starts with Windows$\\n✓ Data safe in %APPDATA%\\iGoodar$\\n✓ Updates won't delete your data$\\n✓ Opening dashboard...$\\n$\\nLogin:$\\n• Admin PIN: 1234$\\n• Cashier PIN: 5678$\\n$\\nAccess:$\\n• Desktop: Igoodar icon$\\n• Browser: http://localhost:5003$\\n• Network: http://[PC-IP]:5003$\\n$\\nManagement:$\\n• Start Menu → Igoodar → Restart/Stop"
+  Sleep 1000
+  ExecShell "open" "http://localhost:5003"
 SectionEnd
 
 Section "Uninstall"
-  MessageBox MB_YESNO "Uninstall Igoodar?$\\n$\\nThis will DELETE all data." IDYES do_uninstall
+  MessageBox MB_YESNO "Uninstall Igoodar?$\\n$\\nNote: Your data in %APPDATA%\\iGoodar will be preserved.$\\nYou can delete it manually if needed." IDYES do_uninstall
     Abort
   do_uninstall:
   
@@ -415,7 +386,8 @@ Section "Uninstall"
   RMDir "$SMPROGRAMS\\Igoodar"
   
   RMDir /r "$INSTDIR"
-  MessageBox MB_OK "Igoodar uninstalled."
+  
+  MessageBox MB_OK "Igoodar uninstalled.$\\n$\\nYour data is preserved in:%APPDATA%\\iGoodar$\\n$\\nTo completely remove all data, manually delete that folder."
 SectionEnd
 `;
 

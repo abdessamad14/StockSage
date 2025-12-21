@@ -1,17 +1,15 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from "../shared/sqlite-schema.js";
-import { join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { getDatabasePath, getUserDataPath } from "./user-data-path.js";
 
-// Create data directory if it doesn't exist
-const dataDir = join(process.cwd(), 'data');
-if (!existsSync(dataDir)) {
-  mkdirSync(dataDir, { recursive: true });
-}
+// Use safe user data path (persists across updates)
+const userDataPath = getUserDataPath();
+console.log(`📁 User data directory: ${userDataPath}`);
 
-// SQLite database file path
-const dbPath = join(dataDir, 'stocksage.db');
+// SQLite database file path (in safe location)
+const dbPath = getDatabasePath();
+console.log(`🗄️  Database path: ${dbPath}`);
 
 // Create SQLite connection
 const sqlite = new Database(dbPath);

@@ -9,12 +9,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
 import { execSync } from 'child_process';
+import { getLicenseKeyPath, getMachineIdPath } from './user-data-path.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const LICENSE_FILE = path.join(__dirname, '..', 'data', 'license.key');
-const MACHINE_ID_FILE = path.join(__dirname, '..', 'data', 'machine.id');
+// Use safe user data paths (persist across updates)
+const LICENSE_FILE = getLicenseKeyPath();
+const MACHINE_ID_FILE = getMachineIdPath();
 const SECRET = 'IGOODAR-2025-PROTECT-YOUR-BUSINESS'; // Change this to your own secret!
 
 // Cached machine ID to ensure consistency

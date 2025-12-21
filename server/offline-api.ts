@@ -1400,8 +1400,10 @@ router.delete('/users/:id', async (req, res) => {
 // Customer Credit Transactions API
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { getUserDataPath } from './user-data-path.js';
 
-const CREDIT_TRANSACTIONS_FILE = join(process.cwd(), 'data', 'credit-transactions.json');
+// Use safe user data path (persists across updates)
+const CREDIT_TRANSACTIONS_FILE = join(getUserDataPath(), 'credit-transactions.json');
 
 // Helper functions for credit transactions file storage
 function getCreditTransactions() {

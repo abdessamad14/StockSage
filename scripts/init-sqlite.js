@@ -7,6 +7,10 @@ import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { randomBytes, scryptSync } from 'crypto';
 
+// Import safe user data path
+const userDataPathModule = await import('../server/user-data-path.js');
+const { getDatabasePath, getUserDataPath } = userDataPathModule;
+
 const argOptions = parseArgs(process.argv.slice(2));
 
 const config = {
@@ -25,15 +29,13 @@ const config = {
   language: argOptions.language || process.env.STOCKSAGE_LANGUAGE || 'fr',
 };
 
-// Create data directory if it doesn't exist
-const dataDir = join(process.cwd(), 'data');
-if (!existsSync(dataDir)) {
-  mkdirSync(dataDir, { recursive: true });
-  console.log('✅ Created data directory');
-}
+// Use safe user data directory (persists across updates)
+const userDataPath = getUserDataPath();
+console.log(`📁 Safe data location: ${userDataPath}`);
 
-// SQLite database file path
-const dbPath = join(dataDir, 'stocksage.db');
+// SQLite database file path (in safe location)
+const dbPath = getDatabasePath();
+console.log(`🗄️  Database path: ${dbPath}`);
 
 // Create SQLite connection
 const sqlite = new Database(dbPath);

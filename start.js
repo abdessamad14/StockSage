@@ -52,12 +52,43 @@ function checkBuildAndContinue() {
     process.exit(1);
   }
   
-  checkDatabase();
+  // Run data migration first (moves data from old location to safe location)
+  migrateUserData();
 }
 
-function checkDatabase() {
-  // Check if database exists
-  const dbPath = join(process.cwd(), 'data', 'stocksage.db');
+function migrateUserData() {
+  console.log('\n🔄 Checking for data migration...');
+  
+  // Use the current Node.js executable (works with portable Node.js)
+  const nodeExe = process.execPath;
+  
+  // Run the migration script
+  const migrateProcess = spawn(nodeExe, ['scripts/migrate-user-data.js'], {
+    stdio: 'inherit',
+    cwd: process.cwd()
+  });
+  
+  migrateProcess.on('close', (code) => {
+    if (code === 0) {
+      // Migration successful or not needed - continue
+      checkDatabase();
+    } else {
+      console.error('❌ Data migration failed');
+      console.error('   Your data may be in an inconsistent state.');
+      console.error('   Please contact support if this issue persists.');
+      process.exit(1);
+    }
+  });
+}
+
+async function checkDatabase() {
+  // Import the user data path utilities
+  const userDataPathModule = await import('./server/user-data-path.js');
+  const { getDatabasePath } = userDataPathModule;
+  
+  // Check if database exists in the safe location
+  const dbPath = getDatabasePath();
+  console.log(`\n📋 Checking database at: ${dbPath}`);
   
   // Use the current Node.js executable (works with portable Node.js)
   const nodeExe = process.execPath;
