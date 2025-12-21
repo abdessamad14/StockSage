@@ -151,6 +151,12 @@ console.log('    ✓ server/ (obfuscated code)');
 cpSync(join(projectRoot, 'shared'), join(packagePath, 'shared'), { recursive: true });
 console.log('    ✓ shared/ (schema)');
 
+// Drizzle migrations (needed for database initialization)
+if (existsSync(join(projectRoot, 'drizzle'))) {
+  cpSync(join(projectRoot, 'drizzle'), join(packagePath, 'drizzle'), { recursive: true });
+  console.log('    ✓ drizzle/ (database migrations)');
+}
+
 // Scripts
 cpSync(join(projectRoot, 'scripts'), join(packagePath, 'scripts'), { recursive: true });
 console.log('    ✓ scripts/ (DB initialization)');
