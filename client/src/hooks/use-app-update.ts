@@ -29,8 +29,8 @@ interface UpdateStatus {
 const CURRENT_VERSION = '1.0.3';
 
 // Version checking configuration
-// Check version from igoodar.com/updates/
-const VERSION_CHECK_URL = 'https://igoodar.com/updates/version.json';
+// Use local proxy endpoint to bypass CORS issues
+const VERSION_CHECK_URL = '/api/offline/check-update';
 const CHECK_INTERVAL = 1000 * 60 * 30; // Check every 30 minutes
 const DISMISSED_KEY = 'igoodar_update_dismissed';
 

@@ -1482,4 +1482,39 @@ router.post('/print-network', async (req, res) => {
   }
 });
 
+// Update check proxy endpoint (bypass CORS)
+router.get('/check-update', async (req, res) => {
+  try {
+    const VERSION_URL = 'https://igoodar.com/downloads/version.json';
+    
+    // Use dynamic import for fetch (Node.js 18+)
+    const response = await fetch(VERSION_URL, {
+      headers: {
+        'User-Agent': 'iGoodar-Desktop-App',
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const versionData = await response.json();
+    
+    // Return the version data with CORS headers already set by server
+    res.json(versionData);
+  } catch (error) {
+    console.error('Update check error:', error);
+    // Return a fallback response instead of failing completely
+    res.json({
+      version: '1.0.0',
+      releaseDate: new Date().toISOString().split('T')[0],
+      downloadUrl: 'https://igoodar.com/downloads/igoodar-setup.exe',
+      changelog: ['Unable to check for updates - offline mode'],
+      critical: false,
+      error: 'Could not fetch latest version info'
+    });
+  }
+});
+
 export { router as offlineApiRouter };
