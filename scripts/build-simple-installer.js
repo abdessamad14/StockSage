@@ -96,6 +96,12 @@ try {
   const bundleCmd = `npx esbuild server/index.ts --bundle --outfile=server-compiled/index.js --platform=node --format=esm --target=node18 --packages=external --external:./vite.config.* --external:../vite.config.* --loader:.node=copy`;
   execSync(bundleCmd, { stdio: 'inherit', cwd: projectRoot });
   
+  // Transpile critical utility files that are imported by scripts
+  console.log('  ✓ Transpiling utility files...');
+  const utilityCmd = `npx esbuild server/user-data-path.ts --outfile=server-compiled/user-data-path.js --platform=node --format=esm --target=node18`;
+  execSync(utilityCmd, { stdio: 'inherit', cwd: projectRoot });
+  console.log('  ✓ Transpiled user-data-path.ts');
+  
   // Also copy any standalone .js files that might be needed
   const jsFiles = ['server/license.js', 'server/license-routes.js', 'server/network-printer.js'];
   for (const file of jsFiles) {
