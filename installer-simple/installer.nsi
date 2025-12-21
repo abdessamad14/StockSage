@@ -116,7 +116,7 @@ Section "Install"
   
   ; Install all files
   DetailPrint "Installing Igoodar..."
-  File /r "/Users/abdessamadabba/repos/StockSage/packages/stocksage-simple-20251221144435\*.*"
+  File /r "/Users/abdessamadabba/repos/StockSage/packages/stocksage-simple-20251221151342\*.*"
   
   ; Database driver already included (Windows-compatible binary)
   DetailPrint "Windows-compatible database driver included"
