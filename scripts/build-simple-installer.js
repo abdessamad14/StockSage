@@ -92,7 +92,8 @@ mkdirSync(serverCompiledDir, { recursive: true });
 try {
   // Bundle server entry point (resolves all imports)
   // Mark all node_modules as external to avoid bundling them
-  const bundleCmd = `npx esbuild server/index.ts --bundle --outfile=server-compiled/index.js --platform=node --format=esm --target=node18 --packages=external --loader:.node=copy`;
+  // Also mark vite.config.* as external (it has vite imports we don't need in production)
+  const bundleCmd = `npx esbuild server/index.ts --bundle --outfile=server-compiled/index.js --platform=node --format=esm --target=node18 --packages=external --external:./vite.config.* --external:../vite.config.* --loader:.node=copy`;
   execSync(bundleCmd, { stdio: 'inherit', cwd: projectRoot });
   
   // Also copy any standalone .js files that might be needed

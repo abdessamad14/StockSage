@@ -26,15 +26,17 @@ export async function setupVite(app: Express, server: Server) {
   
   const viteLogger = createLogger();
   
-  // Dynamically import vite.config only in development mode
-  let viteConfig;
+  // Try to load vite.config only in development mode
+  // Don't fail if it's not available (it won't be in production builds)
+  let viteConfig = {};
   try {
-    const viteConfigModule = await import("../vite.config.js");
-    viteConfig = viteConfigModule.default;
+    // Dynamic import with string literal to prevent bundlers from including it
+    const configPath = '../vite.config.js';
+    const viteConfigModule = await import(/* @vite-ignore */ configPath);
+    viteConfig = viteConfigModule.default || {};
   } catch (error) {
-    // Fallback to empty config if vite.config doesn't exist
-    console.warn("Warning: vite.config.js not found, using default configuration");
-    viteConfig = {};
+    // Fallback to empty config if vite.config doesn't exist (normal in production)
+    console.log("ℹ️  vite.config.js not found (using defaults)");
   }
 
   const serverOptions = {
