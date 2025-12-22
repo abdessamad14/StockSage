@@ -259,18 +259,20 @@ export default function OfflinePOS() {
     
     const stockMap: Record<string, number> = {};
     
-    for (const product of productsData) {
-      try {
-        const stock = await offlineProductStockStorage.getByProductAndLocation(
-          product.id,
-          String(primaryWarehouse.id)
-        );
-        stockMap[product.id] = stock?.quantity || 0;
-      } catch (error) {
-        console.warn(`Failed to fetch stock for product ${product.id}:`, error);
-        stockMap[product.id] = 0;
-      }
-    }
+    // OPTIMIZED: Use Promise.all for parallel queries instead of sequential
+    await Promise.all(
+      productsData.map(async (product) => {
+        try {
+          const stock = await offlineProductStockStorage.getByProductAndLocation(
+            product.id,
+            String(primaryWarehouse.id)
+          );
+          stockMap[product.id] = stock?.quantity || 0;
+        } catch (error) {
+          stockMap[product.id] = 0;
+        }
+      })
+    );
     
     setProductStocks(stockMap);
   };
@@ -286,55 +288,20 @@ export default function OfflinePOS() {
           offlineStockLocationStorage.getAll()
         ]);
         
+        // OPTIMIZED: Set all data immediately (no sequential updates)
         setProducts(productsData);
         setCustomers(customersData);
         setCategories(categoriesData);
         setStockLocations(stockLocationsData);
         
-        // Fetch product stocks from primary warehouse
-        await refreshProductStocks(productsData, stockLocationsData);
-        
-        // Debug logging
-        console.log('Loaded products:', productsData.length);
-        console.log('Loaded categories:', categoriesData);
-        console.log('Sample product categoryIds:', productsData.slice(0, 3).map(p => ({ name: p.name, categoryId: p.categoryId })));
-        
-        // Fix products without categoryId by assigning them to first available category
-        if (categoriesData.length > 0) {
-          const defaultCategoryId = categoriesData[0].id;
-          const updatedProducts = productsData.map(product => ({
-            ...product,
-            categoryId: product.categoryId || defaultCategoryId
-          }));
-          setProducts(updatedProducts);
-          
-          // Update products in database with category IDs
-          for (const product of productsData) {
-            if (!product.categoryId) {
-              try {
-                await databaseProductStorage.update(product.id, {
-                  categoryId: defaultCategoryId
-                });
-              } catch (error) {
-                console.error('Error updating product category:', error);
-              }
-            }
-          }
-        } else {
-          setProducts(productsData);
-        }
-        
-        // Load current sales period (commented out - methods don't exist)
-        // const currentPeriod = await offlineSalesStorage.getCurrentSalesPeriod();
-        // setCurrentSalesPeriod(currentPeriod);
-        
-        // if (currentPeriod) {
-        //   const stats = await offlineSalesStorage.getSalesPeriodStats(currentPeriod.id);
-        //   setSalesPeriodStats(stats);
-        // }
-        
-        // Load today's orders and calculate turnover
-        await loadTodaysOrders();
+        // OPTIMIZED: Run stock fetch and orders load in parallel (non-blocking)
+        // UI renders immediately with products, stocks/orders load in background
+        Promise.all([
+          refreshProductStocks(productsData, stockLocationsData),
+          loadTodaysOrders()
+        ]).catch(error => {
+          console.error('Error loading additional POS data:', error);
+        });
         
       } catch (error) {
         console.error('Error loading POS data:', error);
@@ -370,7 +337,6 @@ export default function OfflinePOS() {
     try {
       setLoadingCreditInfo(true);
       const creditData = await creditHelpers.getCustomerCreditInfo(customerId);
-      console.log('Credit info loaded:', creditData);
       setCreditInfo(creditData);
     } catch (error) {
       console.error('Error loading credit info:', error);
@@ -424,8 +390,6 @@ export default function OfflinePOS() {
   const loadTodaysOrders = async () => {
     try {
       const allSales = await databaseSalesStorage.getAll();
-      console.log('All sales from database:', allSales);
-      
       // Store all orders, filtering will happen in useMemo
       setTodaysOrders(allSales);
     } catch (error) {
@@ -435,17 +399,14 @@ export default function OfflinePOS() {
 
   // Load order into cart
   const loadOrderIntoCart = async (sale: OfflineSale) => {
-    console.log('Loading order into cart:', sale);
     try {
       const cartItems: CartItem[] = [];
       
       for (const item of sale.items) {
-        console.log('Processing item:', item);
         // Try to find the actual product (handle both string and number IDs)
         let product = products.find(p => p.id === String(item.productId));
         
         if (!product) {
-          console.log('Product not found, creating minimal product for:', item.productId);
           // Create a minimal product object if not found
           product = {
             id: String(item.productId),
