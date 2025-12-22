@@ -694,31 +694,32 @@ export default function OfflinePOS() {
   // Get primary warehouse
   const primaryWarehouse = stockLocations.find(loc => loc.isPrimary) || stockLocations[0];
 
-  // Filter products based on search and category
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.barcode?.toLowerCase().includes(searchTerm.toLowerCase());
+  // Filter products based on search and category (OPTIMIZED with useMemo)
+  const filteredProducts = useMemo(() => {
+    const normalizedSearchTerm = searchTerm.toLowerCase();
+    const selectedCat = selectedCategory !== 'all' 
+      ? categories.find(c => c.id === selectedCategory) 
+      : null;
     
-    // Handle both categoryId (ID) and category name for backwards compatibility
-    let matchesCategory = false;
-    if (selectedCategory === 'all') {
-      matchesCategory = true;
-    } else {
-      // Check if product's categoryId matches by ID or by category name
-      const selectedCat = categories.find(c => c.id === selectedCategory);
-      matchesCategory = product.categoryId === selectedCategory || 
-                       (!!selectedCat && product.categoryId === selectedCat.name);
-    }
-    
-    const isActive = product.active !== false; // Only show active products
-    
-    // Debug logging
-    if (selectedCategory !== 'all') {
-      console.log('Filtering - Product:', product.name, 'CategoryId:', product.categoryId, 'Selected:', selectedCategory, 'Matches:', matchesCategory);
-    }
-    
-    return matchesSearch && matchesCategory && isActive;
-  });
+    return products.filter(product => {
+      // Skip inactive products early
+      if (product.active === false) return false;
+      
+      // Check search match
+      const matchesSearch = !normalizedSearchTerm || 
+        product.name.toLowerCase().includes(normalizedSearchTerm) ||
+        product.barcode?.toLowerCase().includes(normalizedSearchTerm);
+      
+      if (!matchesSearch) return false;
+      
+      // Check category match
+      if (selectedCategory === 'all') return true;
+      
+      // Handle both categoryId (ID) and category name for backwards compatibility
+      return product.categoryId === selectedCategory || 
+             (!!selectedCat && product.categoryId === selectedCat.name);
+    });
+  }, [products, searchTerm, selectedCategory, categories]);
 
   // Cart functions
   const addToCart = (product: OfflineProduct, customQuantity?: number, customPrice?: number) => {
