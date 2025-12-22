@@ -30,7 +30,7 @@ import {
   CheckCircle2,
   ArrowLeft
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'wouter';
 
 interface Product {
   id: number;
@@ -60,7 +60,6 @@ interface ReturnItem {
 export default function CustomerReturns() {
   const { t } = useI18n();
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   // Data states
   const [products, setProducts] = useState<Product[]>([]);
