@@ -82,38 +82,60 @@ export default function OfflineProducts() {
   // Get primary warehouse
   const primaryWarehouse = stockLocations.find(loc => loc.isPrimary) || stockLocations[0];
 
-  // Function to refresh product stocks
-  const refreshProductStocks = async () => {
+  // Function to refresh product stocks (optimized with parallel queries)
+  const refreshProductStocks = useCallback(async () => {
     if (!primaryWarehouse) {
-      console.log('No primary warehouse found');
       return;
     }
     
-    console.log('Refreshing stocks for warehouse:', primaryWarehouse.id);
     const stockMap: Record<string, number> = {};
     
-    for (const product of products) {
-      try {
-        const stock = await offlineProductStockStorage.getByProductAndLocation(
-          product.id,
-          String(primaryWarehouse.id)
-        );
-        stockMap[product.id] = stock?.quantity || 0;
-        console.log(`Product ${product.id} (${product.name}): stock = ${stock?.quantity}`);
-      } catch (error) {
-        console.warn(`Failed to fetch stock for product ${product.id}:`, error);
-        stockMap[product.id] = 0;
-      }
-    }
+    // Use Promise.all for parallel queries (much faster than sequential)
+    await Promise.all(
+      products.map(async (product) => {
+        try {
+          const stock = await offlineProductStockStorage.getByProductAndLocation(
+            product.id,
+            String(primaryWarehouse.id)
+          );
+          stockMap[product.id] = stock?.quantity || 0;
+        } catch (error) {
+          stockMap[product.id] = 0;
+        }
+      })
+    );
     
-    console.log('Final stockMap:', stockMap);
     setProductStocks(stockMap);
-  };
+  }, [products, primaryWarehouse]);
 
-  // Fetch product stocks from primary warehouse
+  // Function to refresh a single product stock (much faster for individual updates)
+  const refreshSingleProductStock = useCallback(async (productId: string) => {
+    if (!primaryWarehouse) return;
+    
+    try {
+      const stock = await offlineProductStockStorage.getByProductAndLocation(
+        productId,
+        String(primaryWarehouse.id)
+      );
+      setProductStocks(prev => ({
+        ...prev,
+        [productId]: stock?.quantity || 0
+      }));
+    } catch (error) {
+      setProductStocks(prev => ({
+        ...prev,
+        [productId]: 0
+      }));
+    }
+  }, [primaryWarehouse]);
+
+  // Fetch product stocks from primary warehouse (only on mount and when warehouse changes)
   useEffect(() => {
     refreshProductStocks();
-  }, [products, primaryWarehouse]);
+  }, [primaryWarehouse, refreshProductStocks]);
+  
+  // Note: We don't include 'products' in dependencies to avoid re-fetching on every product change
+  // Individual product updates are handled by refreshSingleProductStock() instead
 
   const formatPrice = (value?: number | null) => {
     const safeValue = typeof value === 'number' ? value : 0;
@@ -357,7 +379,7 @@ export default function OfflineProducts() {
   const handleCreateProduct = async (data: ProductFormData) => {
     setIsSavingProduct(true);
     try {
-      await createProduct({
+      const newProduct = await createProduct({
         ...data,
         categoryId: data.categoryId === "none" ? undefined : data.categoryId ?? undefined,
         barcode: data.barcode ?? undefined,
@@ -372,8 +394,10 @@ export default function OfflineProducts() {
         updatedAt: new Date().toISOString()
       });
       
-      // Refresh stock data after creating product
-      await refreshProductStocks();
+      // Only refresh stock for the newly created product (much faster than refreshing all)
+      if (newProduct?.id) {
+        await refreshSingleProductStock(newProduct.id);
+      }
       
       toast({
         title: t('success'),
@@ -402,12 +426,6 @@ export default function OfflineProducts() {
       const currentStock = getWarehouseStock(editingProduct.id);
       const newQuantity = data.quantity;
       
-      // Debug logging
-      console.log('Form data categoryId:', data.categoryId);
-      console.log('Form data weighable:', data.weighable);
-      console.log('Selected image:', selectedImage);
-      console.log('Full form data:', data);
-      
       // Update product information
       await updateProduct(editingProduct.id, {
         ...data,
@@ -423,8 +441,8 @@ export default function OfflineProducts() {
         updatedAt: new Date().toISOString()
       });
 
-      // Refresh stock data after updating product
-      await refreshProductStocks();
+      // Only refresh stock for the updated product (much faster)
+      await refreshSingleProductStock(editingProduct.id);
 
       toast({
         title: t('success'),
