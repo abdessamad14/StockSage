@@ -31,7 +31,7 @@ export function OpenCashShiftDialog({
     if (isNaN(amount) || amount < 0) {
       toast({
         title: t('error'),
-        description: 'Veuillez entrer un montant valide',
+        description: t('cash_shift_enter_valid_amount'),
         variant: 'destructive'
       });
       return;
@@ -43,8 +43,8 @@ export function OpenCashShiftDialog({
       setStartingCash('');
       onOpenChange(false);
       toast({
-        title: 'Caisse ouverte',
-        description: `Fond de caisse: ${amount.toFixed(2)} DH`
+        title: t('cash_shift_opened_successfully'),
+        description: `${t('cash_shift_starting_amount')}: ${amount.toFixed(2)} DH`
       });
     } catch (error) {
       toast({
@@ -63,13 +63,13 @@ export function OpenCashShiftDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-green-600" />
-            Ouvrir la Caisse
+            {t('cash_shift_dialog_open_title')}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="startingCash">Fond de Caisse (DH)</Label>
+            <Label htmlFor="startingCash">{t('cash_shift_starting_cash')}</Label>
             <Input
               id="startingCash"
               type="number"
@@ -82,7 +82,7 @@ export function OpenCashShiftDialog({
               autoFocus
             />
             <p className="text-sm text-muted-foreground">
-              Entrez le montant de départ dans la caisse
+              {t('cash_shift_starting_cash_placeholder')}
             </p>
           </div>
         </div>
@@ -93,7 +93,7 @@ export function OpenCashShiftDialog({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
-            Annuler
+            {t('cancel')}
           </Button>
           <Button
             onClick={handleConfirm}
@@ -103,10 +103,10 @@ export function OpenCashShiftDialog({
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Ouverture...
+                {t('cash_shift_opening')}
               </>
             ) : (
-              'Ouvrir la Caisse'
+              t('cash_shift_open')
             )}
           </Button>
         </DialogFooter>

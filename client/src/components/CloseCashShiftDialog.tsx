@@ -41,7 +41,7 @@ export function CloseCashShiftDialog({
     if (isNaN(amount) || amount < 0) {
       toast({
         title: t('error'),
-        description: 'Veuillez entrer un montant valide',
+        description: t('cash_shift_enter_valid_amount'),
         variant: 'destructive'
       });
       return;
@@ -56,12 +56,12 @@ export function CloseCashShiftDialog({
       
       const diffMsg = hasDifference 
         ? difference > 0 
-          ? `Excédent: +${difference.toFixed(2)} DH` 
-          : `Manquant: ${Math.abs(difference).toFixed(2)} DH`
-        : 'Montant exact';
+          ? `${t('cash_shift_excess')}: +${difference.toFixed(2)} DH` 
+          : `${t('cash_shift_shortage')}: ${Math.abs(difference).toFixed(2)} DH`
+        : t('cash_shift_expected');
       
       toast({
-        title: 'Caisse clôturée',
+        title: t('cash_shift_closed_successfully'),
         description: diffMsg
       });
     } catch (error) {
@@ -81,7 +81,7 @@ export function CloseCashShiftDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-orange-600" />
-            Clôturer la Caisse
+            {t('cash_shift_dialog_close_title')}
           </DialogTitle>
         </DialogHeader>
 
@@ -89,22 +89,22 @@ export function CloseCashShiftDialog({
           {/* Summary */}
           <div className="bg-slate-100 rounded-lg p-4 space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Fond de caisse:</span>
+              <span className="text-muted-foreground">{t('cash_shift_starting_amount')}:</span>
               <span className="font-semibold">{currentShift.startingCash.toFixed(2)} DH</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Ventes cash aujourd'hui:</span>
+              <span className="text-muted-foreground">{t('cash_shift_todays_sales')}:</span>
               <span className="font-semibold text-green-600">+{todaysCashSales.toFixed(2)} DH</span>
             </div>
             <div className="border-t pt-2 flex justify-between">
-              <span className="font-semibold">Attendu:</span>
+              <span className="font-semibold">{t('cash_shift_expected')}:</span>
               <span className="font-bold text-lg">{expectedTotal.toFixed(2)} DH</span>
             </div>
           </div>
 
           {/* Actual Total Input */}
           <div className="space-y-2">
-            <Label htmlFor="actualTotal">Montant Réel Compté (DH)</Label>
+            <Label htmlFor="actualTotal">{t('cash_shift_actual_total')}</Label>
             <Input
               id="actualTotal"
               type="number"
@@ -117,7 +117,7 @@ export function CloseCashShiftDialog({
               autoFocus
             />
             <p className="text-sm text-muted-foreground">
-              Comptez l'argent dans la caisse et entrez le total
+              {t('cash_shift_actual_total_placeholder')}
             </p>
           </div>
 
@@ -132,16 +132,16 @@ export function CloseCashShiftDialog({
                 <>
                   <TrendingUp className="h-5 w-5" />
                   <div>
-                    <p className="font-semibold">Excédent: +{difference.toFixed(2)} DH</p>
-                    <p className="text-sm">Il y a plus d'argent que prévu</p>
+                    <p className="font-semibold">{t('cash_shift_excess')}: +{difference.toFixed(2)} DH</p>
+                    <p className="text-sm">{t('cash_shift_excess_message')}</p>
                   </div>
                 </>
               ) : (
                 <>
                   <TrendingDown className="h-5 w-5" />
                   <div>
-                    <p className="font-semibold">Manquant: {Math.abs(difference).toFixed(2)} DH</p>
-                    <p className="text-sm">Il manque de l'argent</p>
+                    <p className="font-semibold">{t('cash_shift_shortage')}: {Math.abs(difference).toFixed(2)} DH</p>
+                    <p className="text-sm">{t('cash_shift_shortage_message')}</p>
                   </div>
                 </>
               )}
@@ -150,10 +150,10 @@ export function CloseCashShiftDialog({
 
           {/* Notes */}
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes (optionnel)</Label>
+            <Label htmlFor="notes">{t('cash_shift_notes')}</Label>
             <Textarea
               id="notes"
-              placeholder="Commentaires sur la clôture..."
+              placeholder={t('cash_shift_notes_placeholder')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
@@ -167,7 +167,7 @@ export function CloseCashShiftDialog({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
-            Annuler
+            {t('cancel')}
           </Button>
           <Button
             onClick={handleConfirm}
@@ -177,10 +177,10 @@ export function CloseCashShiftDialog({
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Clôture...
+                {t('cash_shift_closing')}
               </>
             ) : (
-              'Clôturer la Caisse'
+              t('cash_shift_close')
             )}
           </Button>
         </DialogFooter>

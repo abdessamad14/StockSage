@@ -1327,35 +1327,6 @@ export default function OfflinePOS() {
               <h2 className="text-lg font-bold">{t('offline_pos_receipt_title').toUpperCase()}</h2>
               <div className="text-sm opacity-90">#{new Date().getTime().toString().slice(-6)}</div>
             </div>
-            
-            {/* Cash Shift Buttons */}
-            <div className="flex items-center gap-2">
-              {!currentShift ? (
-                <Button
-                  onClick={() => setOpenCashShiftDialog(true)}
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700 text-white border-2 border-white/30"
-                >
-                  <DollarSign className="h-4 w-4 mr-1" />
-                  Ouvrir Caisse
-                </Button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <div className="bg-white/20 px-3 py-1 rounded text-sm">
-                    <Clock className="inline h-3 w-3 mr-1" />
-                    Caisse ouverte: {currentShift.startingCash.toFixed(0)} DH
-                  </div>
-                  <Button
-                    onClick={() => setCloseCashShiftDialog(true)}
-                    size="sm"
-                    className="bg-orange-600 hover:bg-orange-700 text-white border-2 border-white/30"
-                  >
-                    <DollarSign className="h-4 w-4 mr-1" />
-                    Clôturer
-                  </Button>
-                </div>
-              )}
-            </div>
             <Receipt className="h-8 w-8 opacity-80" />
           </div>
         </div>
@@ -2124,6 +2095,50 @@ export default function OfflinePOS() {
             <div className="mt-2 px-3 py-1 bg-gradient-to-r from-[#dff6ff] via-[#ccffe1] to-[#fff1d6] border border-[#0f866c]/30 rounded text-sm shadow-sm">
               <span className="text-[#0f866c] font-semibold">{t('offline_pos_scan_in_progress')}: </span>
               <span className="font-mono">{barcodeBuffer}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Cash Shift Management Section */}
+        <div className="bg-gradient-to-r from-[#fef3c7]/90 via-[#dcfce7]/90 to-[#dbeafe]/90 border-b border-[#f59e0b] p-3 shadow-md">
+          {!currentShift ? (
+            <Button
+              onClick={() => setOpenCashShiftDialog(true)}
+              size="lg"
+              className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold text-sm shadow-lg border-2 border-green-800/30 h-14"
+            >
+              <DollarSign className="h-5 w-5 mr-2" />
+              {t('cash_shift_open')}
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <div className="bg-white/80 backdrop-blur rounded-lg p-3 shadow-sm border border-green-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                      <Clock className="h-4 w-4 text-green-700" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-green-700 font-semibold">{t('cash_shift_opened')}</p>
+                      <p className="text-xs text-gray-600">
+                        {new Date(currentShift.openedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-600">{t('cash_shift_starting_amount')}</p>
+                    <p className="text-lg font-bold text-green-700">{currentShift.startingCash.toFixed(0)} DH</p>
+                  </div>
+                </div>
+              </div>
+              <Button
+                onClick={() => setCloseCashShiftDialog(true)}
+                size="lg"
+                className="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-bold text-sm shadow-lg border-2 border-orange-800/30 h-12"
+              >
+                <DollarSign className="h-5 w-5 mr-2" />
+                {t('cash_shift_close')}
+              </Button>
             </div>
           )}
         </div>
