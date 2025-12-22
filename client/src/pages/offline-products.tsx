@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useOfflineProducts } from "@/hooks/use-offline-products";
 import { useOfflineStockLocations } from "@/hooks/use-offline-stock-locations";
 import { useOfflineStockTransactions } from "@/hooks/use-offline-stock-transactions";
@@ -56,6 +56,7 @@ export default function OfflineProducts() {
   const { canDeleteProducts } = useOfflineAuth();
   
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
@@ -68,6 +69,15 @@ export default function OfflineProducts() {
   const [lastKeyTime, setLastKeyTime] = useState(0);
   const [productStocks, setProductStocks] = useState<Record<string, number>>({});
   const [isSavingProduct, setIsSavingProduct] = useState(false);
+
+  // Debounce search query for better performance
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 150); // 150ms debounce - fast enough for responsiveness
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Get primary warehouse
   const primaryWarehouse = stockLocations.find(loc => loc.isPrimary) || stockLocations[0];
@@ -288,29 +298,39 @@ export default function OfflineProducts() {
     return () => document.removeEventListener('keydown', handleKeyPress);
   }, [barcodeBuffer, lastKeyTime]);
 
-  // Filter products
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = 
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.barcode?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Optimized product filtering with useMemo and debounced search
+  const filteredProducts = useMemo(() => {
+    // Normalize search query once
+    const normalizedQuery = debouncedSearchQuery.toLowerCase().trim();
     
-    // Handle both categoryId (ID) and category field (name) for backwards compatibility
-    const productCategory = product.categoryId;
-    let matchesCategory = false;
-    
-    if (selectedCategoryFilter === "all") {
-      matchesCategory = true;
-    } else if (selectedCategoryFilter === "uncategorized") {
-      matchesCategory = !productCategory;
-    } else {
-      // Check if productCategory matches by ID or by name
-      const selectedCat = categories.find(c => c.id === selectedCategoryFilter);
-      matchesCategory = productCategory === selectedCategoryFilter || 
-                       (!!selectedCat && productCategory === selectedCat.name);
+    // Early return if no filters
+    if (!normalizedQuery && selectedCategoryFilter === "all") {
+      return products;
     }
     
-    return matchesSearch && matchesCategory;
-  });
+    // Pre-compute category match function
+    const categoryMatchFn = (() => {
+      if (selectedCategoryFilter === "all") return () => true;
+      if (selectedCategoryFilter === "uncategorized") return (p: OfflineProduct) => !p.categoryId;
+      
+      const selectedCat = categories.find(c => c.id === selectedCategoryFilter);
+      return (p: OfflineProduct) => 
+        p.categoryId === selectedCategoryFilter || 
+        (!!selectedCat && p.categoryId === selectedCat.name);
+    })();
+    
+    return products.filter(product => {
+      // Search match (name or barcode)
+      if (normalizedQuery) {
+        const nameMatch = product.name.toLowerCase().includes(normalizedQuery);
+        const barcodeMatch = product.barcode?.toLowerCase().includes(normalizedQuery);
+        if (!nameMatch && !barcodeMatch) return false;
+      }
+      
+      // Category match
+      return categoryMatchFn(product);
+    });
+  }, [products, debouncedSearchQuery, selectedCategoryFilter, categories]);
 
   // Get category name by ID or name
   const getCategoryName = (categoryIdOrName: string | null | undefined) => {
