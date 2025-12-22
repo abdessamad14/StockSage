@@ -2019,22 +2019,19 @@ router.get('/defective-stock', async (req, res) => {
         barcode: products.barcode,
         defectiveStock: products.defectiveStock,
         costPrice: products.costPrice,
-        supplierId: orders.supplierId,
+        supplierId: products.supplierId,
         supplierName: suppliers.name,
       })
       .from(products)
-      .leftJoin(orderItems, eq(products.id, orderItems.productId))
-      .leftJoin(orders, eq(orderItems.orderId, orders.id))
-      .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
-      .where(gt(products.defectiveStock, 0))
-      .groupBy(products.id);
+      .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
+      .where(gt(products.defectiveStock, 0));
     
     // Group by supplier
     const groupedBySupplier: Record<string, any> = {};
     
     for (const product of defectiveProducts) {
       const supplierId = product.supplierId || 'unknown';
-      const supplierName = product.supplierName || 'Unknown Supplier';
+      const supplierName = product.supplierName || 'Fournisseur Inconnu';
       
       if (!groupedBySupplier[supplierId]) {
         groupedBySupplier[supplierId] = {

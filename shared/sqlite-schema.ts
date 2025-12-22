@@ -39,6 +39,7 @@ export const products = sqliteTable("products", {
   barcode: text("barcode"),
   description: text("description"),
   category: text("category"),
+  supplierId: integer("supplier_id"), // Link to supplier for defective returns
   costPrice: real("cost_price").notNull(),
   sellingPrice: real("selling_price").notNull(),
   semiWholesalePrice: real("semi_wholesale_price"),
