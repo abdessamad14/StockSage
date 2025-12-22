@@ -29,7 +29,6 @@ export function useOfflineProducts() {
 
   // Enhanced product creation with automatic stock tracking
   const createProduct = async (product: Omit<OfflineProduct, 'id'>) => {
-    setLoading(true);
     try {
       const newProduct = await offlineProductStorage.create(product);
       
@@ -38,7 +37,8 @@ export function useOfflineProducts() {
         await ensureStockRecordExists(newProduct);
       }
       
-      await loadProducts();
+      // Optimized: Add new product to state instead of reloading all products
+      setProducts(prev => [...prev, newProduct]);
       return newProduct;
     } catch (error) {
       console.error('Error creating product:', error);
@@ -78,7 +78,8 @@ export function useOfflineProducts() {
           }
         }
         
-        await loadProducts();
+        // Optimized: Update product in state instead of reloading all products
+        setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p));
       }
       return updatedProduct;
     } catch (error) {
@@ -91,7 +92,8 @@ export function useOfflineProducts() {
     try {
       const success = await offlineProductStorage.delete(id);
       if (success) {
-        await loadProducts();
+        // Optimized: Remove product from state instead of reloading all products
+        setProducts(prev => prev.filter(p => p.id !== id));
       }
       return success;
     } catch (error) {
