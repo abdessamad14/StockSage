@@ -13,7 +13,10 @@ import { useToast } from '@/hooks/use-toast';
 import { ThermalReceiptPrinter, ReceiptData } from '@/lib/thermal-receipt-printer';
 import { useOfflineAuth } from '@/hooks/use-offline-auth';
 import { useOfflineSales } from '@/hooks/use-offline-sales';
+import { useCashShift } from '@/hooks/use-cash-shift';
 import { useI18n } from '@/lib/i18n';
+import { OpenCashShiftDialog } from '@/components/OpenCashShiftDialog';
+import { CloseCashShiftDialog } from '@/components/CloseCashShiftDialog';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { 
   ShoppingCart, 
@@ -86,7 +89,12 @@ export default function OfflinePOS() {
   const { toast } = useToast();
   const { user, logout, canDeleteSales } = useOfflineAuth();
   const { deleteSale } = useOfflineSales();
+  const { currentShift, openShift, closeShift } = useCashShift();
   const { t } = useI18n();
+  
+  // Cash shift dialog states
+  const [openCashShiftDialog, setOpenCashShiftDialog] = useState(false);
+  const [closeCashShiftDialog, setCloseCashShiftDialog] = useState(false);
   
   // State variables
   const [products, setProducts] = useState<OfflineProduct[]>([]);
@@ -231,6 +239,21 @@ export default function OfflinePOS() {
       }
     });
   }, [todaysOrders, dateFilter, customStartDate, customEndDate]);
+
+  // Calculate today's cash sales for cash shift closing
+  const todaysCashSales = useMemo(() => {
+    if (!todaysOrders) return 0;
+    
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    return todaysOrders
+      .filter(sale => {
+        const saleDate = new Date(sale.date).toISOString().split('T')[0];
+        return saleDate === todayStr && sale.paymentMethod === 'cash';
+      })
+      .reduce((sum, sale) => sum + sale.totalAmount, 0);
+  }, [todaysOrders]);
 
   // Calculate turnover stats from filtered orders
   const filteredTurnover = useMemo(() => {
@@ -1303,6 +1326,35 @@ export default function OfflinePOS() {
             <div>
               <h2 className="text-lg font-bold">{t('offline_pos_receipt_title').toUpperCase()}</h2>
               <div className="text-sm opacity-90">#{new Date().getTime().toString().slice(-6)}</div>
+            </div>
+            
+            {/* Cash Shift Buttons */}
+            <div className="flex items-center gap-2">
+              {!currentShift ? (
+                <Button
+                  onClick={() => setOpenCashShiftDialog(true)}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white border-2 border-white/30"
+                >
+                  <DollarSign className="h-4 w-4 mr-1" />
+                  Ouvrir Caisse
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="bg-white/20 px-3 py-1 rounded text-sm">
+                    <Clock className="inline h-3 w-3 mr-1" />
+                    Caisse ouverte: {currentShift.startingCash.toFixed(0)} DH
+                  </div>
+                  <Button
+                    onClick={() => setCloseCashShiftDialog(true)}
+                    size="sm"
+                    className="bg-orange-600 hover:bg-orange-700 text-white border-2 border-white/30"
+                  >
+                    <DollarSign className="h-4 w-4 mr-1" />
+                    Clôturer
+                  </Button>
+                </div>
+              )}
             </div>
             <Receipt className="h-8 w-8 opacity-80" />
           </div>
@@ -2837,6 +2889,29 @@ export default function OfflinePOS() {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    {/* Cash Shift Dialogs */}
+    <OpenCashShiftDialog
+      open={openCashShiftDialog}
+      onOpenChange={setOpenCashShiftDialog}
+      onConfirm={async (startingCash) => {
+        await openShift(user?.id || '', user?.name || '', startingCash);
+      }}
+      userId={user?.id || ''}
+      userName={user?.name || ''}
+    />
+
+    {currentShift && (
+      <CloseCashShiftDialog
+        open={closeCashShiftDialog}
+        onOpenChange={setCloseCashShiftDialog}
+        onConfirm={async (actualTotal, notes) => {
+          await closeShift(actualTotal, notes);
+        }}
+        currentShift={currentShift}
+        todaysCashSales={todaysCashSales}
+      />
+    )}
 
     {/* Hidden container for system print mode (window.print()) */}
     <div id="printable-receipt-container" aria-hidden="true"></div>
