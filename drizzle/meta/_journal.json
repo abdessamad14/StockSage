@@ -22,6 +22,13 @@
       "when": 1734879200000,
       "tag": "0008_add_cash_shifts",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1734880000000,
+      "tag": "0009_add_customer_returns",
+      "breakpoints": true
     }
   ]
 }

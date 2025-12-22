@@ -44,6 +44,7 @@ export const products = sqliteTable("products", {
   semiWholesalePrice: real("semi_wholesale_price"),
   wholesalePrice: real("wholesale_price"),
   quantity: integer("quantity").notNull().default(0),
+  defectiveStock: integer("defective_stock").notNull().default(0), // Damaged/expired items for supplier return
   minStockLevel: integer("min_stock_level").default(10),
   unit: text("unit").default("pièce"),
   image: text("image"),
@@ -299,6 +300,37 @@ export const cashShifts = sqliteTable("cash_shifts", {
   notes: text("notes"),
 });
 
+// Customer Returns table (Retour Client)
+export const customerReturns = sqliteTable("customer_returns", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tenantId: text("tenant_id").notNull(),
+  returnNumber: text("return_number").notNull().unique(),
+  customerId: integer("customer_id").references(() => customers.id),
+  customerName: text("customer_name"),
+  originalSaleId: integer("original_sale_id").references(() => sales.id),
+  totalAmount: real("total_amount").notNull(),
+  refundMethod: text("refund_method").notNull(), // cash, credit, exchange
+  status: text("status").notNull().default("completed"), // completed, cancelled
+  notes: text("notes"),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+// Customer Return Items table
+export const customerReturnItems = sqliteTable("customer_return_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tenantId: text("tenant_id").notNull(),
+  returnId: integer("return_id").notNull().references(() => customerReturns.id),
+  productId: integer("product_id").notNull().references(() => products.id),
+  productName: text("product_name").notNull(),
+  quantity: integer("quantity").notNull(),
+  unitPrice: real("unit_price").notNull(),
+  totalPrice: real("total_price").notNull(),
+  condition: text("condition").notNull(), // good (bon état), damaged (endommagé/périmé)
+  reason: text("reason"), // Optional reason for return
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
 // Insert schemas for each table
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertProductCategorySchema = createInsertSchema(productCategories).omit({ id: true });
@@ -318,6 +350,8 @@ export const insertStockTransactionSchema = createInsertSchema(stockTransactions
 export const insertInventoryCountSchema = createInsertSchema(inventoryCounts).omit({ id: true });
 export const insertInventoryCountItemSchema = createInsertSchema(inventoryCountItems).omit({ id: true });
 export const insertCashShiftSchema = createInsertSchema(cashShifts).omit({ id: true });
+export const insertCustomerReturnSchema = createInsertSchema(customerReturns).omit({ id: true });
+export const insertCustomerReturnItemSchema = createInsertSchema(customerReturnItems).omit({ id: true });
 
 // Define types for insert operations
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -338,6 +372,8 @@ export type InsertStockTransaction = z.infer<typeof insertStockTransactionSchema
 export type InsertInventoryCount = z.infer<typeof insertInventoryCountSchema>;
 export type InsertInventoryCountItem = z.infer<typeof insertInventoryCountItemSchema>;
 export type InsertCashShift = z.infer<typeof insertCashShiftSchema>;
+export type InsertCustomerReturn = z.infer<typeof insertCustomerReturnSchema>;
+export type InsertCustomerReturnItem = z.infer<typeof insertCustomerReturnItemSchema>;
 
 // Define types for select operations
 export type User = typeof users.$inferSelect;
@@ -354,6 +390,8 @@ export type StockTransaction = typeof stockTransactions.$inferSelect;
 export type InventoryCount = typeof inventoryCounts.$inferSelect;
 export type InventoryCountItem = typeof inventoryCountItems.$inferSelect;
 export type CashShift = typeof cashShifts.$inferSelect;
+export type CustomerReturn = typeof customerReturns.$inferSelect;
+export type CustomerReturnItem = typeof customerReturnItems.$inferSelect;
 
 // Product Stock table
 export const productStock = sqliteTable("product_stock", {
@@ -535,6 +573,15 @@ export type OfflinePurchaseOrderWithItems = OfflinePurchaseOrder & {
 
 export type ProductWithStockStatus = OfflineProduct & {
   stockStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
+};
+
+export type CustomerReturnItemWithProduct = CustomerReturnItem & {
+  product?: OfflineProduct;
+};
+
+export type CustomerReturnWithItems = CustomerReturn & {
+  items: CustomerReturnItemWithProduct[];
+  customer?: Customer;
 };
 
 export type Role = 'admin' | 'cashier' | 'merchant' | 'supporter' | 'viewer';

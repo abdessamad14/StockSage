@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from './db';
-import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems, productCategories, users, cashShifts } from '../shared/sqlite-schema.js';
+import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems, productCategories, users, cashShifts, customerReturns, customerReturnItems } from '../shared/sqlite-schema.js';
 import { eq, and } from 'drizzle-orm';
 import { printToNetwork } from './network-printer.js';
 
@@ -1702,6 +1702,216 @@ router.put('/cash-shifts/:id', async (req, res) => {
     res.json(updatedShift);
   } catch (error) {
     console.error('Error updating cash shift:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// ==================== CUSTOMER RETURNS API ====================
+
+// Get all customer returns
+router.get('/customer-returns', async (req, res) => {
+  try {
+    const returns = await db.select().from(customerReturns).orderBy(customerReturns.createdAt);
+    res.json(returns);
+  } catch (error) {
+    console.error('Error fetching customer returns:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Get customer return by ID with items
+router.get('/customer-returns/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const returnRecord = await db
+      .select()
+      .from(customerReturns)
+      .where(eq(customerReturns.id, parseInt(id)))
+      .limit(1);
+    
+    if (returnRecord.length === 0) {
+      return res.status(404).json({ error: 'Return not found' });
+    }
+    
+    const items = await db
+      .select()
+      .from(customerReturnItems)
+      .where(eq(customerReturnItems.returnId, parseInt(id)));
+    
+    res.json({ ...returnRecord[0], items });
+  } catch (error) {
+    console.error('Error fetching customer return:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Create new customer return
+router.post('/customer-returns', async (req, res) => {
+  try {
+    const { customerId, customerName, items, refundMethod, notes, createdBy } = req.body;
+    
+    // Generate return number
+    const returnNumber = `RET-${Date.now()}`;
+    
+    // Calculate total amount
+    const totalAmount = items.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
+    
+    // Create return record
+    const [returnRecord] = await db.insert(customerReturns).values({
+      tenantId: 'default',
+      returnNumber,
+      customerId: customerId ? parseInt(customerId) : null,
+      customerName: customerName || null,
+      originalSaleId: null,
+      totalAmount,
+      refundMethod,
+      status: 'completed',
+      notes,
+      createdBy: createdBy ? parseInt(createdBy) : null,
+      createdAt: new Date().toISOString(),
+    }).returning();
+    
+    // Create return items and update inventory
+    const returnItems = [];
+    for (const item of items) {
+      // Insert return item
+      const [returnItem] = await db.insert(customerReturnItems).values({
+        tenantId: 'default',
+        returnId: returnRecord.id,
+        productId: parseInt(item.productId),
+        productName: item.productName,
+        quantity: parseInt(item.quantity),
+        unitPrice: parseFloat(item.unitPrice),
+        totalPrice: parseFloat(item.totalPrice),
+        condition: item.condition, // 'good' or 'damaged'
+        reason: item.reason || null,
+        createdAt: new Date().toISOString(),
+      }).returning();
+      
+      returnItems.push(returnItem);
+      
+      // Update product stock based on condition
+      const product = await db.select().from(products).where(eq(products.id, parseInt(item.productId))).limit(1);
+      
+      if (product.length > 0) {
+        const currentProduct = product[0];
+        
+        if (item.condition === 'good') {
+          // Add back to active stock
+          await db.update(products)
+            .set({ 
+              quantity: currentProduct.quantity + parseInt(item.quantity) 
+            })
+            .where(eq(products.id, parseInt(item.productId)));
+          
+          // Update product_stock for primary warehouse
+          const primaryWarehouse = await db.select().from(stockLocations)
+            .where(eq(stockLocations.isPrimary, true))
+            .limit(1);
+          
+          if (primaryWarehouse.length > 0) {
+            const warehouseId = String(primaryWarehouse[0].id);
+            const existingStock = await db.select().from(productStock)
+              .where(and(
+                eq(productStock.productId, parseInt(item.productId)),
+                eq(productStock.locationId, warehouseId)
+              ))
+              .limit(1);
+            
+            if (existingStock.length > 0) {
+              await db.update(productStock)
+                .set({ quantity: existingStock[0].quantity + parseInt(item.quantity) })
+                .where(eq(productStock.id, existingStock[0].id));
+            } else {
+              await db.insert(productStock).values({
+                tenantId: 'default',
+                productId: parseInt(item.productId),
+                locationId: warehouseId,
+                quantity: parseInt(item.quantity),
+                minStockLevel: 0,
+              });
+            }
+          }
+        } else {
+          // Add to defective stock (for supplier return)
+          await db.update(products)
+            .set({ 
+              defectiveStock: (currentProduct.defectiveStock || 0) + parseInt(item.quantity) 
+            })
+            .where(eq(products.id, parseInt(item.productId)));
+        }
+        
+        // Create stock transaction
+        await db.insert(stockTransactions).values({
+          tenantId: 'default',
+          productId: parseInt(item.productId),
+          warehouseId: 'main',
+          type: 'entry',
+          quantity: parseInt(item.quantity),
+          previousQuantity: currentProduct.quantity,
+          newQuantity: item.condition === 'good' 
+            ? currentProduct.quantity + parseInt(item.quantity) 
+            : currentProduct.quantity,
+          reason: `Retour client - ${item.condition === 'good' ? 'Bon état' : 'Endommagé'}`,
+          reference: returnNumber,
+          relatedId: String(returnRecord.id),
+          createdAt: new Date().toISOString(),
+          createdBy: createdBy ? parseInt(createdBy) : null,
+        });
+      }
+    }
+    
+    // Handle refund method
+    if (refundMethod === 'cash') {
+      // Deduct from current cash shift
+      const openShift = await db
+        .select()
+        .from(cashShifts)
+        .where(eq(cashShifts.status, 'open'))
+        .limit(1);
+      
+      if (openShift.length > 0) {
+        const shift = openShift[0];
+        await db.update(cashShifts)
+          .set({ 
+            totalCashSales: (shift.totalCashSales || 0) - totalAmount 
+          })
+          .where(eq(cashShifts.id, shift.id));
+      }
+    } else if (refundMethod === 'credit' && customerId) {
+      // Add credit to customer account
+      const customer = await db.select().from(customers).where(eq(customers.id, parseInt(customerId))).limit(1);
+      
+      if (customer.length > 0) {
+        await db.update(customers)
+          .set({ 
+            creditBalance: (customer[0].creditBalance || 0) + totalAmount 
+          })
+          .where(eq(customers.id, parseInt(customerId)));
+      }
+    }
+    
+    res.status(201).json({ ...returnRecord, items: returnItems });
+  } catch (error) {
+    console.error('Error creating customer return:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Cancel/Delete customer return
+router.delete('/customer-returns/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Delete return items first (foreign key constraint)
+    await db.delete(customerReturnItems).where(eq(customerReturnItems.returnId, parseInt(id)));
+    
+    // Delete return record
+    await db.delete(customerReturns).where(eq(customerReturns.id, parseInt(id)));
+    
+    res.json({ message: 'Return deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting customer return:', error);
     res.status(500).json({ error: (error as Error).message });
   }
 });

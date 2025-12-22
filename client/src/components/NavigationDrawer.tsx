@@ -15,7 +15,8 @@ import {
   Warehouse,
   ClipboardCheck,
   UserCog,
-  LogOut
+  LogOut,
+  PackageX
 } from 'lucide-react';
 
 interface NavigationDrawerProps {
@@ -127,6 +128,14 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
             <Link href="/orders" className={linkClasses('/orders')}>
               <ClipboardList className="w-6 h-6 mr-3" />
               <span>{t('orders')}</span>
+            </Link>
+          )}
+          
+          {/* Customer Returns */}
+          {canUsePOS && (
+            <Link href="/returns" className={linkClasses('/returns')}>
+              <PackageX className="w-6 h-6 mr-3" />
+              <span>{t('returns_customer_returns')}</span>
             </Link>
           )}
 
