@@ -63,6 +63,13 @@ interface DefectiveStockGroup {
   totalCost: number;
 }
 
+interface Supplier {
+  id: number;
+  name: string;
+  phone?: string;
+  email?: string;
+}
+
 interface ReturnItem {
   productId: number;
   productName: string;
@@ -92,12 +99,15 @@ export default function SupplierReturns() {
 
   // Data states
   const [defectiveStock, setDefectiveStock] = useState<DefectiveStockGroup[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [allDefectiveProducts, setAllDefectiveProducts] = useState<DefectiveProduct[]>([]);
   const [supplierReturns, setSupplierReturns] = useState<SupplierReturn[]>([]);
   const [returnItems, setReturnItems] = useState<ReturnItem[]>([]);
 
   // Form states
-  const [selectedSupplier, setSelectedSupplier] = useState<DefectiveStockGroup | null>(null);
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
   const [notes, setNotes] = useState('');
+  const [showSupplierSelect, setShowSupplierSelect] = useState(false);
 
   // UI states
   const [showNewReturn, setShowNewReturn] = useState(false);
@@ -109,6 +119,7 @@ export default function SupplierReturns() {
   // Load data
   useEffect(() => {
     loadDefectiveStock();
+    loadSuppliers();
     loadSupplierReturns();
   }, []);
 
@@ -117,6 +128,13 @@ export default function SupplierReturns() {
       const response = await fetch('/api/offline/defective-stock');
       const data = await response.json();
       setDefectiveStock(data);
+      
+      // Flatten all products for easy access
+      const allProducts: DefectiveProduct[] = [];
+      data.forEach((group: DefectiveStockGroup) => {
+        allProducts.push(...group.products);
+      });
+      setAllDefectiveProducts(allProducts);
     } catch (error) {
       console.error('Error loading defective stock:', error);
       toast({
@@ -124,6 +142,16 @@ export default function SupplierReturns() {
         description: t('supplier_returns_load_error'),
         variant: 'destructive',
       });
+    }
+  };
+
+  const loadSuppliers = async () => {
+    try {
+      const response = await fetch('/api/offline/suppliers');
+      const data = await response.json();
+      setSuppliers(data);
+    } catch (error) {
+      console.error('Error loading suppliers:', error);
     }
   };
 
@@ -264,20 +292,50 @@ export default function SupplierReturns() {
     printWindow.print();
   };
 
-  // Start creating return for a supplier
-  const startNewReturn = (supplierGroup: DefectiveStockGroup) => {
-    setSelectedSupplier(supplierGroup);
-    // Initialize with all defective products from this supplier
-    const initialItems: ReturnItem[] = supplierGroup.products.map(p => ({
-      productId: p.id,
-      productName: p.name,
-      quantity: p.defectiveStock,
-      unitCost: p.costPrice,
-      totalCost: p.totalCost,
-      reason: 'defective',
-    }));
-    setReturnItems(initialItems);
+  // Start creating return - show supplier selection
+  const startNewReturn = () => {
+    if (allDefectiveProducts.length === 0) {
+      toast({
+        title: t('error'),
+        description: t('supplier_returns_no_defective_stock'),
+        variant: 'destructive',
+      });
+      return;
+    }
+    setShowSupplierSelect(true);
+  };
+
+  // Select supplier and proceed to product selection
+  const selectSupplierForReturn = (supplierId: string) => {
+    if (!supplierId) return;
+    
+    setSelectedSupplierId(supplierId);
+    setReturnItems([]);
+    setShowSupplierSelect(false);
     setShowNewReturn(true);
+  };
+
+  // Add product to return
+  const addProductToReturn = (product: DefectiveProduct) => {
+    const existingItem = returnItems.find(item => item.productId === product.id);
+    
+    if (existingItem) {
+      toast({
+        title: t('info'),
+        description: t('supplier_returns_product_already_added'),
+        variant: 'default',
+      });
+      return;
+    }
+    
+    setReturnItems([...returnItems, {
+      productId: product.id,
+      productName: product.name,
+      quantity: product.defectiveStock,
+      unitCost: product.costPrice,
+      totalCost: product.totalCost,
+      reason: 'defective',
+    }]);
   };
 
   // Update return item
@@ -307,7 +365,10 @@ export default function SupplierReturns() {
 
   // Submit return
   const handleSubmitReturn = async () => {
-    if (!selectedSupplier) return;
+    if (!selectedSupplierId) return;
+    
+    const supplier = suppliers.find(s => s.id === parseInt(selectedSupplierId));
+    if (!supplier) return;
     
     if (returnItems.length === 0) {
       toast({
@@ -325,8 +386,8 @@ export default function SupplierReturns() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          supplierId: selectedSupplier.supplierId,
-          supplierName: selectedSupplier.supplierName,
+          supplierId: supplier.id,
+          supplierName: supplier.name,
           items: returnItems,
           notes,
           createdBy: 1, // TODO: Get from auth
@@ -346,7 +407,7 @@ export default function SupplierReturns() {
 
       // Reset form
       setReturnItems([]);
-      setSelectedSupplier(null);
+      setSelectedSupplierId('');
       setNotes('');
       setShowNewReturn(false);
 
@@ -391,7 +452,8 @@ export default function SupplierReturns() {
     return supplierReturns.filter(r => r.status === activeTab);
   }, [supplierReturns, activeTab]);
 
-  if (showNewReturn && selectedSupplier) {
+  if (showNewReturn && selectedSupplierId) {
+    const selectedSupplier = suppliers.find(s => s.id === parseInt(selectedSupplierId));
     return (
       <div className="p-6 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
@@ -402,7 +464,7 @@ export default function SupplierReturns() {
               onClick={() => {
                 setShowNewReturn(false);
                 setReturnItems([]);
-                setSelectedSupplier(null);
+                setSelectedSupplierId('');
               }}
             >
               <ArrowLeft className="h-5 w-5" />
@@ -413,15 +475,54 @@ export default function SupplierReturns() {
                 {t('supplier_returns_new_return')}
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                {t('supplier_returns_for')}: <span className="font-semibold">{selectedSupplier.supplierName}</span>
+                {t('supplier_returns_for')}: <span className="font-semibold">{selectedSupplier?.name || ''}</span>
               </p>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Return Items */}
-          <div className="lg:col-span-2">
+          {/* Left Column - Product Selection & Return Items */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Available Defective Products */}
+            {returnItems.length < allDefectiveProducts.length && (
+              <Card className="border-2 border-blue-200 bg-blue-50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Plus className="h-5 w-5 text-blue-600" />
+                    {t('supplier_returns_available_products')}
+                  </CardTitle>
+                  <CardDescription>{t('supplier_returns_click_to_add')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {allDefectiveProducts
+                      .filter(p => !returnItems.some(item => item.productId === p.id))
+                      .map(product => (
+                        <div
+                          key={product.id}
+                          onClick={() => addProductToReturn(product)}
+                          className="p-3 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="font-medium">{product.name}</p>
+                              <p className="text-xs text-gray-500">{product.barcode}</p>
+                            </div>
+                            <Badge variant="destructive">{product.defectiveStock}</Badge>
+                          </div>
+                          <div className="mt-2 flex justify-between text-sm">
+                            <span className="text-gray-600">{t('cost_price')}:</span>
+                            <span className="font-semibold">{product.costPrice.toFixed(2)} DH</span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
+            {/* Selected Return Items */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -503,11 +604,13 @@ export default function SupplierReturns() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <p className="font-semibold text-lg">{selectedSupplier.supplierName}</p>
-                  <div className="text-sm text-gray-600">
-                    <p>{t('supplier_returns_defective_items')}: {selectedSupplier.totalDefectiveItems}</p>
-                    <p>{t('supplier_returns_total_cost')}: {selectedSupplier.totalCost.toFixed(2)} DH</p>
-                  </div>
+                  <p className="font-semibold text-lg">{selectedSupplier?.name || ''}</p>
+                  {selectedSupplier?.phone && (
+                    <p className="text-sm text-gray-600">📞 {selectedSupplier.phone}</p>
+                  )}
+                  {selectedSupplier?.email && (
+                    <p className="text-sm text-gray-600">✉️ {selectedSupplier.email}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -572,6 +675,15 @@ export default function SupplierReturns() {
           </h1>
           <p className="text-sm text-gray-600 mt-1">{t('supplier_returns_description')}</p>
         </div>
+        <Button
+          onClick={startNewReturn}
+          disabled={allDefectiveProducts.length === 0}
+          className="bg-red-600 hover:bg-red-700"
+          size="lg"
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          {t('supplier_returns_create_return')}
+        </Button>
       </div>
 
       {/* Statistics */}
@@ -625,66 +737,41 @@ export default function SupplierReturns() {
         </Card>
       </div>
 
-      {/* Defective Stock by Supplier */}
-      {defectiveStock.length > 0 && (
+      {/* All Defective Products Summary */}
+      {allDefectiveProducts.length > 0 && (
         <Card className="mb-6 border-2 border-red-200 bg-red-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-800">
               <AlertTriangle className="h-6 w-6" />
-              {t('supplier_returns_defective_stock')}
+              {t('supplier_returns_all_defective')}
             </CardTitle>
-            <CardDescription>{t('supplier_returns_defective_stock_description')}</CardDescription>
+            <CardDescription>{t('supplier_returns_all_defective_description')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {defectiveStock.map(group => (
-                <Card key={group.supplierId} className="bg-white">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>{group.supplierName}</CardTitle>
-                        <CardDescription>
-                          {group.totalDefectiveItems} {t('supplier_returns_items_defective')} · {group.totalCost.toFixed(2)} DH
-                        </CardDescription>
-                      </div>
-                      <Button
-                        onClick={() => startNewReturn(group)}
-                        className="bg-red-600 hover:bg-red-700"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        {t('supplier_returns_create_return')}
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>{t('product')}</TableHead>
-                          <TableHead>{t('barcode')}</TableHead>
-                          <TableHead className="text-right">{t('defective_quantity')}</TableHead>
-                          <TableHead className="text-right">{t('cost_price')}</TableHead>
-                          <TableHead className="text-right">{t('total_cost')}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {group.products.map(product => (
-                          <TableRow key={product.id}>
-                            <TableCell className="font-medium">{product.name}</TableCell>
-                            <TableCell className="text-gray-600">{product.barcode || '-'}</TableCell>
-                            <TableCell className="text-right">
-                              <Badge variant="destructive">{product.defectiveStock}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right">{product.costPrice.toFixed(2)} DH</TableCell>
-                            <TableCell className="text-right font-bold">{product.totalCost.toFixed(2)} DH</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('product')}</TableHead>
+                  <TableHead>{t('barcode')}</TableHead>
+                  <TableHead className="text-right">{t('defective_quantity')}</TableHead>
+                  <TableHead className="text-right">{t('cost_price')}</TableHead>
+                  <TableHead className="text-right">{t('total_cost')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allDefectiveProducts.map(product => (
+                  <TableRow key={product.id}>
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell className="text-gray-600">{product.barcode || '-'}</TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant="destructive">{product.defectiveStock}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{product.costPrice.toFixed(2)} DH</TableCell>
+                    <TableCell className="text-right font-bold">{product.totalCost.toFixed(2)} DH</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}
@@ -896,6 +983,47 @@ export default function SupplierReturns() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
               {t('close')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Supplier Selection Dialog */}
+      <Dialog open={showSupplierSelect} onOpenChange={setShowSupplierSelect}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">{t('supplier_returns_select_supplier')}</DialogTitle>
+            <DialogDescription>
+              {t('supplier_returns_select_supplier_description')}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            {suppliers.map(supplier => (
+              <Card
+                key={supplier.id}
+                className="cursor-pointer hover:bg-blue-50 transition-colors border-2 hover:border-blue-300"
+                onClick={() => selectSupplierForReturn(String(supplier.id))}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold">{supplier.name}</h3>
+                      <div className="text-sm text-gray-600 mt-1 space-y-1">
+                        {supplier.phone && <p>📞 {supplier.phone}</p>}
+                        {supplier.email && <p>✉️ {supplier.email}</p>}
+                      </div>
+                    </div>
+                    <ArrowLeft className="h-5 w-5 text-gray-400 rotate-180" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSupplierSelect(false)}>
+              {t('cancel')}
             </Button>
           </DialogFooter>
         </DialogContent>
