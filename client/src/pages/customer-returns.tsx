@@ -728,7 +728,7 @@ export default function CustomerReturns() {
                     <SelectItem value="credit">
                       <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4" />
-                        {t('returns_refund_credit')}
+                        {t('returns_mettre_avoir')}
                       </div>
                     </SelectItem>
                     <SelectItem value="exchange">
@@ -747,7 +747,7 @@ export default function CustomerReturns() {
                 )}
                 {refundMethod === 'credit' && (
                   <div className="p-3 bg-purple-50 border border-purple-200 rounded text-sm">
-                    <p className="text-purple-700">{t('returns_refund_credit_description')}</p>
+                    <p className="text-purple-700 font-medium">{t('returns_avoir_description')}</p>
                   </div>
                 )}
                 {refundMethod === 'exchange' && (
@@ -762,9 +762,11 @@ export default function CustomerReturns() {
             {(refundMethod === 'credit' || refundMethod === 'exchange') && (
               <Card>
                 <CardHeader>
-                  <CardTitle>{t('customer')}</CardTitle>
+                  <CardTitle>
+                    {refundMethod === 'credit' ? t('returns_avoir_customer') : t('customer')}
+                  </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-3">
                   <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
                     <SelectTrigger>
                       <SelectValue placeholder={t('returns_select_customer')} />
@@ -772,14 +774,51 @@ export default function CustomerReturns() {
                     <SelectContent>
                       {customers.map(customer => (
                         <SelectItem key={customer.id} value={String(customer.id)}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>{customer.name}</span>
-                            {customer.phone && <span className="text-xs text-gray-500 ml-2">({customer.phone})</span>}
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{customer.name}</span>
+                              {customer.phone && <span className="text-xs text-gray-500">({customer.phone})</span>}
+                            </div>
+                            {/* Show current balance */}
+                            <span className={`text-xs ${customer.creditBalance > 0 ? 'text-blue-600' : customer.creditBalance < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                              {t('balance')}: {customer.creditBalance.toFixed(2)} DH
+                            </span>
                           </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  
+                  {/* Show selected customer's current balance */}
+                  {selectedCustomer && (() => {
+                    const customer = customers.find(c => c.id === parseInt(selectedCustomer));
+                    if (!customer) return null;
+                    
+                    return (
+                      <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-700">{t('returns_current_balance')}:</span>
+                          <span className={`font-semibold ${customer.creditBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                            {customer.creditBalance.toFixed(2)} DH
+                          </span>
+                        </div>
+                        {refundMethod === 'credit' && (
+                          <>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-700">{t('returns_return_amount')}:</span>
+                              <span className="font-semibold text-green-600">+{returnTotal.toFixed(2)} DH</span>
+                            </div>
+                            <div className="border-t border-purple-300 pt-2 flex justify-between">
+                              <span className="font-bold text-gray-800">{t('returns_new_balance')}:</span>
+                              <span className="font-bold text-blue-600">
+                                {(customer.creditBalance + returnTotal).toFixed(2)} DH
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             )}
