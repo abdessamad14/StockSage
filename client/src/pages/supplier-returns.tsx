@@ -43,7 +43,8 @@ import {
   FileText,
   Printer,
   TrendingDown,
-  Box
+  Box,
+  Search
 } from 'lucide-react';
 
 interface DefectiveProduct {
