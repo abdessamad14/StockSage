@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from './db';
-import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems, productCategories, users } from '../shared/sqlite-schema.js';
+import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems, productCategories, users, cashShifts } from '../shared/sqlite-schema.js';
 import { eq, and } from 'drizzle-orm';
 import { printToNetwork } from './network-printer.js';
 
@@ -1525,6 +1525,184 @@ router.get('/check-update', async (req, res) => {
       critical: false,
       offline: true
     });
+  }
+});
+
+// ==================== CASH SHIFTS API ====================
+
+// Get all cash shifts
+router.get('/cash-shifts', async (req, res) => {
+  try {
+    const shifts = await db.select().from(cashShifts).orderBy(cashShifts.openedAt);
+    res.json(shifts);
+  } catch (error) {
+    console.error('Error fetching cash shifts:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Get current open shift
+router.get('/cash-shifts/open', async (req, res) => {
+  try {
+    const openShift = await db
+      .select()
+      .from(cashShifts)
+      .where(eq(cashShifts.status, 'open'))
+      .orderBy(cashShifts.openedAt)
+      .limit(1);
+    
+    if (openShift.length === 0) {
+      return res.json(null);
+    }
+    
+    res.json(openShift[0]);
+  } catch (error) {
+    console.error('Error fetching open shift:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Get cash shift by ID
+router.get('/cash-shifts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const shift = await db
+      .select()
+      .from(cashShifts)
+      .where(eq(cashShifts.id, parseInt(id)))
+      .limit(1);
+    
+    if (shift.length === 0) {
+      return res.status(404).json({ error: 'Cash shift not found' });
+    }
+    
+    res.json(shift[0]);
+  } catch (error) {
+    console.error('Error fetching cash shift:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Create new cash shift (open register)
+router.post('/cash-shifts', async (req, res) => {
+  try {
+    const { userId, userName, startingCash } = req.body;
+    
+    // Check if there's already an open shift
+    const existingOpen = await db
+      .select()
+      .from(cashShifts)
+      .where(eq(cashShifts.status, 'open'))
+      .limit(1);
+    
+    if (existingOpen.length > 0) {
+      return res.status(400).json({ 
+        error: 'Une caisse est déjà ouverte. Veuillez la clôturer avant d\'en ouvrir une nouvelle.' 
+      });
+    }
+    
+    const [shift] = await db.insert(cashShifts).values({
+      tenantId: 'default',
+      userId: parseInt(userId),
+      userName,
+      startingCash,
+      totalCashSales: 0,
+      totalCardSales: 0,
+      totalCreditSales: 0,
+      totalSales: 0,
+      transactionsCount: 0,
+      openedAt: new Date().toISOString(),
+      status: 'open'
+    }).returning();
+    
+    res.json(shift);
+  } catch (error) {
+    console.error('Error creating cash shift:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Close cash shift
+router.post('/cash-shifts/:id/close', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { actualTotal, notes } = req.body;
+    
+    // Get current shift
+    const currentShift = await db
+      .select()
+      .from(cashShifts)
+      .where(eq(cashShifts.id, parseInt(id)))
+      .limit(1);
+    
+    if (currentShift.length === 0) {
+      return res.status(404).json({ error: 'Cash shift not found' });
+    }
+    
+    const shift = currentShift[0];
+    
+    if (shift.status === 'closed') {
+      return res.status(400).json({ error: 'Cette caisse est déjà clôturée' });
+    }
+    
+    // Calculate today's cash sales
+    const today = new Date().toISOString().split('T')[0];
+    const todaysSales = await db
+      .select()
+      .from(sales)
+      .where(
+        and(
+          eq(sales.date, today),
+          eq(sales.paymentMethod, 'cash')
+        )
+      );
+    
+    const totalCashSales = todaysSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const expectedTotal = shift.startingCash + totalCashSales;
+    const difference = actualTotal - expectedTotal;
+    
+    // Update shift
+    const [updatedShift] = await db
+      .update(cashShifts)
+      .set({
+        expectedTotal,
+        actualTotal,
+        difference,
+        totalCashSales,
+        closedAt: new Date().toISOString(),
+        status: 'closed',
+        notes
+      })
+      .where(eq(cashShifts.id, parseInt(id)))
+      .returning();
+    
+    res.json(updatedShift);
+  } catch (error) {
+    console.error('Error closing cash shift:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Update cash shift
+router.put('/cash-shifts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    
+    const [updatedShift] = await db
+      .update(cashShifts)
+      .set(updates)
+      .where(eq(cashShifts.id, parseInt(id)))
+      .returning();
+    
+    if (!updatedShift) {
+      return res.status(404).json({ error: 'Cash shift not found' });
+    }
+    
+    res.json(updatedShift);
+  } catch (error) {
+    console.error('Error updating cash shift:', error);
+    res.status(500).json({ error: (error as Error).message });
   }
 });
 

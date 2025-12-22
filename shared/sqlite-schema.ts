@@ -296,6 +296,7 @@ export const insertSupplierPaymentSchema = createInsertSchema(supplierPayments).
 export const insertStockTransactionSchema = createInsertSchema(stockTransactions).omit({ id: true });
 export const insertInventoryCountSchema = createInsertSchema(inventoryCounts).omit({ id: true });
 export const insertInventoryCountItemSchema = createInsertSchema(inventoryCountItems).omit({ id: true });
+export const insertCashShiftSchema = createInsertSchema(cashShifts).omit({ id: true });
 
 // Define types for insert operations
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -315,6 +316,7 @@ export type InsertSupplierPayment = z.infer<typeof insertSupplierPaymentSchema>;
 export type InsertStockTransaction = z.infer<typeof insertStockTransactionSchema>;
 export type InsertInventoryCount = z.infer<typeof insertInventoryCountSchema>;
 export type InsertInventoryCountItem = z.infer<typeof insertInventoryCountItemSchema>;
+export type InsertCashShift = z.infer<typeof insertCashShiftSchema>;
 
 // Define types for select operations
 export type User = typeof users.$inferSelect;
@@ -330,6 +332,7 @@ export type SupplierPayment = typeof supplierPayments.$inferSelect;
 export type StockTransaction = typeof stockTransactions.$inferSelect;
 export type InventoryCount = typeof inventoryCounts.$inferSelect;
 export type InventoryCountItem = typeof inventoryCountItems.$inferSelect;
+export type CashShift = typeof cashShifts.$inferSelect;
 
 // Product Stock table
 export const productStock = sqliteTable("product_stock", {
@@ -341,6 +344,27 @@ export const productStock = sqliteTable("product_stock", {
   minStockLevel: integer("min_stock_level").default(0),
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
   updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+// Cash Shifts table (Daily cash register management)
+export const cashShifts = sqliteTable("cash_shifts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tenantId: text("tenant_id").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  userName: text("user_name").notNull(),
+  startingCash: real("starting_cash").notNull(), // Fond de caisse
+  expectedTotal: real("expected_total"), // Starting + Total cash sales
+  actualTotal: real("actual_total"), // What user counted
+  difference: real("difference"), // Actual - Expected
+  totalCashSales: real("total_cash_sales").default(0),
+  totalCardSales: real("total_card_sales").default(0),
+  totalCreditSales: real("total_credit_sales").default(0),
+  totalSales: real("total_sales").default(0),
+  transactionsCount: integer("transactions_count").default(0),
+  openedAt: text("opened_at").notNull(),
+  closedAt: text("closed_at"),
+  status: text("status").notNull().default("open"), // open, closed
+  notes: text("notes"),
 });
 
 // Offline types for client-side storage (keep existing interfaces)
@@ -369,6 +393,25 @@ export interface OfflineProductStock {
   quantity: number;
   minStockLevel: number;
   updatedAt: string;
+}
+
+export interface OfflineCashShift {
+  id: string;
+  userId: string;
+  userName: string;
+  startingCash: number;
+  expectedTotal?: number;
+  actualTotal?: number;
+  difference?: number;
+  totalCashSales: number;
+  totalCardSales: number;
+  totalCreditSales: number;
+  totalSales: number;
+  transactionsCount: number;
+  openedAt: string;
+  closedAt?: string;
+  status: 'open' | 'closed';
+  notes?: string;
 }
 
 export interface OfflineInventoryCount {

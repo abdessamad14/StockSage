@@ -214,6 +214,25 @@ export interface OfflineStockLocation {
   updatedAt: string;
 }
 
+export interface OfflineCashShift {
+  id: string;
+  userId: string;
+  userName: string;
+  startingCash: number;
+  expectedTotal?: number;
+  actualTotal?: number;
+  difference?: number;
+  totalCashSales: number;
+  totalCardSales: number;
+  totalCreditSales: number;
+  totalSales: number;
+  transactionsCount: number;
+  openedAt: string;
+  closedAt?: string;
+  status: 'open' | 'closed';
+  notes?: string;
+}
+
 export interface OfflineInventoryCount {
   id: string;
   name: string;
@@ -2458,6 +2477,162 @@ export const lowStockHelpers = {
   }
 };
 
+// Cash Shifts Storage
+export const databaseCashShiftStorage = {
+  async getAll(): Promise<OfflineCashShift[]> {
+    const shifts = await apiCall<any[]>('/cash-shifts');
+    return shifts.map(s => ({
+      id: s.id.toString(),
+      userId: s.userId.toString(),
+      userName: s.userName,
+      startingCash: s.startingCash,
+      expectedTotal: s.expectedTotal,
+      actualTotal: s.actualTotal,
+      difference: s.difference,
+      totalCashSales: s.totalCashSales || 0,
+      totalCardSales: s.totalCardSales || 0,
+      totalCreditSales: s.totalCreditSales || 0,
+      totalSales: s.totalSales || 0,
+      transactionsCount: s.transactionsCount || 0,
+      openedAt: s.openedAt,
+      closedAt: s.closedAt,
+      status: s.status,
+      notes: s.notes
+    }));
+  },
+
+  async getById(id: string): Promise<OfflineCashShift | null> {
+    try {
+      const shift = await apiCall<any>(`/cash-shifts/${id}`);
+      if (!shift) return null;
+      return {
+        id: shift.id.toString(),
+        userId: shift.userId.toString(),
+        userName: shift.userName,
+        startingCash: shift.startingCash,
+        expectedTotal: shift.expectedTotal,
+        actualTotal: shift.actualTotal,
+        difference: shift.difference,
+        totalCashSales: shift.totalCashSales || 0,
+        totalCardSales: shift.totalCardSales || 0,
+        totalCreditSales: shift.totalCreditSales || 0,
+        totalSales: shift.totalSales || 0,
+        transactionsCount: shift.transactionsCount || 0,
+        openedAt: shift.openedAt,
+        closedAt: shift.closedAt,
+        status: shift.status,
+        notes: shift.notes
+      };
+    } catch (error) {
+      console.error('Error fetching cash shift:', error);
+      return null;
+    }
+  },
+
+  async getOpenShift(): Promise<OfflineCashShift | null> {
+    try {
+      const shift = await apiCall<any>('/cash-shifts/open');
+      if (!shift) return null;
+      return {
+        id: shift.id.toString(),
+        userId: shift.userId.toString(),
+        userName: shift.userName,
+        startingCash: shift.startingCash,
+        expectedTotal: shift.expectedTotal,
+        actualTotal: shift.actualTotal,
+        difference: shift.difference,
+        totalCashSales: shift.totalCashSales || 0,
+        totalCardSales: shift.totalCardSales || 0,
+        totalCreditSales: shift.totalCreditSales || 0,
+        totalSales: shift.totalSales || 0,
+        transactionsCount: shift.transactionsCount || 0,
+        openedAt: shift.openedAt,
+        closedAt: shift.closedAt,
+        status: shift.status,
+        notes: shift.notes
+      };
+    } catch (error) {
+      console.error('Error fetching open shift:', error);
+      return null;
+    }
+  },
+
+  async create(data: Omit<OfflineCashShift, 'id'>): Promise<OfflineCashShift> {
+    const shift = await apiCall<any>('/cash-shifts', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return {
+      id: shift.id.toString(),
+      userId: shift.userId.toString(),
+      userName: shift.userName,
+      startingCash: shift.startingCash,
+      expectedTotal: shift.expectedTotal,
+      actualTotal: shift.actualTotal,
+      difference: shift.difference,
+      totalCashSales: shift.totalCashSales || 0,
+      totalCardSales: shift.totalCardSales || 0,
+      totalCreditSales: shift.totalCreditSales || 0,
+      totalSales: shift.totalSales || 0,
+      transactionsCount: shift.transactionsCount || 0,
+      openedAt: shift.openedAt,
+      closedAt: shift.closedAt,
+      status: shift.status,
+      notes: shift.notes
+    };
+  },
+
+  async update(id: string, updates: Partial<OfflineCashShift>): Promise<OfflineCashShift> {
+    const shift = await apiCall<any>(`/cash-shifts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    });
+    return {
+      id: shift.id.toString(),
+      userId: shift.userId.toString(),
+      userName: shift.userName,
+      startingCash: shift.startingCash,
+      expectedTotal: shift.expectedTotal,
+      actualTotal: shift.actualTotal,
+      difference: shift.difference,
+      totalCashSales: shift.totalCashSales || 0,
+      totalCardSales: shift.totalCardSales || 0,
+      totalCreditSales: shift.totalCreditSales || 0,
+      totalSales: shift.totalSales || 0,
+      transactionsCount: shift.transactionsCount || 0,
+      openedAt: shift.openedAt,
+      closedAt: shift.closedAt,
+      status: shift.status,
+      notes: shift.notes
+    };
+  },
+
+  async close(id: string, actualTotal: number, notes?: string): Promise<OfflineCashShift> {
+    const shift = await apiCall<any>(`/cash-shifts/${id}/close`, {
+      method: 'POST',
+      body: JSON.stringify({ actualTotal, notes })
+    });
+    return {
+      id: shift.id.toString(),
+      userId: shift.userId.toString(),
+      userName: shift.userName,
+      startingCash: shift.startingCash,
+      expectedTotal: shift.expectedTotal,
+      actualTotal: shift.actualTotal,
+      difference: shift.difference,
+      totalCashSales: shift.totalCashSales || 0,
+      totalCardSales: shift.totalCardSales || 0,
+      totalCreditSales: shift.totalCreditSales || 0,
+      totalSales: shift.totalSales || 0,
+      transactionsCount: shift.transactionsCount || 0,
+      openedAt: shift.openedAt,
+      closedAt: shift.closedAt,
+      status: shift.status,
+      notes: shift.notes
+    };
+  }
+};
+
 // Types are already exported above
 
 // Export the database storage as the main offline storage
@@ -2468,5 +2643,6 @@ export {
   databaseSalesStorage as offlineSalesStorage,
   databaseOrderStorage as offlineOrderStorage,
   databaseSaleItemsStorage as offlineSaleItemsStorage,
-  databaseProductStockStorage as offlineProductStockStorage
+  databaseProductStockStorage as offlineProductStockStorage,
+  databaseCashShiftStorage as offlineCashShiftStorage
 };
