@@ -107,7 +107,6 @@ export default function SupplierReturns() {
   // Form states
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
   const [notes, setNotes] = useState('');
-  const [showSupplierSelect, setShowSupplierSelect] = useState(false);
 
   // UI states
   const [showNewReturn, setShowNewReturn] = useState(false);
@@ -292,33 +291,21 @@ export default function SupplierReturns() {
     printWindow.print();
   };
 
-  // Start creating return - show supplier selection
+  // Start creating return - directly open form
   const startNewReturn = () => {
-    if (allDefectiveProducts.length === 0) {
-      toast({
-        title: t('error'),
-        description: t('supplier_returns_no_defective_stock'),
-        variant: 'destructive',
-      });
-      return;
-    }
-    setShowSupplierSelect(true);
-  };
-
-  // Select supplier and proceed to product selection
-  const selectSupplierForReturn = (supplierId: string) => {
-    if (!supplierId) return;
-    
-    setSelectedSupplierId(supplierId);
+    setSelectedSupplierId('');
     setReturnItems([]);
-    setShowSupplierSelect(false);
     setShowNewReturn(true);
   };
 
-  // Add product to return
-  const addProductToReturn = (product: DefectiveProduct) => {
-    const existingItem = returnItems.find(item => item.productId === product.id);
+  // Add product to return from dropdown
+  const addProductFromDropdown = (productId: string) => {
+    if (!productId) return;
     
+    const product = allDefectiveProducts.find(p => p.id === parseInt(productId));
+    if (!product) return;
+    
+    const existingItem = returnItems.find(item => item.productId === product.id);
     if (existingItem) {
       toast({
         title: t('info'),
@@ -331,9 +318,9 @@ export default function SupplierReturns() {
     setReturnItems([...returnItems, {
       productId: product.id,
       productName: product.name,
-      quantity: product.defectiveStock,
+      quantity: product.defectiveStock || 1,
       unitCost: product.costPrice,
-      totalCost: product.totalCost,
+      totalCost: product.costPrice * (product.defectiveStock || 1),
       reason: 'defective',
     }]);
   };
@@ -452,8 +439,8 @@ export default function SupplierReturns() {
     return supplierReturns.filter(r => r.status === activeTab);
   }, [supplierReturns, activeTab]);
 
-  if (showNewReturn && selectedSupplierId) {
-    const selectedSupplier = suppliers.find(s => s.id === parseInt(selectedSupplierId));
+  if (showNewReturn) {
+    const selectedSupplier = selectedSupplierId ? suppliers.find(s => s.id === parseInt(selectedSupplierId)) : null;
     return (
       <div className="p-6 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
@@ -474,53 +461,49 @@ export default function SupplierReturns() {
                 <PackageX className="h-8 w-8 text-red-600" />
                 {t('supplier_returns_new_return')}
               </h1>
-              <p className="text-sm text-gray-600 mt-1">
-                {t('supplier_returns_for')}: <span className="font-semibold">{selectedSupplier?.name || ''}</span>
-              </p>
+              {selectedSupplier && (
+                <p className="text-sm text-gray-600 mt-1">
+                  {t('supplier_returns_for')}: <span className="font-semibold">{selectedSupplier.name}</span>
+                </p>
+              )}
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Product Selection & Return Items */}
+          {/* Left Column - Return Items */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Available Defective Products */}
-            {returnItems.length < allDefectiveProducts.length && (
-              <Card className="border-2 border-blue-200 bg-blue-50">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Plus className="h-5 w-5 text-blue-600" />
-                    {t('supplier_returns_available_products')}
-                  </CardTitle>
-                  <CardDescription>{t('supplier_returns_click_to_add')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Add Product Dropdown */}
+            <Card className="border-2 border-blue-200 bg-blue-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="h-5 w-5 text-blue-600" />
+                  {t('supplier_returns_add_product')}
+                </CardTitle>
+                <CardDescription>{t('supplier_returns_select_product_to_add')}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Select onValueChange={addProductFromDropdown} value="">
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('supplier_returns_select_product_placeholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
                     {allDefectiveProducts
                       .filter(p => !returnItems.some(item => item.productId === p.id))
                       .map(product => (
-                        <div
-                          key={product.id}
-                          onClick={() => addProductToReturn(product)}
-                          className="p-3 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-medium">{product.name}</p>
-                              <p className="text-xs text-gray-500">{product.barcode}</p>
-                            </div>
-                            <Badge variant="destructive">{product.defectiveStock}</Badge>
+                        <SelectItem key={product.id} value={String(product.id)}>
+                          <div className="flex justify-between items-center w-full gap-4">
+                            <span>{product.name}</span>
+                            <span className="text-xs text-gray-500">
+                              ({product.barcode}) - {product.defectiveStock} défect. - {product.costPrice.toFixed(2)} DH
+                            </span>
                           </div>
-                          <div className="mt-2 flex justify-between text-sm">
-                            <span className="text-gray-600">{t('cost_price')}:</span>
-                            <span className="font-semibold">{product.costPrice.toFixed(2)} DH</span>
-                          </div>
-                        </div>
+                        </SelectItem>
                       ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
             
             {/* Selected Return Items */}
             <Card>
@@ -597,21 +580,41 @@ export default function SupplierReturns() {
 
           {/* Right Column - Settings */}
           <div className="space-y-6">
-            {/* Supplier Info */}
+            {/* Supplier Selection */}
             <Card>
               <CardHeader>
-                <CardTitle>{t('supplier')}</CardTitle>
+                <CardTitle>{t('supplier_returns_select_supplier')}</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p className="font-semibold text-lg">{selectedSupplier?.name || ''}</p>
-                  {selectedSupplier?.phone && (
-                    <p className="text-sm text-gray-600">📞 {selectedSupplier.phone}</p>
-                  )}
-                  {selectedSupplier?.email && (
-                    <p className="text-sm text-gray-600">✉️ {selectedSupplier.email}</p>
-                  )}
-                </div>
+              <CardContent className="space-y-3">
+                <Select value={selectedSupplierId} onValueChange={setSelectedSupplierId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('supplier_returns_select_supplier_placeholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {suppliers.map(supplier => (
+                      <SelectItem key={supplier.id} value={String(supplier.id)}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{supplier.name}</span>
+                          {(supplier.phone || supplier.email) && (
+                            <span className="text-xs text-gray-500">
+                              {supplier.phone && `📞 ${supplier.phone}`}
+                              {supplier.phone && supplier.email && ' • '}
+                              {supplier.email && `✉️ ${supplier.email}`}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                {selectedSupplier && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+                    <p className="font-semibold">{selectedSupplier.name}</p>
+                    {selectedSupplier.phone && <p className="text-gray-600">📞 {selectedSupplier.phone}</p>}
+                    {selectedSupplier.email && <p className="text-gray-600">✉️ {selectedSupplier.email}</p>}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -651,11 +654,17 @@ export default function SupplierReturns() {
                 <Separator />
                 <Button
                   onClick={handleSubmitReturn}
-                  disabled={isSubmitting || returnItems.length === 0}
+                  disabled={isSubmitting || returnItems.length === 0 || !selectedSupplierId}
                   className="w-full bg-red-600 hover:bg-red-700 h-12 text-lg"
                 >
                   {isSubmitting ? t('saving') : t('supplier_returns_create_return')}
                 </Button>
+                {(!selectedSupplierId || returnItems.length === 0) && (
+                  <p className="text-xs text-center text-gray-600">
+                    {!selectedSupplierId && t('supplier_returns_select_supplier_first')}
+                    {selectedSupplierId && returnItems.length === 0 && t('supplier_returns_add_products_first')}
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -677,7 +686,6 @@ export default function SupplierReturns() {
         </div>
         <Button
           onClick={startNewReturn}
-          disabled={allDefectiveProducts.length === 0}
           className="bg-red-600 hover:bg-red-700"
           size="lg"
         >
@@ -983,47 +991,6 @@ export default function SupplierReturns() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
               {t('close')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Supplier Selection Dialog */}
-      <Dialog open={showSupplierSelect} onOpenChange={setShowSupplierSelect}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">{t('supplier_returns_select_supplier')}</DialogTitle>
-            <DialogDescription>
-              {t('supplier_returns_select_supplier_description')}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-            {suppliers.map(supplier => (
-              <Card
-                key={supplier.id}
-                className="cursor-pointer hover:bg-blue-50 transition-colors border-2 hover:border-blue-300"
-                onClick={() => selectSupplierForReturn(String(supplier.id))}
-              >
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold">{supplier.name}</h3>
-                      <div className="text-sm text-gray-600 mt-1 space-y-1">
-                        {supplier.phone && <p>📞 {supplier.phone}</p>}
-                        {supplier.email && <p>✉️ {supplier.email}</p>}
-                      </div>
-                    </div>
-                    <ArrowLeft className="h-5 w-5 text-gray-400 rotate-180" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSupplierSelect(false)}>
-              {t('cancel')}
             </Button>
           </DialogFooter>
         </DialogContent>
