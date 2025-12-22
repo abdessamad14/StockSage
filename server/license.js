@@ -9,14 +9,23 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
 import { execSync } from 'child_process';
-import { getLicenseKeyPath, getMachineIdPath } from './user-data-path.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Use safe user data paths (persist across updates)
-const LICENSE_FILE = getLicenseKeyPath();
-const MACHINE_ID_FILE = getMachineIdPath();
+// Try to import user data paths (production) or use local paths (development)
+let LICENSE_FILE, MACHINE_ID_FILE;
+try {
+  const { getLicenseKeyPath, getMachineIdPath } = await import('./user-data-path.js');
+  LICENSE_FILE = getLicenseKeyPath();
+  MACHINE_ID_FILE = getMachineIdPath();
+} catch (error) {
+  // Development mode: use local data folder
+  const dataDir = path.join(process.cwd(), 'data');
+  LICENSE_FILE = path.join(dataDir, 'license.key');
+  MACHINE_ID_FILE = path.join(dataDir, 'machine.id');
+}
+
 const SECRET = 'IGOODAR-2025-PROTECT-YOUR-BUSINESS'; // Change this to your own secret!
 
 // Cached machine ID to ensure consistency
@@ -303,6 +312,29 @@ export function loadLicenseKey() {
  * Check if application is licensed
  */
 export function checkLicense() {
+  // DEVELOPMENT MODE BYPASS
+  // In development, bypass license check for easier testing
+  if (process.env.NODE_ENV === 'development' || 
+      process.env.SKIP_LICENSE === 'true' ||
+      !fs.existsSync(LICENSE_FILE)) {
+    
+    // Check if we're running from source directory (development indicator)
+    const isDevMode = fs.existsSync(path.join(process.cwd(), 'server', 'license.js')) ||
+                      fs.existsSync(path.join(process.cwd(), 'tsconfig.json'));
+    
+    if (isDevMode) {
+      console.log('🔓 Development mode detected - bypassing license check');
+      return {
+        licensed: true,
+        customer: 'Development Mode',
+        issued: new Date().toISOString().split('T')[0],
+        expiry: 'N/A (Dev Mode)',
+        message: 'Development mode - no license required',
+        devMode: true
+      };
+    }
+  }
+  
   const licenseKey = loadLicenseKey();
   
   if (!licenseKey) {
