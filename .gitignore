@@ -79,6 +79,12 @@ installer-build/stocksage-*/
 installer-build/output/
 installer-build/installer.nsi
 
+# Simple installer output
+installer-simple/
+
+# Executable files (too large for git)
+*.exe
+
 # Secure executable build artifacts (internal only)
 server-compiled/
 server-obfuscated/
