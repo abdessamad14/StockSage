@@ -278,6 +278,27 @@ export const inventoryCountItems = sqliteTable("inventory_count_items", {
   updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
+// Cash Shifts table (Daily cash register management)
+export const cashShifts = sqliteTable("cash_shifts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tenantId: text("tenant_id").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  userName: text("user_name").notNull(),
+  startingCash: real("starting_cash").notNull(), // Fond de caisse
+  expectedTotal: real("expected_total"), // Starting + Total cash sales
+  actualTotal: real("actual_total"), // What user counted
+  difference: real("difference"), // Actual - Expected
+  totalCashSales: real("total_cash_sales").default(0),
+  totalCardSales: real("total_card_sales").default(0),
+  totalCreditSales: real("total_credit_sales").default(0),
+  totalSales: real("total_sales").default(0),
+  transactionsCount: integer("transactions_count").default(0),
+  openedAt: text("opened_at").notNull(),
+  closedAt: text("closed_at"),
+  status: text("status").notNull().default("open"), // open, closed
+  notes: text("notes"),
+});
+
 // Insert schemas for each table
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertProductCategorySchema = createInsertSchema(productCategories).omit({ id: true });
@@ -344,27 +365,6 @@ export const productStock = sqliteTable("product_stock", {
   minStockLevel: integer("min_stock_level").default(0),
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
   updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
-});
-
-// Cash Shifts table (Daily cash register management)
-export const cashShifts = sqliteTable("cash_shifts", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  tenantId: text("tenant_id").notNull(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  userName: text("user_name").notNull(),
-  startingCash: real("starting_cash").notNull(), // Fond de caisse
-  expectedTotal: real("expected_total"), // Starting + Total cash sales
-  actualTotal: real("actual_total"), // What user counted
-  difference: real("difference"), // Actual - Expected
-  totalCashSales: real("total_cash_sales").default(0),
-  totalCardSales: real("total_card_sales").default(0),
-  totalCreditSales: real("total_credit_sales").default(0),
-  totalSales: real("total_sales").default(0),
-  transactionsCount: integer("transactions_count").default(0),
-  openedAt: text("opened_at").notNull(),
-  closedAt: text("closed_at"),
-  status: text("status").notNull().default("open"), // open, closed
-  notes: text("notes"),
 });
 
 // Offline types for client-side storage (keep existing interfaces)
