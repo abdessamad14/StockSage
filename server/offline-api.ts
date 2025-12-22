@@ -1510,15 +1510,20 @@ router.get('/check-update', async (req, res) => {
     // Return the version data with CORS headers already set by server
     res.json(versionData);
   } catch (error) {
-    console.error('Update check error:', error);
+    // Silently handle update check errors (expected in dev mode or when offline)
+    // Only log if it's not a 404 (which is expected when version.json doesn't exist yet)
+    if (!error.message?.includes('404')) {
+      console.warn('Update check failed:', error.message);
+    }
+    
     // Return a fallback response instead of failing completely
     res.json({
-      version: '1.0.0',
+      version: '1.0.3',
       releaseDate: new Date().toISOString().split('T')[0],
       downloadUrl: 'https://igoodar.com/downloads/igoodar-setup.exe',
-      changelog: ['Unable to check for updates - offline mode'],
+      changelog: ['Check igoodar.com for the latest version'],
       critical: false,
-      error: 'Could not fetch latest version info'
+      offline: true
     });
   }
 });
