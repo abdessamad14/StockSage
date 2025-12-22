@@ -1748,7 +1748,7 @@ router.get('/customer-returns/:id', async (req, res) => {
 // Create new customer return
 router.post('/customer-returns', async (req, res) => {
   try {
-    const { customerId, customerName, items, refundMethod, notes, createdBy } = req.body;
+    const { customerId, customerName, items, exchangeItems, refundMethod, balanceDifference, notes, createdBy } = req.body;
     
     // Generate return number
     const returnNumber = `RET-${Date.now()}`;
@@ -1889,9 +1889,97 @@ router.post('/customer-returns', async (req, res) => {
           })
           .where(eq(customers.id, parseInt(customerId)));
       }
+    } else if (refundMethod === 'exchange' && exchangeItems && exchangeItems.length > 0) {
+      // Handle exchange: Process exchange items (deduct from stock)
+      for (const exchangeItem of exchangeItems) {
+        const product = await db.select().from(products).where(eq(products.id, parseInt(exchangeItem.productId))).limit(1);
+        
+        if (product.length > 0) {
+          const currentProduct = product[0];
+          
+          // Deduct from active stock
+          await db.update(products)
+            .set({ 
+              quantity: Math.max(0, currentProduct.quantity - parseInt(exchangeItem.quantity))
+            })
+            .where(eq(products.id, parseInt(exchangeItem.productId)));
+          
+          // Update product_stock for primary warehouse
+          const primaryWarehouse = await db.select().from(stockLocations)
+            .where(eq(stockLocations.isPrimary, true))
+            .limit(1);
+          
+          if (primaryWarehouse.length > 0) {
+            const warehouseId = String(primaryWarehouse[0].id);
+            const existingStock = await db.select().from(productStock)
+              .where(and(
+                eq(productStock.productId, parseInt(exchangeItem.productId)),
+                eq(productStock.locationId, warehouseId)
+              ))
+              .limit(1);
+            
+            if (existingStock.length > 0) {
+              await db.update(productStock)
+                .set({ quantity: Math.max(0, existingStock[0].quantity - parseInt(exchangeItem.quantity)) })
+                .where(eq(productStock.id, existingStock[0].id));
+            }
+          }
+          
+          // Create stock transaction for exchange item
+          await db.insert(stockTransactions).values({
+            tenantId: 'default',
+            productId: parseInt(exchangeItem.productId),
+            warehouseId: 'main',
+            type: 'sale',
+            quantity: parseInt(exchangeItem.quantity),
+            previousQuantity: currentProduct.quantity,
+            newQuantity: Math.max(0, currentProduct.quantity - parseInt(exchangeItem.quantity)),
+            reason: `Échange client - Produit de remplacement`,
+            reference: returnNumber,
+            relatedId: String(returnRecord.id),
+            createdAt: new Date().toISOString(),
+            createdBy: createdBy ? parseInt(createdBy) : null,
+          });
+        }
+      }
+      
+      // Handle balance difference
+      if (balanceDifference && balanceDifference > 0) {
+        // Customer gets cash back
+        const openShift = await db
+          .select()
+          .from(cashShifts)
+          .where(eq(cashShifts.status, 'open'))
+          .limit(1);
+        
+        if (openShift.length > 0) {
+          const shift = openShift[0];
+          await db.update(cashShifts)
+            .set({ 
+              totalCashSales: (shift.totalCashSales || 0) - balanceDifference 
+            })
+            .where(eq(cashShifts.id, shift.id));
+        }
+      } else if (balanceDifference && balanceDifference < 0) {
+        // Customer pays the difference
+        const openShift = await db
+          .select()
+          .from(cashShifts)
+          .where(eq(cashShifts.status, 'open'))
+          .limit(1);
+        
+        if (openShift.length > 0) {
+          const shift = openShift[0];
+          await db.update(cashShifts)
+            .set({ 
+              totalCashSales: (shift.totalCashSales || 0) + Math.abs(balanceDifference)
+            })
+            .where(eq(cashShifts.id, shift.id));
+        }
+      }
     }
     
-    res.status(201).json({ ...returnRecord, items: returnItems });
+    res.status(201).json({ ...returnRecord, items: returnItems, exchangeItems: exchangeItems || [] });
   } catch (error) {
     console.error('Error creating customer return:', error);
     res.status(500).json({ error: (error as Error).message });
