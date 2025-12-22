@@ -44,6 +44,9 @@ export default function AppShell({ children }: AppShellProps) {
       case '/returns':
         setTitle(t('returns_customer_returns'));
         break;
+      case '/supplier-returns':
+        setTitle(t('supplier_returns_title'));
+        break;
       case '/reports':
         setTitle(t('reports'));
         break;

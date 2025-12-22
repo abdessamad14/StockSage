@@ -138,6 +138,14 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
               <span>{t('returns_customer_returns')}</span>
             </Link>
           )}
+          
+          {/* Supplier Returns */}
+          {canUsePOS && (
+            <Link href="/supplier-returns" className={linkClasses('/supplier-returns')}>
+              <PackageX className="w-6 h-6 mr-3 text-red-600" />
+              <span>{t('supplier_returns_title')}</span>
+            </Link>
+          )}
 
           {/* Reports */}
           {canViewReports && (

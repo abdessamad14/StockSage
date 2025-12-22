@@ -331,6 +331,36 @@ export const customerReturnItems = sqliteTable("customer_return_items", {
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
+// Supplier Returns table (for defective stock returns to supplier)
+export const supplierReturns = sqliteTable("supplier_returns", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tenantId: text("tenant_id").notNull(),
+  returnNumber: text("return_number").notNull().unique(),
+  supplierId: integer("supplier_id").notNull().references(() => suppliers.id),
+  supplierName: text("supplier_name").notNull(),
+  totalAmount: real("total_amount").notNull(),
+  status: text("status").notNull().default("pending"), // pending, sent, received, completed
+  notes: text("notes"),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  sentAt: text("sent_at"),
+  completedAt: text("completed_at"),
+});
+
+// Supplier Return Items table
+export const supplierReturnItems = sqliteTable("supplier_return_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tenantId: text("tenant_id").notNull(),
+  returnId: integer("return_id").notNull().references(() => supplierReturns.id),
+  productId: integer("product_id").notNull().references(() => products.id),
+  productName: text("product_name").notNull(),
+  quantity: integer("quantity").notNull(),
+  unitCost: real("unit_cost").notNull(), // Original cost price
+  totalCost: real("total_cost").notNull(),
+  reason: text("reason").notNull(), // defective, expired, damaged, wrong_item, etc.
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
 // Insert schemas for each table
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertProductCategorySchema = createInsertSchema(productCategories).omit({ id: true });
@@ -352,6 +382,8 @@ export const insertInventoryCountItemSchema = createInsertSchema(inventoryCountI
 export const insertCashShiftSchema = createInsertSchema(cashShifts).omit({ id: true });
 export const insertCustomerReturnSchema = createInsertSchema(customerReturns).omit({ id: true });
 export const insertCustomerReturnItemSchema = createInsertSchema(customerReturnItems).omit({ id: true });
+export const insertSupplierReturnSchema = createInsertSchema(supplierReturns).omit({ id: true });
+export const insertSupplierReturnItemSchema = createInsertSchema(supplierReturnItems).omit({ id: true });
 
 // Define types for insert operations
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -374,6 +406,8 @@ export type InsertInventoryCountItem = z.infer<typeof insertInventoryCountItemSc
 export type InsertCashShift = z.infer<typeof insertCashShiftSchema>;
 export type InsertCustomerReturn = z.infer<typeof insertCustomerReturnSchema>;
 export type InsertCustomerReturnItem = z.infer<typeof insertCustomerReturnItemSchema>;
+export type InsertSupplierReturn = z.infer<typeof insertSupplierReturnSchema>;
+export type InsertSupplierReturnItem = z.infer<typeof insertSupplierReturnItemSchema>;
 
 // Define types for select operations
 export type User = typeof users.$inferSelect;

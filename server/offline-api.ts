@@ -1,7 +1,7 @@
 import express from 'express';
 import { db } from './db';
-import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems, productCategories, users, cashShifts, customerReturns, customerReturnItems } from '../shared/sqlite-schema.js';
-import { eq, and } from 'drizzle-orm';
+import { products, customers, suppliers, sales, saleItems, inventoryAdjustments, inventoryAdjustmentItems, orderItems, orders, settings, productStock, stockLocations, supplierPayments, stockTransactions, inventoryCounts, inventoryCountItems, productCategories, users, cashShifts, customerReturns, customerReturnItems, supplierReturns, supplierReturnItems } from '../shared/sqlite-schema.js';
+import { eq, and, desc, gt } from 'drizzle-orm';
 import { printToNetwork } from './network-printer.js';
 
 const router = express.Router();
@@ -2000,6 +2000,238 @@ router.delete('/customer-returns/:id', async (req, res) => {
     res.json({ message: 'Return deleted successfully' });
   } catch (error) {
     console.error('Error deleting customer return:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// ============================================
+// SUPPLIER RETURNS (Defective Stock Returns)
+// ============================================
+
+// Get all defective stock grouped by supplier
+router.get('/defective-stock', async (req, res) => {
+  try {
+    // Get all products with defective stock > 0 along with their supplier info
+    const defectiveProducts = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        barcode: products.barcode,
+        defectiveStock: products.defectiveStock,
+        costPrice: products.costPrice,
+        supplierId: orders.supplierId,
+        supplierName: suppliers.name,
+      })
+      .from(products)
+      .leftJoin(orderItems, eq(products.id, orderItems.productId))
+      .leftJoin(orders, eq(orderItems.orderId, orders.id))
+      .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
+      .where(gt(products.defectiveStock, 0))
+      .groupBy(products.id);
+    
+    // Group by supplier
+    const groupedBySupplier: Record<string, any> = {};
+    
+    for (const product of defectiveProducts) {
+      const supplierId = product.supplierId || 'unknown';
+      const supplierName = product.supplierName || 'Unknown Supplier';
+      
+      if (!groupedBySupplier[supplierId]) {
+        groupedBySupplier[supplierId] = {
+          supplierId,
+          supplierName,
+          products: [],
+          totalDefectiveItems: 0,
+          totalCost: 0,
+        };
+      }
+      
+      groupedBySupplier[supplierId].products.push({
+        id: product.id,
+        name: product.name,
+        barcode: product.barcode,
+        defectiveStock: product.defectiveStock,
+        costPrice: product.costPrice,
+        totalCost: (product.defectiveStock || 0) * (product.costPrice || 0),
+      });
+      
+      groupedBySupplier[supplierId].totalDefectiveItems += product.defectiveStock || 0;
+      groupedBySupplier[supplierId].totalCost += (product.defectiveStock || 0) * (product.costPrice || 0);
+    }
+    
+    res.json(Object.values(groupedBySupplier));
+  } catch (error) {
+    console.error('Error fetching defective stock:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Get all supplier returns
+router.get('/supplier-returns', async (req, res) => {
+  try {
+    const returns = await db.select().from(supplierReturns).orderBy(desc(supplierReturns.createdAt));
+    res.json(returns);
+  } catch (error) {
+    console.error('Error fetching supplier returns:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Get supplier return by ID with items
+router.get('/supplier-returns/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const returnRecord = await db.select().from(supplierReturns).where(eq(supplierReturns.id, parseInt(id))).limit(1);
+    
+    if (returnRecord.length === 0) {
+      return res.status(404).json({ error: 'Supplier return not found' });
+    }
+    
+    const items = await db.select().from(supplierReturnItems).where(eq(supplierReturnItems.returnId, parseInt(id)));
+    
+    res.json({ ...returnRecord[0], items });
+  } catch (error) {
+    console.error('Error fetching supplier return:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Create new supplier return
+router.post('/supplier-returns', async (req, res) => {
+  try {
+    const { supplierId, supplierName, items, notes, createdBy } = req.body;
+    
+    // Generate return number
+    const returnNumber = `SUP-RET-${Date.now()}`;
+    
+    // Calculate total amount
+    const totalAmount = items.reduce((sum: number, item: any) => sum + item.totalCost, 0);
+    
+    // Create return record
+    const [returnRecord] = await db.insert(supplierReturns).values({
+      tenantId: 'default',
+      returnNumber,
+      supplierId: parseInt(supplierId),
+      supplierName,
+      totalAmount,
+      status: 'pending',
+      notes,
+      createdBy: createdBy ? parseInt(createdBy) : null,
+      createdAt: new Date().toISOString(),
+    }).returning();
+    
+    // Create return items and update defective stock
+    const returnItems = [];
+    for (const item of items) {
+      // Insert return item
+      const [returnItem] = await db.insert(supplierReturnItems).values({
+        tenantId: 'default',
+        returnId: returnRecord.id,
+        productId: parseInt(item.productId),
+        productName: item.productName,
+        quantity: parseInt(item.quantity),
+        unitCost: parseFloat(item.unitCost),
+        totalCost: parseFloat(item.totalCost),
+        reason: item.reason,
+        createdAt: new Date().toISOString(),
+      }).returning();
+      
+      returnItems.push(returnItem);
+      
+      // Deduct from defective stock
+      const product = await db.select().from(products).where(eq(products.id, parseInt(item.productId))).limit(1);
+      
+      if (product.length > 0) {
+        const currentProduct = product[0];
+        const newDefectiveStock = Math.max(0, (currentProduct.defectiveStock || 0) - parseInt(item.quantity));
+        
+        await db.update(products)
+          .set({ 
+            defectiveStock: newDefectiveStock
+          })
+          .where(eq(products.id, parseInt(item.productId)));
+        
+        // Create stock transaction
+        await db.insert(stockTransactions).values({
+          tenantId: 'default',
+          productId: parseInt(item.productId),
+          warehouseId: 'main',
+          type: 'adjustment',
+          quantity: parseInt(item.quantity),
+          previousQuantity: currentProduct.defectiveStock || 0,
+          newQuantity: newDefectiveStock,
+          reason: `Retour fournisseur - ${item.reason}`,
+          reference: returnNumber,
+          relatedId: String(returnRecord.id),
+          createdAt: new Date().toISOString(),
+          createdBy: createdBy ? parseInt(createdBy) : null,
+        });
+      }
+    }
+    
+    res.status(201).json({ ...returnRecord, items: returnItems });
+  } catch (error) {
+    console.error('Error creating supplier return:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Update supplier return status
+router.put('/supplier-returns/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    const updateData: any = { status };
+    
+    if (status === 'sent') {
+      updateData.sentAt = new Date().toISOString();
+    } else if (status === 'completed') {
+      updateData.completedAt = new Date().toISOString();
+    }
+    
+    await db.update(supplierReturns)
+      .set(updateData)
+      .where(eq(supplierReturns.id, parseInt(id)));
+    
+    res.json({ message: 'Status updated successfully' });
+  } catch (error) {
+    console.error('Error updating supplier return status:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Delete supplier return
+router.delete('/supplier-returns/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get return items to restore defective stock
+    const items = await db.select().from(supplierReturnItems).where(eq(supplierReturnItems.returnId, parseInt(id)));
+    
+    // Restore defective stock for each item
+    for (const item of items) {
+      const product = await db.select().from(products).where(eq(products.id, item.productId)).limit(1);
+      
+      if (product.length > 0) {
+        await db.update(products)
+          .set({ 
+            defectiveStock: (product[0].defectiveStock || 0) + item.quantity
+          })
+          .where(eq(products.id, item.productId));
+      }
+    }
+    
+    // Delete return items first (foreign key constraint)
+    await db.delete(supplierReturnItems).where(eq(supplierReturnItems.returnId, parseInt(id)));
+    
+    // Delete return record
+    await db.delete(supplierReturns).where(eq(supplierReturns.id, parseInt(id)));
+    
+    res.json({ message: 'Supplier return deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting supplier return:', error);
     res.status(500).json({ error: (error as Error).message });
   }
 });
