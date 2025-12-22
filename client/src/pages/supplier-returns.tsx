@@ -107,6 +107,7 @@ export default function SupplierReturns() {
   // Form states
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
   const [notes, setNotes] = useState('');
+  const [productSearchTerm, setProductSearchTerm] = useState('');
 
   // UI states
   const [showNewReturn, setShowNewReturn] = useState(false);
@@ -298,13 +299,8 @@ export default function SupplierReturns() {
     setShowNewReturn(true);
   };
 
-  // Add product to return from dropdown
-  const addProductFromDropdown = (productId: string) => {
-    if (!productId) return;
-    
-    const product = allDefectiveProducts.find(p => p.id === parseInt(productId));
-    if (!product) return;
-    
+  // Add product to return
+  const addProductToReturn = (product: DefectiveProduct) => {
     const existingItem = returnItems.find(item => item.productId === product.id);
     if (existingItem) {
       toast({
@@ -323,7 +319,24 @@ export default function SupplierReturns() {
       totalCost: product.costPrice * (product.defectiveStock || 1),
       reason: 'defective',
     }]);
+    
+    // Clear search
+    setProductSearchTerm('');
   };
+
+  // Filter products by search term
+  const filteredDefectiveProducts = useMemo(() => {
+    if (!productSearchTerm) return [];
+    
+    const term = productSearchTerm.toLowerCase();
+    return allDefectiveProducts
+      .filter(p => !returnItems.some(item => item.productId === p.id))
+      .filter(p => 
+        p.name.toLowerCase().includes(term) || 
+        p.barcode?.toLowerCase().includes(term)
+      )
+      .slice(0, 10);
+  }, [productSearchTerm, allDefectiveProducts, returnItems]);
 
   // Update return item
   const updateReturnItem = (index: number, field: keyof ReturnItem, value: any) => {
@@ -473,35 +486,67 @@ export default function SupplierReturns() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Return Items */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Add Product Dropdown */}
+            {/* Product Search */}
             <Card className="border-2 border-blue-200 bg-blue-50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Plus className="h-5 w-5 text-blue-600" />
-                  {t('supplier_returns_add_product')}
+                  <Search className="h-5 w-5 text-blue-600" />
+                  {t('supplier_returns_search_product')}
                 </CardTitle>
-                <CardDescription>{t('supplier_returns_select_product_to_add')}</CardDescription>
+                <CardDescription>{t('supplier_returns_search_by_barcode')}</CardDescription>
               </CardHeader>
               <CardContent>
-                <Select onValueChange={addProductFromDropdown} value="">
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('supplier_returns_select_product_placeholder')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allDefectiveProducts
-                      .filter(p => !returnItems.some(item => item.productId === p.id))
-                      .map(product => (
-                        <SelectItem key={product.id} value={String(product.id)}>
-                          <div className="flex justify-between items-center w-full gap-4">
-                            <span>{product.name}</span>
-                            <span className="text-xs text-gray-500">
-                              ({product.barcode}) - {product.defectiveStock} défect. - {product.costPrice.toFixed(2)} DH
-                            </span>
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder={t('supplier_returns_search_placeholder')}
+                    value={productSearchTerm}
+                    onChange={(e) => setProductSearchTerm(e.target.value)}
+                    className="pl-10"
+                    autoFocus
+                  />
+                  
+                  {filteredDefectiveProducts.length > 0 && (
+                    <div className="absolute z-10 w-full mt-2 bg-white border rounded-lg shadow-lg max-h-96 overflow-y-auto">
+                      {filteredDefectiveProducts.map(product => (
+                        <div
+                          key={product.id}
+                          onClick={() => addProductToReturn(product)}
+                          className="p-4 hover:bg-blue-50 cursor-pointer border-b last:border-b-0"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-semibold text-lg">{product.name}</div>
+                              <div className="text-sm text-gray-600 mt-1">
+                                {product.barcode && (
+                                  <span className="mr-3">📦 {product.barcode}</span>
+                                )}
+                                <Badge variant="destructive" className="mr-2">
+                                  {product.defectiveStock} {t('supplier_returns_defective_qty')}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-lg text-blue-600">
+                                {product.costPrice.toFixed(2)} DH
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {t('total')}: {product.totalCost.toFixed(2)} DH
+                              </div>
+                            </div>
                           </div>
-                        </SelectItem>
+                        </div>
                       ))}
-                  </SelectContent>
-                </Select>
+                    </div>
+                  )}
+                  
+                  {productSearchTerm && filteredDefectiveProducts.length === 0 && (
+                    <div className="absolute z-10 w-full mt-2 bg-white border rounded-lg shadow-lg p-4 text-center text-gray-500">
+                      {t('supplier_returns_no_products_found')}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
             
