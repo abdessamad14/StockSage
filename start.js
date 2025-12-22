@@ -83,11 +83,18 @@ function migrateUserData() {
 
 async function checkDatabase() {
   // Import the user data path utilities
-  const userDataPathModule = await import('./server/user-data-path.js');
-  const { getDatabasePath } = userDataPathModule;
+  // Try .js first (production), fallback to default path (development)
+  let dbPath;
+  try {
+    const userDataPathModule = await import('./server/user-data-path.js');
+    const { getDatabasePath } = userDataPathModule;
+    dbPath = getDatabasePath();
+  } catch (error) {
+    // Development mode: use default data folder
+    console.log('ℹ️  Running in development mode - using local data folder');
+    dbPath = join(process.cwd(), 'data', 'stocksage.db');
+  }
   
-  // Check if database exists in the safe location
-  const dbPath = getDatabasePath();
   console.log(`\n📋 Checking database at: ${dbPath}`);
   
   // Use the current Node.js executable (works with portable Node.js)

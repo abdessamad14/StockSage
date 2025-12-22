@@ -116,7 +116,7 @@ Section "Install"
   
   ; Install all files
   DetailPrint "Installing Igoodar..."
-  File /r "/Users/abdessamadabba/repos/StockSage/packages/stocksage-simple-20251221151342\*.*"
+  File /r "/Users/abdessamadabba/repos/StockSage/packages/stocksage-simple-20251221152111\*.*"
   
   ; Database driver already included (Windows-compatible binary)
   DetailPrint "Windows-compatible database driver included"
@@ -180,13 +180,55 @@ Section "Install"
   CreateDirectory "$SMPROGRAMS\Igoodar"
   SetOutPath "$INSTDIR"
   
-  ; Desktop shortcut (opens browser)
+  ; Find Chrome installation
+  StrCpy $1 ""
+  
+  ; Try common Chrome locations
+  IfFileExists "$PROGRAMFILES64\Google\Chrome\Application\chrome.exe" 0 +3
+    StrCpy $1 "$PROGRAMFILES64\Google\Chrome\Application\chrome.exe"
+    Goto chrome_found
+  
+  IfFileExists "$PROGRAMFILES\Google\Chrome\Application\chrome.exe" 0 +3
+    StrCpy $1 "$PROGRAMFILES\Google\Chrome\Application\chrome.exe"
+    Goto chrome_found
+  
+  IfFileExists "$LOCALAPPDATA\Google\Chrome\Application\chrome.exe" 0 +3
+    StrCpy $1 "$LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
+    Goto chrome_found
+  
+  ; Chrome not found - use simple URL shortcut as fallback
   FileOpen $0 "$DESKTOP\Igoodar.url" w
   FileWrite $0 "[InternetShortcut]$\r$\n"
-  FileWrite $0 "URL=http://localhost:5003$\r$\n"
+  FileWrite $0 "URL=http://localhost:5003/pos$\r$\n"
   FileClose $0
+  Goto shortcuts_done
+  
+  chrome_found:
+  ; Create Kiosk Mode shortcut on Desktop (SILENT PRINTING)
+  CreateShortcut "$DESKTOP\Igoodar POS.lnk" \
+    "$1" \
+    "--app=http://localhost:5003/pos --kiosk-printing --silent-launch --disable-popup-blocking --disable-infobars --start-maximized" \
+    "$INSTDIR\dist\public\icons\icon-512x512.png" 0 SW_SHOWNORMAL \
+    "" "iGoodar POS - Impression Silencieuse"
+  
+  shortcuts_done:
   
   ; Start Menu shortcuts
+  ; Kiosk Mode (main shortcut)
+  ${If} $1 != ""
+    CreateShortcut "$SMPROGRAMS\Igoodar\Igoodar POS.lnk" \
+      "$1" \
+      "--app=http://localhost:5003/pos --kiosk-printing --silent-launch --disable-popup-blocking" \
+      "$INSTDIR\dist\public\icons\icon-512x512.png" 0 SW_SHOWNORMAL \
+      "" "iGoodar POS - Impression Silencieuse"
+  ${Else}
+    FileOpen $0 "$SMPROGRAMS\Igoodar\Igoodar POS.url" w
+    FileWrite $0 "[InternetShortcut]$\r$\n"
+    FileWrite $0 "URL=http://localhost:5003/pos$\r$\n"
+    FileClose $0
+  ${EndIf}
+  
+  ; Dashboard (normal browser - for settings/admin)
   FileOpen $0 "$SMPROGRAMS\Igoodar\Igoodar Dashboard.url" w
   FileWrite $0 "[InternetShortcut]$\r$\n"
   FileWrite $0 "URL=http://localhost:5003$\r$\n"
@@ -206,15 +248,20 @@ Section "Install"
   IfFileExists "$APPDATA\iGoodar\license.key" show_update_message show_fresh_message
   
   show_update_message:
-    MessageBox MB_OK "✅ Igoodar mis à jour avec succès!$\n$\n✓ Vos données ont été migrées vers %APPDATA%\iGoodar$\n✓ Votre licence est préservée$\n✓ Votre base de données est intacte$\n✓ Le serveur tourne en arrière-plan$\n✓ Démarrage automatique avec Windows$\n$\nAccès:$\n• Icône Bureau: Igoodar$\n• Navigateur: http://localhost:5003$\n• Réseau: http://[IP-PC]:5003$\n$\nGestion:$\n• Menu Démarrer → Igoodar → Restart/Stop$\n$\nOuverture du dashboard..."
+    MessageBox MB_OK "✅ Igoodar mis à jour avec succès!$\n$\n✓ Vos données ont été migrées vers %APPDATA%\iGoodar$\n✓ Votre licence est préservée$\n✓ Votre base de données est intacte$\n✓ Le serveur tourne en arrière-plan$\n✓ Démarrage automatique avec Windows$\n$\n🖨️ IMPRESSION SILENCIEUSE:$\n• Utilisez le raccourci Bureau: Igoodar POS$\n• Imprime sans popup automatiquement$\n$\nAccès:$\n• Bureau: Igoodar POS (impression silencieuse)$\n• Menu Démarrer: Igoodar Dashboard (configuration)$\n• Réseau: http://[IP-PC]:5003$\n$\nGestion:$\n• Menu Démarrer → Igoodar → Restart/Stop$\n$\nOuverture du POS..."
     Goto end_message
   
   show_fresh_message:
-    MessageBox MB_OK "✅ Igoodar installé avec succès!$\n$\n✓ Serveur en arrière-plan$\n✓ Démarrage automatique$\n✓ Données dans %APPDATA%\iGoodar$\n✓ Les mises à jour ne supprimeront pas vos données$\n✓ Ouverture du dashboard...$\n$\nConnexion:$\n• PIN Admin: 1234$\n• PIN Caissier: 5678$\n$\nAccès:$\n• Bureau: Icône Igoodar$\n• Navigateur: http://localhost:5003$\n• Réseau: http://[IP-PC]:5003$\n$\nGestion:$\n• Menu Démarrer → Igoodar → Restart/Stop"
+    MessageBox MB_OK "✅ Igoodar installé avec succès!$\n$\n✓ Serveur en arrière-plan$\n✓ Démarrage automatique$\n✓ Données dans %APPDATA%\iGoodar$\n✓ Impression silencieuse activée$\n$\nConnexion:$\n• PIN Admin: 1234$\n• PIN Caissier: 5678$\n$\n🖨️ IMPRESSION SILENCIEUSE:$\n1. Définissez votre imprimante thermique par défaut (Windows)$\n2. Utilisez le raccourci: Igoodar POS (Bureau)$\n3. L'impression se fait sans popup!$\n$\nAccès:$\n• Bureau: Igoodar POS (caisse)$\n• Menu: Igoodar Dashboard (admin)$\n• Réseau: http://[IP-PC]:5003$\n$\nOuverture du POS..."
   
   end_message:
   Sleep 1000
-  ExecShell "open" "http://localhost:5003"
+  ; Open POS page directly in Kiosk mode if Chrome is found
+  ${If} $1 != ""
+    Exec '"$1" --app=http://localhost:5003/pos --kiosk-printing --silent-launch --start-maximized'
+  ${Else}
+    ExecShell "open" "http://localhost:5003/pos"
+  ${EndIf}
 SectionEnd
 
 Section "Uninstall"
@@ -223,14 +270,16 @@ Section "Uninstall"
   do_uninstall:
   
   ExecWait 'taskkill /F /IM node.exe /FI "WINDOWTITLE eq Igoodar*"'
+  ExecWait 'taskkill /F /IM chrome.exe /FI "WINDOWTITLE eq *Igoodar*"'
   DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Igoodar"
   
   Delete "$DESKTOP\Igoodar.url"
+  Delete "$DESKTOP\Igoodar POS.lnk"
   Delete "$SMPROGRAMS\Igoodar\*.lnk"
   Delete "$SMPROGRAMS\Igoodar\*.url"
   RMDir "$SMPROGRAMS\Igoodar"
   
   RMDir /r "$INSTDIR"
   
-  MessageBox MB_OK "Igoodar uninstalled.$\n$\nYour data is preserved in:%APPDATA%\iGoodar$\n$\nTo completely remove all data, manually delete that folder."
+  MessageBox MB_OK "Igoodar désinstallé.$\n$\nVos données sont préservées dans: %APPDATA%\iGoodar$\n$\nPour supprimer complètement vos données, supprimez ce dossier manuellement."
 SectionEnd

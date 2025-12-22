@@ -11,10 +11,26 @@
 
 import { existsSync, copyFileSync, unlinkSync, mkdirSync, statSync } from 'fs';
 import { join } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Import the user data path utilities
-// Note: In production, these will be compiled to .js
-const userDataPathModule = await import('../server/user-data-path.js');
+// Try .js first (production), then .ts (development)
+let userDataPathModule;
+try {
+  // Production: compiled .js file
+  userDataPathModule = await import('../server/user-data-path.js');
+} catch (error) {
+  // Development: TypeScript file (requires tsx or ts-node)
+  // In dev, this script should be run with tsx
+  console.log('⚠️  Running in development mode - user-data-path.ts not compiled');
+  console.log('ℹ️  Skipping migration in development (not needed)');
+  console.log('✅ Migration check complete (dev mode)\n');
+  process.exit(0);
+}
 const { getUserDataPath, getLegacyDataPath, getCriticalFiles } = userDataPathModule;
 
 console.log('\n========================================');

@@ -7,9 +7,19 @@ import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { randomBytes, scryptSync } from 'crypto';
 
-// Import safe user data path
-const userDataPathModule = await import('../server/user-data-path.js');
-const { getDatabasePath, getUserDataPath } = userDataPathModule;
+// Import safe user data path (production) or use local data folder (development)
+let getDatabasePath, getUserDataPath;
+try {
+  const userDataPathModule = await import('../server/user-data-path.js');
+  getDatabasePath = userDataPathModule.getDatabasePath;
+  getUserDataPath = userDataPathModule.getUserDataPath;
+} catch (error) {
+  // Development mode: use local data folder
+  console.log('ℹ️  Running in development mode - using local data folder');
+  const dataDir = join(process.cwd(), 'data');
+  getDatabasePath = () => join(dataDir, 'stocksage.db');
+  getUserDataPath = () => dataDir;
+}
 
 const argOptions = parseArgs(process.argv.slice(2));
 
