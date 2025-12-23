@@ -1812,12 +1812,12 @@ export default function OfflinePOS() {
                 ))}
                 {/* Empty rows to fill out invoice (show at least 5 empty rows) */}
                 {Array.from({ length: Math.max(5, 10 - cart.length) }).map((_, index) => (
-                  <tr key={`empty-${index}`} className="border-b border-gray-100">
-                    <td className="px-2 py-3 text-xs text-gray-300">-</td>
-                    <td className="px-2 py-3 text-xs text-gray-300"></td>
-                    <td className="px-2 py-3 text-center text-xs text-gray-300"></td>
-                    <td className="px-2 py-3 text-right text-xs text-gray-300"></td>
-                    <td className="px-2 py-3 text-right text-xs text-gray-300"></td>
+                  <tr key={`empty-${index}`} className="border-b border-border">
+                    <td className="px-2 py-3 text-xs text-muted-foreground/30">-</td>
+                    <td className="px-2 py-3 text-xs text-muted-foreground/30"></td>
+                    <td className="px-2 py-3 text-center text-xs text-muted-foreground/30"></td>
+                    <td className="px-2 py-3 text-right text-xs text-muted-foreground/30"></td>
+                    <td className="px-2 py-3 text-right text-xs text-muted-foreground/30"></td>
                     <td className="px-2 py-3"></td>
                   </tr>
                 ))}
@@ -1827,35 +1827,35 @@ export default function OfflinePOS() {
           </div>
           
           {/* Fixed Totals Section at Bottom */}
-          <div className="bg-white/90 rounded-b-xl shadow-md border border-t-0 border-[#f4c36a]/60 p-3 flex-shrink-0">
-            <div className="border-t-2 border-[#0f866c] pt-3 space-y-2">
-              <div className="flex justify-between text-xs">
+          <div className="bg-card/90 rounded-b-xl shadow-md border border-t-0 border-border p-3 flex-shrink-0">
+            <div className="border-t-2 border-primary pt-3 space-y-2">
+              <div className="flex justify-between text-xs text-foreground">
                 <span>{t('subtotal')}:</span>
                 <span>{subtotal.toFixed(2)} DH</span>
               </div>
               {discountValue > 0 && (
-                <div className="flex justify-between text-red-600 text-xs">
+                <div className="flex justify-between text-red-600 dark:text-red-400 text-xs">
                   <span>{t('discount')}:</span>
                   <span>-{discountValue.toFixed(2)} DH</span>
                 </div>
               )}
               <div className="space-y-1">
                 {/* Product count */}
-                <div className="flex justify-between text-xs text-slate-600 bg-slate-50 px-2 py-1 rounded">
+                <div className="flex justify-between text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                   <span>{t('items_in_cart')}:</span>
                   <span className="font-semibold">{cart.reduce((sum, item) => sum + (item.product.weighable ? 1 : item.quantity), 0)} {t('items')}</span>
                 </div>
                 
                 {/* Store Credit Applied */}
                 {storeCreditToUse > 0 && (
-                  <div className="flex justify-between text-xs text-green-700 bg-green-50 px-2 py-1 rounded">
+                  <div className="flex justify-between text-xs text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 px-2 py-1 rounded">
                     <span>{t('store_credit_used')}:</span>
                     <span className="font-semibold">-{storeCreditToUse.toFixed(2)} DH</span>
                   </div>
                 )}
                 
                 {/* Total */}
-                <div className="flex justify-between font-bold text-sm border-t pt-1 bg-gradient-to-r from-[#06d6a0]/20 via-[#118ab2]/20 to-[#4cc9f0]/20 px-2 py-1 rounded-lg border-[#0f866c]/20">
+                <div className="flex justify-between font-bold text-sm border-t border-border pt-1 bg-primary/20 px-2 py-1 rounded-lg text-foreground">
                   <span>{t('total').toUpperCase()}:</span>
                   <span>{finalTotal.toFixed(2)} DH</span>
                 </div>
@@ -1865,10 +1865,10 @@ export default function OfflinePOS() {
         </div>
         
         {/* Action Buttons - Compact Fixed Bottom */}
-        <div className="bg-gradient-to-t from-[#fff1d6] via-[#fde2e4] to-white border-t border-[#f4c36a] flex-shrink-0" style={{height: '280px', padding: '12px'}}>
+        <div className="bg-card border-t border-border flex-shrink-0" style={{height: '280px', padding: '12px'}}>
           {/* Quick Cash Payment Buttons */}
           <div className="mb-3">
-            <div className="text-xs font-semibold text-[#0f866c] mb-1 uppercase tracking-wide tracking-[0.2em]">{t('offline_pos_quick_payment')}</div>
+            <div className="text-xs font-semibold text-primary mb-1 uppercase tracking-wide tracking-[0.2em]">{t('offline_pos_quick_payment')}</div>
             <div className="grid grid-cols-2 gap-1 mb-2">
               {[20, 50, 100, 200].map((amount) => {
                 const getBanknoteColor = (value: number) => {
@@ -1961,7 +1961,7 @@ export default function OfflinePOS() {
               <input
                 type="number"
                 placeholder={t('offline_pos_other_amount')}
-                className="flex-1 px-2 py-1 border-2 border-[#f4c36a]/60 focus:border-[#0f866c] focus:ring-[#0f866c]/40 rounded text-xs bg-white/90"
+                className="flex-1 px-2 py-1 border-2 border-border focus:border-primary focus:ring-primary/40 rounded text-xs bg-background text-foreground"
                 value={customCashAmount}
                 onChange={(e) => setCustomCashAmount(e.target.value)}
                 min={total}
@@ -1994,7 +1994,7 @@ export default function OfflinePOS() {
                   await processSale('cash', amount);
                   setCustomCashAmount('');
                 }}
-                className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded"
+                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded"
                 disabled={!customCashAmount || parseFloat(customCashAmount) < total}
               >
                 {t('confirm')}
@@ -2102,9 +2102,9 @@ export default function OfflinePOS() {
               disabled={cart.length === 0}
               className={`h-10 text-xs font-bold border-2 transition-all ${
                 cart.length > 0 
-                  ? 'bg-gradient-to-r from-[#0f866c] via-[#1b998b] to-[#118ab2] hover:shadow-xl border-transparent'
-                  : 'bg-gray-400 border-gray-500'
-              } text-white`}
+                  ? 'bg-primary hover:shadow-xl border-transparent text-primary-foreground'
+                  : 'bg-muted border-border text-muted-foreground'
+              }`}
             >
               🖨️ {t('print_receipt')}
             </Button>
@@ -2116,7 +2116,7 @@ export default function OfflinePOS() {
                   description: t('offline_pos_cart_cleared_desc'),
                 });
               }}
-              className="h-10 text-xs font-bold bg-gradient-to-r from-[#d00000] via-[#ef233c] to-[#f94144] text-white border-2 border-[#b7094c]/60 transition-all hover:shadow-xl"
+              className="h-10 text-xs font-bold bg-red-600 hover:bg-red-700 text-white border-2 border-red-700 transition-all hover:shadow-xl"
             >
               🗑️ {t('clear').toUpperCase()}
             </Button>
@@ -2128,25 +2128,25 @@ export default function OfflinePOS() {
       </Panel>
       
       {/* Resize Handle */}
-      <PanelResizeHandle className="w-2 bg-gradient-to-r from-[#f4a259] to-[#0f866c] hover:w-3 transition-all cursor-col-resize flex items-center justify-center group">
-        <div className="w-1 h-8 bg-white/50 rounded-full group-hover:bg-white/80 transition-colors"></div>
+      <PanelResizeHandle className="w-2 bg-border hover:bg-primary hover:w-3 transition-all cursor-col-resize flex items-center justify-center group">
+        <div className="w-1 h-8 bg-muted-foreground/50 rounded-full group-hover:bg-primary transition-colors"></div>
       </PanelResizeHandle>
       
       {/* Right Panel - Products */}
       <Panel defaultSize={50} minSize={30}>
-      <div className="flex-1 flex flex-col h-full">
+      <div className="flex-1 flex flex-col h-full bg-background">
         {/* Top Bar with Search and Toggle */}
-        <div className="bg-white/85 border-b border-[#f4c36a]/40 shadow-sm p-4 backdrop-blur">
+        <div className="bg-card/85 border-b border-border shadow-sm p-4 backdrop-blur">
           <div className="flex items-center space-x-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#0f866c] h-5 w-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary h-5 w-5" />
               <Input
                 placeholder={rightSidebarView === 'products'
                   ? t('offline_pos_search_products_placeholder')
                   : t('offline_pos_search_orders_placeholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-12 text-lg border-2 border-[#f4c36a]/50 focus:border-[#0f866c] focus:ring-[#0f866c]"
+                className="pl-10 h-12 text-lg border-2 border-border focus:border-primary focus:ring-primary"
               />
             </div>
             <div className="flex items-center space-x-2">
