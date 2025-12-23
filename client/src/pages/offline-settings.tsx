@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useOfflineSettings } from "@/hooks/use-offline-settings";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useTheme, type Theme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -41,6 +42,7 @@ export default function OfflineSettings() {
   const { settings, loading, updateSettings } = useOfflineSettings();
   const { t } = useI18n();
   const { toast } = useToast();
+  const { applyTheme, setupSystemThemeListener } = useTheme();
   const settingsSchema = useMemo(() => buildSettingsSchema(t), [t]);
   
   const [activeTab, setActiveTab] = useState("business");
@@ -72,6 +74,25 @@ export default function OfflineSettings() {
       theme: settings?.theme || "light"
     }
   });
+
+  // Apply theme on initial load
+  useEffect(() => {
+    if (settings?.theme) {
+      applyTheme(settings.theme as Theme);
+      const cleanup = setupSystemThemeListener(settings.theme as Theme);
+      return cleanup;
+    }
+  }, [settings?.theme, applyTheme, setupSystemThemeListener]);
+
+  // Watch for theme changes in form and apply immediately
+  const currentTheme = form.watch('theme');
+  useEffect(() => {
+    if (currentTheme) {
+      applyTheme(currentTheme as Theme);
+      const cleanup = setupSystemThemeListener(currentTheme as Theme);
+      return cleanup;
+    }
+  }, [currentTheme, applyTheme, setupSystemThemeListener]);
 
   const onSubmit = (data: SettingsFormData) => {
     try {
@@ -414,6 +435,25 @@ export default function OfflineSettings() {
                       </FormItem>
                     )}
                   />
+                  
+                  {/* Theme Preview */}
+                  <div className="mt-4 p-4 rounded-lg border bg-card">
+                    <p className="text-sm font-medium mb-3">{t('offline_settings_theme_preview')}</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="p-3 rounded-md bg-background border">
+                        <div className="h-2 w-full bg-primary rounded mb-1"></div>
+                        <div className="h-1 w-3/4 bg-muted rounded"></div>
+                      </div>
+                      <div className="p-3 rounded-md bg-muted">
+                        <div className="h-2 w-full bg-primary rounded mb-1"></div>
+                        <div className="h-1 w-3/4 bg-background rounded"></div>
+                      </div>
+                      <div className="p-3 rounded-md bg-primary">
+                        <div className="h-2 w-full bg-primary-foreground rounded mb-1"></div>
+                        <div className="h-1 w-3/4 bg-primary-foreground/70 rounded"></div>
+                      </div>
+                    </div>
+                  </div>
                   
                   <FormField
                     control={form.control}

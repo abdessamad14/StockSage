@@ -22,6 +22,7 @@ import { I18nProvider } from "@/lib/i18n";
 import { OfflineAuthProvider } from "@/hooks/use-offline-auth";
 import { OfflineProtectedRoute } from "@/lib/offline-protected-route";
 import UpdateNotification from "@/components/UpdateNotification";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 function Router() {
   return (
@@ -54,13 +55,15 @@ function OfflineApp() {
   return (
     <QueryClientProvider client={offlineQueryClient}>
       <OfflineAuthProvider>
-        <I18nProvider>
-          <TooltipProvider>
-            <Toaster />
-            <UpdateNotification />
-            <Router />
-          </TooltipProvider>
-        </I18nProvider>
+        <ThemeProvider>
+          <I18nProvider>
+            <TooltipProvider>
+              <Toaster />
+              <UpdateNotification />
+              <Router />
+            </TooltipProvider>
+          </I18nProvider>
+        </ThemeProvider>
       </OfflineAuthProvider>
     </QueryClientProvider>
   );
