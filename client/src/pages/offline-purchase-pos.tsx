@@ -641,17 +641,17 @@ export default function OfflinePurchasePOS() {
 
   return (
     <>
-      <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50">
+      <div className="flex h-screen overflow-hidden bg-background">
         <PanelGroup direction="horizontal">
         {/* LEFT PANEL - Purchase Order Preview (like invoice in POS) */}
         <Panel defaultSize={35} minSize={25} maxSize={50}>
-          <div className="h-full bg-[#fdf5ec] border-r border-gray-200 flex flex-col shadow-lg">
+          <div className="h-full bg-card border-r border-border flex flex-col shadow-lg">
             {/* Header with Supplier Dropdown */}
-            <div className="p-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">
+            <div className="p-4 bg-primary">
               <div className="flex justify-between items-center mb-3">
                 <div>
-                  <h1 className="text-white text-xl font-bold">{t('purchase_order_pos')}</h1>
-                  <p className="text-white/80 text-sm mt-1">
+                  <h1 className="text-primary-foreground text-xl font-bold">{t('purchase_order_pos')}</h1>
+                  <p className="text-primary-foreground/80 text-sm mt-1">
                     {new Date().toLocaleString('fr-FR')}
                   </p>
                 </div>
@@ -705,7 +705,7 @@ export default function OfflinePurchasePOS() {
                       });
                     }
                   }}
-                  className="text-white hover:bg-white/20"
+                  className="text-primary-foreground hover:bg-primary-foreground/20"
                 >
                   <Printer className="h-5 w-5" />
                 </Button>
@@ -725,7 +725,7 @@ export default function OfflinePurchasePOS() {
                     }
                   }}
                 >
-                  <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                  <SelectTrigger className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
                     <SelectValue placeholder={t('select_supplier')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -741,9 +741,9 @@ export default function OfflinePurchasePOS() {
             </div>
 
         {/* Search */}
-        <div className="p-4 bg-white border-b">
+        <div className="p-4 bg-card border-b border-border">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder={t('search_products_or_scan')}
               value={searchQuery}
@@ -757,9 +757,9 @@ export default function OfflinePurchasePOS() {
               }}
             />
             {searchQuery && (
-              <div className="absolute z-30 mt-1 w-full rounded-md border border-blue-300 bg-white shadow-lg max-h-[400px] overflow-y-auto">
+              <div className="absolute z-30 mt-1 w-full rounded-md border border-border bg-popover shadow-lg max-h-[400px] overflow-y-auto">
                 {quickSearchResults.length === 0 ? (
-                  <div className="px-3 py-2 text-xs text-slate-500">
+                  <div className="px-3 py-2 text-xs text-muted-foreground">
                     {t('product_not_found')}
                   </div>
                 ) : (
@@ -768,19 +768,19 @@ export default function OfflinePurchasePOS() {
                       key={product.id}
                       type="button"
                       onClick={() => handleQuickAdd(product)}
-                      className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+                      className="w-full text-left px-3 py-2 hover:bg-accent transition-colors border-b border-border last:border-b-0"
                     >
                       <div className="flex justify-between items-center">
                         <div className="flex-1">
-                          <div className="font-medium text-sm text-slate-900">
+                          <div className="font-medium text-sm text-foreground">
                             {product.name}
                           </div>
-                          <div className="text-xs text-slate-500 mt-0.5">
+                          <div className="text-xs text-muted-foreground mt-0.5">
                             {product.barcode || 'Sans code-barres'}
                           </div>
                         </div>
                         <div className="text-right ml-3">
-                          <div className="text-sm font-semibold text-blue-600">
+                          <div className="text-sm font-semibold text-primary">
                             {(product.costPrice || 0).toFixed(2)} DH
                           </div>
                         </div>
@@ -795,10 +795,10 @@ export default function OfflinePurchasePOS() {
 
         {/* Order Items Table (like invoice table) */}
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="bg-white/90 rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="bg-card/90 rounded-lg shadow-sm border border-border p-4">
             <table className="w-full">
               <thead>
-                <tr className="border-b text-xs text-gray-600">
+                <tr className="border-b border-border text-xs text-muted-foreground">
                   <th className="text-left py-2">{t('product').toUpperCase()}</th>
                   <th className="text-center py-2">{t('quantity').toUpperCase()}</th>
                   <th className="text-right py-2">{t('unit_cost').toUpperCase()}</th>
@@ -808,10 +808,10 @@ export default function OfflinePurchasePOS() {
               </thead>
               <tbody>
                 {filteredCart.map(item => (
-                  <tr key={item.product.id} className="border-b">
+                  <tr key={item.product.id} className="border-b border-border">
                     <td className="py-3">
-                      <div className="font-medium text-sm">{item.product.name}</div>
-                      <div className="text-xs text-gray-500">{item.product.barcode}</div>
+                      <div className="font-medium text-sm text-foreground">{item.product.name}</div>
+                      <div className="text-xs text-muted-foreground">{item.product.barcode}</div>
                     </td>
                     <td className="py-3">
                       <div className="flex items-center justify-center gap-1">
@@ -905,17 +905,17 @@ export default function OfflinePurchasePOS() {
         </div>
 
         {/* Summary Footer */}
-        <div className="border-t p-4 bg-white space-y-2">
-          <div className="flex justify-between text-sm">
+        <div className="border-t border-border p-4 bg-card space-y-2">
+          <div className="flex justify-between text-sm text-foreground">
             <span>{t('subtotal')}:</span>
             <span className="font-semibold">{subtotal.toFixed(2)} DH</span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-sm text-foreground">
             <span>{t('tax')}:</span>
             <span className="font-semibold">{tax.toFixed(2)} DH</span>
           </div>
           <Separator />
-          <div className="flex justify-between text-lg font-bold">
+          <div className="flex justify-between text-lg font-bold text-foreground">
             <span>{t('total').toUpperCase()}:</span>
             <span className="text-green-600">{total.toFixed(2)} DH</span>
           </div>
@@ -925,7 +925,7 @@ export default function OfflinePurchasePOS() {
             <Button
               onClick={() => setIsCheckoutOpen(true)}
               disabled={cart.length === 0 || !selectedSupplier}
-              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-6 text-lg"
+              className="w-full bg-green-600 hover:bg-green-700 text-white py-6 text-lg"
             >
               <ShoppingCart className="mr-2 h-5 w-5" />
               {t('proceed_to_checkout')}
@@ -945,22 +945,22 @@ export default function OfflinePurchasePOS() {
         </Panel>
 
         {/* RESIZER */}
-        <PanelResizeHandle className="w-2 bg-gray-300 hover:bg-blue-500 transition-colors flex items-center justify-center group">
-          <div className="w-1 h-8 bg-gray-400 rounded group-hover:bg-white transition-colors"></div>
+        <PanelResizeHandle className="w-2 bg-border hover:bg-primary transition-colors flex items-center justify-center group">
+          <div className="w-1 h-8 bg-muted-foreground rounded group-hover:bg-primary transition-colors"></div>
         </PanelResizeHandle>
 
         {/* RIGHT PANEL - Products and Orders */}
         <Panel defaultSize={65} minSize={50}>
-          <div className="h-full flex flex-col">
+          <div className="h-full flex flex-col bg-background">
             {/* Tab Buttons */}
-            <div className="bg-white border-b p-4">
+            <div className="bg-card border-b border-border p-4">
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   onClick={() => setRightSidebarView('products')}
                   className={`h-16 font-bold text-sm flex flex-col items-center justify-center gap-1 ${
                     rightSidebarView === 'products'
-                      ? 'bg-gradient-to-br from-[#06d6a0] via-[#1b998b] to-[#118ab2] text-white'
-                      : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
                   }`}
                 >
                   <Package className="h-5 w-5" />
@@ -970,8 +970,8 @@ export default function OfflinePurchasePOS() {
                   onClick={() => setRightSidebarView('orders')}
                   className={`h-16 font-bold text-sm flex flex-col items-center justify-center gap-1 ${
                     rightSidebarView === 'orders'
-                      ? 'bg-gradient-to-br from-[#06d6a0] via-[#1b998b] to-[#118ab2] text-white'
-                      : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
                   }`}
                 >
                   <Clock className="h-5 w-5" />
@@ -987,7 +987,7 @@ export default function OfflinePurchasePOS() {
               {/* Search Bar */}
               <div className="mb-4">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
                   <Input
                     placeholder={t('search_products_or_scan')}
                     value={productSearchQuery}
@@ -1032,7 +1032,7 @@ export default function OfflinePurchasePOS() {
                       <h3 className="font-bold text-sm mb-1 line-clamp-2">
                         {product.name}
                       </h3>
-                      <div className="bg-white bg-opacity-20 rounded-lg py-1 px-2 mt-2">
+                      <div className="bg-background/20 rounded-lg py-1 px-2 mt-2">
                         <div className="font-bold text-sm">
                           {t('cost')}: {(product.costPrice || 0).toFixed(2)} DH
                         </div>
@@ -1047,8 +1047,8 @@ export default function OfflinePurchasePOS() {
             /* Purchase Orders View with Summaries */
             <div className="space-y-4">
               {/* Date Filter */}
-              <div className="bg-white rounded-xl shadow-sm border p-4">
-                <h3 className="font-bold text-sm mb-3 text-slate-700">{t('filter_by_date')}</h3>
+              <div className="bg-card rounded-xl shadow-sm border border-border p-4">
+                <h3 className="font-bold text-sm mb-3 text-foreground">{t('filter_by_date')}</h3>
                 <div className="flex flex-wrap gap-2 mb-3">
                   <Button
                     size="sm"
@@ -1151,7 +1151,7 @@ export default function OfflinePurchasePOS() {
 
               {/* Summary Cards */}
               <div className="grid grid-cols-3 gap-4">
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-xl shadow-lg">
+                <div className="bg-primary text-primary-foreground p-4 rounded-xl shadow-lg">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm opacity-80">{t('total_orders')}</p>
@@ -1160,7 +1160,7 @@ export default function OfflinePurchasePOS() {
                     <Package className="h-12 w-12 opacity-50" />
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-4 rounded-xl shadow-lg">
+                <div className="bg-green-600 text-white p-4 rounded-xl shadow-lg">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm opacity-80">{t('total_value')}</p>
@@ -1171,7 +1171,7 @@ export default function OfflinePurchasePOS() {
                     <TrendingUp className="h-12 w-12 opacity-50" />
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-4 rounded-xl shadow-lg">
+                <div className="bg-purple-600 text-white p-4 rounded-xl shadow-lg">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm opacity-80">{t('pending')}</p>
@@ -1186,10 +1186,10 @@ export default function OfflinePurchasePOS() {
 
               {/* Recent Orders Table */}
               {filteredOrders && filteredOrders.length > 0 ? (
-                <div className="bg-white/95 rounded-2xl border border-blue-200 overflow-hidden shadow-lg">
+                <div className="bg-card/95 rounded-2xl border border-border overflow-hidden shadow-lg">
                   {/* Table Header */}
-                  <div className="bg-gradient-to-r from-blue-500/15 via-indigo-500/15 to-purple-500/15 border-b border-blue-200 px-4 py-3">
-                    <div className="grid grid-cols-7 gap-4 text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                  <div className="bg-muted border-b border-border px-4 py-3">
+                    <div className="grid grid-cols-7 gap-4 text-xs font-semibold text-foreground uppercase tracking-wide">
                       <div>{t('order_number')}</div>
                       <div>{t('time')}</div>
                       <div>{t('items')}</div>
@@ -1238,10 +1238,10 @@ export default function OfflinePurchasePOS() {
                             <div 
                               className={`text-xs px-3 py-1 rounded-full font-semibold ${
                                 order.status === 'received' 
-                                  ? 'bg-green-100 text-green-700' 
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' 
                                   : order.status === 'ordered' 
-                                    ? 'bg-blue-100 text-blue-700' 
-                                    : 'bg-gray-100 text-gray-700'
+                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' 
+                                    : 'bg-muted text-muted-foreground'
                               }`}
                             >
                               {order.status === 'received' ? 'Payée' : order.status}
@@ -1253,9 +1253,9 @@ export default function OfflinePurchasePOS() {
                                 e.stopPropagation();
                                 printPurchaseReceipt(order);
                               }}
-                              className="h-7 w-7 p-0 hover:bg-blue-100"
+                              className="h-7 w-7 p-0 hover:bg-primary/10"
                             >
-                              <Printer className="h-4 w-4 text-blue-600" />
+                              <Printer className="h-4 w-4 text-primary" />
                             </Button>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1268,7 +1268,7 @@ export default function OfflinePurchasePOS() {
                                   setOrderToDelete(order);
                                   setDeleteConfirmOpen(true);
                                 }}
-                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive/80 hover:bg-destructive/10"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -1280,9 +1280,9 @@ export default function OfflinePurchasePOS() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-white rounded-xl shadow-sm border p-8 text-center">
-                  <Package className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                  <p className="text-gray-500">{t('no_orders_created')}</p>
+                <div className="bg-card rounded-xl shadow-sm border border-border p-8 text-center">
+                  <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">{t('no_orders_created')}</p>
                 </div>
               )}
             </div>
@@ -1302,11 +1302,11 @@ export default function OfflinePurchasePOS() {
 
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">{t('supplier')}</label>
-              <div className="mt-1 p-3 bg-gray-50 rounded-lg">
-                <div className="font-semibold">{selectedSupplier?.name || t('no_supplier')}</div>
+              <label className="text-sm font-medium text-foreground">{t('supplier')}</label>
+              <div className="mt-1 p-3 bg-muted rounded-lg">
+                <div className="font-semibold text-foreground">{selectedSupplier?.name || t('no_supplier')}</div>
                 {selectedSupplier?.phone && (
-                  <div className="text-sm text-gray-600">{selectedSupplier.phone}</div>
+                  <div className="text-sm text-muted-foreground">{selectedSupplier.phone}</div>
                 )}
               </div>
             </div>

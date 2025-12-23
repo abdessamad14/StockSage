@@ -1663,6 +1663,7 @@ export default function OfflinePOS() {
                           type="text"
                           disabled={isViewingFinishedOrder}
                           value={quantityInputs[item.product.id] ?? ((item.product as any).weighable ? item.quantity.toFixed(3) : item.quantity.toString())}
+                          className="w-16 text-center bg-background text-foreground border border-border rounded px-1 py-0.5"
                           onChange={(e) => {
                             const value = e.target.value;
                             
@@ -1784,16 +1785,16 @@ export default function OfflinePOS() {
                               e.currentTarget.blur();
                             }
                           }}
-                          className={`w-24 px-2 py-1 text-sm border rounded focus:ring-1 bg-white text-right font-medium ${
+                          className={`w-24 px-2 py-1 text-sm border rounded focus:ring-1 bg-background text-right font-medium ${
                             item.unitPrice < item.product.costPrice 
-                              ? 'border-red-500 bg-red-50 text-red-700 focus:border-red-600 focus:ring-red-200' 
-                              : 'border-[#0f866c]/30 focus:border-[#0f866c] focus:ring-[#0f866c]/20'
+                              ? 'border-red-500 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 focus:border-red-600 focus:ring-red-200' 
+                              : 'border-primary/30 text-foreground focus:border-primary focus:ring-primary/20'
                           }`}
                           placeholder={(item.product as any).weighable ? "Total" : "Price"}
                         />
-                        <span className="ml-1 text-xs text-gray-500">DH{(item.product as any).weighable ? '' : '/kg'}</span>
+                        <span className="ml-1 text-xs text-muted-foreground">DH{(item.product as any).weighable ? '' : '/kg'}</span>
                     </td>
-                    <td className="px-2 py-2 text-right font-bold text-sm text-[#0f866c]">
+                    <td className="px-2 py-2 text-right font-bold text-sm text-green-600 dark:text-green-400">
                       {item.totalPrice.toFixed(2)} DH
                     </td>
                     <td className="px-2 py-2 text-center">
