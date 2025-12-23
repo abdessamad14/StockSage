@@ -1397,11 +1397,11 @@ export default function OfflinePOS() {
 
   return (
     <>
-    <div className="h-screen bg-gradient-to-br from-[#fff3e6] via-[#f5f7ff] to-[#e8f6f0]">
+    <div className="h-screen bg-background">
       <PanelGroup direction="horizontal">
       {/* Left Panel - Invoice Table */}
       <Panel defaultSize={50} minSize={30}>
-      <div className="bg-white/85 backdrop-blur shadow-xl flex flex-col h-full relative">
+      <div className="bg-card/85 backdrop-blur shadow-xl flex flex-col h-full relative border-r border-border">
         {/* Finished Order Stamp - Diagonal Watermark */}
         {isViewingFinishedOrder && (
           <div className="absolute inset-0 pointer-events-none z-50 flex items-center justify-center">
@@ -1417,7 +1417,7 @@ export default function OfflinePOS() {
         )}
         
         {/* Invoice Header */}
-        <div className="bg-gradient-to-r from-[#c1121f] via-[#f4a259] to-[#0f866c] text-white p-4 flex-shrink-0">
+        <div className="bg-primary text-primary-foreground p-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold">{t('offline_pos_receipt_title').toUpperCase()}</h2>
@@ -1428,21 +1428,21 @@ export default function OfflinePOS() {
         </div>
 
         {/* Receipt Content - Scrollable Items Only */}
-        <div className="flex-1 flex flex-col bg-[#fdf5ec] font-mono text-xs overflow-hidden">
-          <div className="bg-white/90 rounded-t-xl shadow-md border border-[#f4c36a]/60 p-3 overflow-y-auto flex-1">
-            <div className="text-center border-b pb-1 mb-2">
-              <div className="font-bold text-sm">IGOODAR POS</div>
-              <div className="text-xs text-gray-500">{new Date().toLocaleString('fr-MA')}</div>
+        <div className="flex-1 flex flex-col bg-card font-mono text-xs overflow-hidden">
+          <div className="bg-card/90 rounded-t-xl shadow-md border border-border p-3 overflow-y-auto flex-1">
+            <div className="text-center border-b border-border pb-1 mb-2">
+              <div className="font-bold text-sm text-foreground">IGOODAR POS</div>
+              <div className="text-xs text-muted-foreground">{new Date().toLocaleString('fr-MA')}</div>
             </div>
             
             {/* Payment Method & Customer - Compact */}
             <div className="mb-2 space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-600">{t('offline_pos_mode_label')}:</span>
-                <span className="font-semibold">
-                  {paymentMethod === 'cash' && <span className="text-green-600">💰 {t('cash')}</span>}
-                  {paymentMethod === 'credit' && <span className="text-purple-600">📋 {t('credit')}</span>}
-                  {paymentMethod === 'card' && <span className="text-blue-600">💳 {t('card_payment')}</span>}
+                <span className="text-muted-foreground">{t('offline_pos_mode_label')}:</span>
+                <span className="font-semibold text-foreground">
+                  {paymentMethod === 'cash' && <span className="text-green-600 dark:text-green-400">💰 {t('cash')}</span>}
+                  {paymentMethod === 'credit' && <span className="text-purple-600 dark:text-purple-400">📋 {t('credit')}</span>}
+                  {paymentMethod === 'card' && <span className="text-blue-600 dark:text-blue-400">💳 {t('card_payment')}</span>}
                 </span>
               </div>
               
@@ -1474,45 +1474,45 @@ export default function OfflinePOS() {
               
               {/* Customer Credit Display */}
               {selectedCustomer && (
-                <div className="mt-2 p-2 bg-gradient-to-br from-[#dff6ff] to-[#ccffe1] rounded-xl border border-[#0f866c]/30 shadow-sm">
+                <div className="mt-2 p-2 bg-muted rounded-xl border border-border shadow-sm">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1">
-                      <CreditCard className="h-3 w-3 text-[#0f866c]" />
-                      <span className="text-xs font-semibold text-[#0f866c]">{t('offline_pos_customer_credit')}</span>
+                      <CreditCard className="h-3 w-3 text-primary" />
+                      <span className="text-xs font-semibold text-primary">{t('offline_pos_customer_credit')}</span>
                     </div>
                     <Button
                       onClick={() => setIsCreditDialogOpen(true)}
                       size="sm"
                       variant="outline"
-                      className="h-5 px-2 text-xs bg-white/70 border border-[#0f866c]/30 hover:bg-[#0f866c]/10 text-[#0f866c]"
+                      className="h-5 px-2 text-xs"
                     >
                       <Settings className="h-3 w-3 mr-1" />
                       {t('offline_pos_settle')}
                     </Button>
                   </div>
                   {loadingCreditInfo ? (
-                    <div className="text-xs text-gray-500">{t('loading')}</div>
+                    <div className="text-xs text-muted-foreground">{t('loading')}</div>
                   ) : creditInfo ? (
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
-                        <span className="text-gray-600">{t('current_balance')}:</span>
-                        <span className={`font-medium ${creditInfo.currentBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        <span className="text-muted-foreground">{t('current_balance')}:</span>
+                        <span className={`font-medium ${creditInfo.currentBalance > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                           {creditInfo.currentBalance?.toFixed(2) || '0.00'} DH
                         </span>
                       </div>
                       {/* Store Credit (Avoir) */}
                       {(selectedCustomer.storeCredit || 0) > 0 && (
-                        <div className="mt-2 pt-2 border-t border-green-200">
+                        <div className="mt-2 pt-2 border-t border-border">
                           <div className="flex justify-between items-center text-xs">
-                            <span className="text-green-700 font-medium">{t('store_credit_available')}:</span>
-                            <span className="font-bold text-green-600">
+                            <span className="text-green-700 dark:text-green-400 font-medium">{t('store_credit_available')}:</span>
+                            <span className="font-bold text-green-600 dark:text-green-400">
                               {(selectedCustomer.storeCredit || 0).toFixed(2)} DH
                             </span>
                           </div>
                           {storeCreditToUse > 0 && (
-                            <div className="mt-1 flex justify-between items-center text-xs bg-green-50 p-1 rounded">
-                              <span className="text-green-700">{t('store_credit_to_use')}:</span>
-                              <span className="font-bold text-green-600">-{storeCreditToUse.toFixed(2)} DH</span>
+                            <div className="mt-1 flex justify-between items-center text-xs bg-green-50 dark:bg-green-950/30 p-1 rounded">
+                              <span className="text-green-700 dark:text-green-400">{t('store_credit_to_use')}:</span>
+                              <span className="font-bold text-green-600 dark:text-green-400">-{storeCreditToUse.toFixed(2)} DH</span>
                             </div>
                           )}
                           <Button
@@ -1527,7 +1527,7 @@ export default function OfflinePOS() {
                             }}
                             size="sm"
                             variant="outline"
-                            className="w-full mt-1 h-6 text-xs bg-green-50 border-green-300 hover:bg-green-100 text-green-700"
+                            className="w-full mt-1 h-6 text-xs bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400"
                             disabled={storeCreditToUse > 0 || total === 0}
                           >
                             {storeCreditToUse > 0 ? t('store_credit_applied_label') : t('use_store_credit')}
@@ -1578,24 +1578,24 @@ export default function OfflinePOS() {
                         <button
                           key={product.id}
                           type="button"
-                          className="w-full px-3 py-2 text-left text-xs hover:bg-[#0f866c]/10 flex items-center justify-between gap-2"
+                          className="w-full px-3 py-2 text-left text-xs hover:bg-accent flex items-center justify-between gap-2"
                           onMouseDown={(event) => {
                             event.preventDefault();
                             handleQuickAdd(product);
                           }}
                         >
                           <div>
-                            <div className="font-semibold text-slate-800 line-clamp-1">
+                            <div className="font-semibold text-foreground line-clamp-1">
                               {product.name}
-                              <span className="ml-2 text-xs font-normal text-slate-500">
+                              <span className="ml-2 text-xs font-normal text-muted-foreground">
                                 ({(product as any).weighable ? getProductStock(product.id).toFixed(2) : Math.floor(getProductStock(product.id))} {t('available')})
                               </span>
                             </div>
-                            <div className="text-[10px] text-slate-500">
+                            <div className="text-[10px] text-muted-foreground">
                               {product.barcode || t('offline_pos_barcode_missing')}
                             </div>
                           </div>
-                          <div className="text-[11px] font-semibold text-[#0f866c]">
+                          <div className="text-[11px] font-semibold text-primary">
                             {formatPriceValue(product.sellingPrice)}
                           </div>
                         </button>
@@ -1610,29 +1610,29 @@ export default function OfflinePOS() {
               {/* Invoice Table - Always visible with empty rows */}
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="bg-gradient-to-r from-[#0f866c]/10 via-[#f4a259]/10 to-[#c1121f]/10 border-b-2 border-[#0f866c]">
-                    <th className="text-left px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('barcode')}</th>
-                    <th className="text-left px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('product')}</th>
-                    <th className="text-center px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('quantity')}</th>
-                    <th className="text-right px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('price')}</th>
-                    <th className="text-right px-2 py-2 text-xs font-bold text-slate-700 uppercase">{t('total')}</th>
-                    <th className="text-center px-2 py-2 text-xs font-bold text-slate-700 uppercase w-16"></th>
+                  <tr className="bg-muted border-b-2 border-primary">
+                    <th className="text-left px-2 py-2 text-xs font-bold text-foreground uppercase">{t('barcode')}</th>
+                    <th className="text-left px-2 py-2 text-xs font-bold text-foreground uppercase">{t('product')}</th>
+                    <th className="text-center px-2 py-2 text-xs font-bold text-foreground uppercase">{t('quantity')}</th>
+                    <th className="text-right px-2 py-2 text-xs font-bold text-foreground uppercase">{t('price')}</th>
+                    <th className="text-right px-2 py-2 text-xs font-bold text-foreground uppercase">{t('total')}</th>
+                    <th className="text-center px-2 py-2 text-xs font-bold text-foreground uppercase w-16"></th>
                   </tr>
                 </thead>
                 <tbody>
               {cart.map((item, index) => (
-                  <tr key={item.product.id} className="border-b border-gray-200 hover:bg-[#fff4e3] transition-colors">
-                    <td className="px-2 py-2 text-xs text-gray-600 font-mono">
+                  <tr key={item.product.id} className="border-b border-border hover:bg-accent transition-colors">
+                    <td className="px-2 py-2 text-xs text-muted-foreground font-mono">
                       {item.product.barcode || '-'}
                     </td>
                     <td className="px-2 py-2">
-                      <div className="font-medium text-sm truncate flex items-center gap-1">
+                      <div className="font-medium text-sm text-foreground truncate flex items-center gap-1">
                         <button
                           onClick={() => {
                             setSelectedProductInfo(item.product);
                             setProductInfoOpen(true);
                           }}
-                          className="text-blue-600 hover:text-blue-800 flex-shrink-0"
+                          className="text-primary hover:text-primary/80 flex-shrink-0"
                           title={t('view_product_info')}
                         >
                           <Info className="w-4 h-4" />
