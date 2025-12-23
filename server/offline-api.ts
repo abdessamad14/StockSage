@@ -507,36 +507,38 @@ router.get('/stock-history/:productId', async (req, res) => {
   try {
     const { productId } = req.params;
     
-    // Get inventory adjustments for this product
-    const adjustments = await db.select({
-      adjustmentId: inventoryAdjustments.id,
-      date: inventoryAdjustments.date,
-      type: inventoryAdjustments.type,
-      reason: inventoryAdjustments.reason,
-      notes: inventoryAdjustments.notes,
-      quantityBefore: inventoryAdjustmentItems.quantityBefore,
-      quantityAfter: inventoryAdjustmentItems.quantityAfter,
-      difference: inventoryAdjustmentItems.difference
-    })
-    .from(inventoryAdjustments)
-    .innerJoin(inventoryAdjustmentItems, eq(inventoryAdjustments.id, inventoryAdjustmentItems.adjustmentId))
-    .where(eq(inventoryAdjustmentItems.productId, parseInt(productId)))
-    .orderBy(inventoryAdjustments.date);
+    // Get stock transactions for this product (includes customer returns, supplier returns, sales, etc.)
+    const transactions = await db
+      .select({
+        id: stockTransactions.id,
+        date: stockTransactions.createdAt,
+        type: stockTransactions.type,
+        warehouseId: stockTransactions.warehouseId,
+        quantity: stockTransactions.quantity,
+        previousQuantity: stockTransactions.previousQuantity,
+        newQuantity: stockTransactions.newQuantity,
+        reason: stockTransactions.reason,
+        reference: stockTransactions.reference,
+        relatedId: stockTransactions.relatedId,
+      })
+      .from(stockTransactions)
+      .where(eq(stockTransactions.productId, parseInt(productId)))
+      .orderBy(desc(stockTransactions.createdAt));
     
     // Transform to match frontend expectations
-    const transactions = adjustments.map(adj => ({
-      id: adj.adjustmentId.toString(),
-      date: adj.date,
-      type: adj.type === 'increase' ? 'entry' : 'exit',
-      location: 'Main Store',
-      quantity: Math.abs(adj.difference),
-      previous: adj.quantityBefore,
-      new: adj.quantityAfter,
-      reason: adj.reason,
-      reference: adj.notes
+    const formattedTransactions = transactions.map(txn => ({
+      id: txn.id.toString(),
+      date: txn.date,
+      type: txn.type,
+      location: txn.warehouseId || 'Magasin principal',
+      quantity: Math.abs(txn.quantity),
+      previous: txn.previousQuantity,
+      new: txn.newQuantity,
+      reason: txn.reason,
+      reference: txn.reference
     }));
     
-    res.json(transactions);
+    res.json(formattedTransactions);
   } catch (error) {
     console.error('Error fetching stock history:', error);
     res.status(500).json({ error: 'Failed to fetch stock history' });
