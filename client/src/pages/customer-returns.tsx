@@ -63,7 +63,8 @@ interface Customer {
   id: number;
   name: string;
   phone?: string;
-  creditBalance: number;
+  creditBalance: number; // Debt - customer owes store
+  storeCredit?: number; // Avoir - store owes customer
 }
 
 interface ReturnItem {
@@ -779,9 +780,9 @@ export default function CustomerReturns() {
                               <span className="font-medium">{customer.name}</span>
                               {customer.phone && <span className="text-xs text-gray-500">({customer.phone})</span>}
                             </div>
-                            {/* Show current balance */}
-                            <span className={`text-xs ${customer.creditBalance > 0 ? 'text-blue-600' : customer.creditBalance < 0 ? 'text-red-600' : 'text-gray-500'}`}>
-                              {t('balance')}: {customer.creditBalance.toFixed(2)} DH
+                            {/* Show current store credit (avoir) */}
+                            <span className={`text-xs ${(customer.storeCredit || 0) > 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                              {t('store_credit')}: {(customer.storeCredit || 0).toFixed(2)} DH
                             </span>
                           </div>
                         </SelectItem>
@@ -789,7 +790,7 @@ export default function CustomerReturns() {
                     </SelectContent>
                   </Select>
                   
-                  {/* Show selected customer's current balance */}
+                  {/* Show selected customer's current store credit (avoir) */}
                   {selectedCustomer && (() => {
                     const customer = customers.find(c => c.id === parseInt(selectedCustomer));
                     if (!customer) return null;
@@ -797,9 +798,9 @@ export default function CustomerReturns() {
                     return (
                       <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-700">{t('returns_current_balance')}:</span>
-                          <span className={`font-semibold ${customer.creditBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                            {customer.creditBalance.toFixed(2)} DH
+                          <span className="text-gray-700">{t('returns_current_store_credit')}:</span>
+                          <span className={`font-semibold ${(customer.storeCredit || 0) > 0 ? 'text-green-600' : 'text-gray-600'}`}>
+                            {(customer.storeCredit || 0).toFixed(2)} DH
                           </span>
                         </div>
                         {refundMethod === 'credit' && (
@@ -809,9 +810,9 @@ export default function CustomerReturns() {
                               <span className="font-semibold text-green-600">+{returnTotal.toFixed(2)} DH</span>
                             </div>
                             <div className="border-t border-purple-300 pt-2 flex justify-between">
-                              <span className="font-bold text-gray-800">{t('returns_new_balance')}:</span>
-                              <span className="font-bold text-blue-600">
-                                {(customer.creditBalance + returnTotal).toFixed(2)} DH
+                              <span className="font-bold text-gray-800">{t('returns_new_store_credit')}:</span>
+                              <span className="font-bold text-green-600">
+                                {((customer.storeCredit || 0) + returnTotal).toFixed(2)} DH
                               </span>
                             </div>
                           </>

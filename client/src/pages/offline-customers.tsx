@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Search, Plus, Edit, Trash2, Phone, Mail, MapPin, CreditCard, DollarSign, History } from "lucide-react";
+import { Users, Search, Plus, Minus, Edit, Trash2, Phone, Mail, MapPin, CreditCard, DollarSign, History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -58,6 +58,11 @@ export default function OfflineCustomers() {
     transactions: CreditTransaction[];
   } | null>(null);
   const [loadingCreditInfo, setLoadingCreditInfo] = useState(false);
+  
+  // Store Credit (Avoir) states
+  const [isStoreCreditDialogOpen, setIsStoreCreditDialogOpen] = useState(false);
+  const [storeCreditAmount, setStoreCreditAmount] = useState(0);
+  const [storeCreditNote, setStoreCreditNote] = useState("");
 
   const formatCurrency = (value?: number) => `${(value ?? 0).toFixed(2)} ${t('currency')}`;
   const formatSignedCurrency = (value: number) => `${value > 0 ? '+' : value < 0 ? '-' : ''}${formatCurrency(Math.abs(value))}`;
@@ -241,6 +246,115 @@ export default function OfflineCustomers() {
     }
   };
 
+  const handleStoreCreditAdd = async () => {
+    if (!selectedCustomer) {
+      toast({
+        title: t('error'),
+        description: t('no_customer_selected'),
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (storeCreditAmount <= 0) {
+      toast({
+        title: t('error'),
+        description: t('invalid_amount'),
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await updateCustomer(selectedCustomer.id, {
+        storeCredit: (selectedCustomer.storeCredit || 0) + storeCreditAmount
+      });
+
+      const updatedCustomer = {
+        ...selectedCustomer,
+        storeCredit: (selectedCustomer.storeCredit || 0) + storeCreditAmount
+      };
+      setSelectedCustomer(updatedCustomer);
+
+      toast({
+        title: t('success'),
+        description: t('store_credit_added_success', {
+          amount: formatCurrency(storeCreditAmount),
+          total: formatCurrency(updatedCustomer.storeCredit)
+        })
+      });
+
+      setStoreCreditAmount(0);
+      setStoreCreditNote("");
+    } catch (error) {
+      console.error('Store credit add error:', error);
+      toast({
+        title: t('error'),
+        description: t('store_credit_error'),
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleStoreCreditSubtract = async () => {
+    if (!selectedCustomer) {
+      toast({
+        title: t('error'),
+        description: t('no_customer_selected'),
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (storeCreditAmount <= 0) {
+      toast({
+        title: t('error'),
+        description: t('invalid_amount'),
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if ((selectedCustomer.storeCredit || 0) < storeCreditAmount) {
+      toast({
+        title: t('error'),
+        description: t('insufficient_store_credit'),
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await updateCustomer(selectedCustomer.id, {
+        storeCredit: (selectedCustomer.storeCredit || 0) - storeCreditAmount
+      });
+
+      const updatedCustomer = {
+        ...selectedCustomer,
+        storeCredit: (selectedCustomer.storeCredit || 0) - storeCreditAmount
+      };
+      setSelectedCustomer(updatedCustomer);
+
+      toast({
+        title: t('success'),
+        description: t('store_credit_used_success', {
+          amount: formatCurrency(storeCreditAmount),
+          remaining: formatCurrency(updatedCustomer.storeCredit)
+        })
+      });
+
+      setStoreCreditAmount(0);
+      setStoreCreditNote("");
+    } catch (error) {
+      console.error('Store credit subtract error:', error);
+      toast({
+        title: t('error'),
+        description: t('store_credit_error'),
+        variant: "destructive"
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 space-y-6">
@@ -332,6 +446,7 @@ export default function OfflineCustomers() {
               <TableHead>{t('email')}</TableHead>
               <TableHead>{t('address')}</TableHead>
               <TableHead className="text-right">{t('credit_balance')}</TableHead>
+              <TableHead className="text-right">{t('store_credit')}</TableHead>
               <TableHead className="text-right">{t('actions')}</TableHead>
             </TableRow>
           </TableHeader>
@@ -385,6 +500,15 @@ export default function OfflineCustomers() {
                   )}
                 </TableCell>
                 <TableCell className="text-right">
+                  {(customer.storeCredit || 0) > 0 ? (
+                    <span className="font-medium text-green-600">
+                      {formatCurrency(customer.storeCredit)}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
                   <div className="flex gap-1 justify-end">
                     <Button
                       variant="ghost"
@@ -397,6 +521,17 @@ export default function OfflineCustomers() {
                       title={t('manage_credit')}
                     >
                       <CreditCard className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedCustomer(customer);
+                        setIsStoreCreditDialogOpen(true);
+                      }}
+                      title={t('manage_store_credit')}
+                    >
+                      <DollarSign className="w-4 h-4 text-green-600" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -737,6 +872,125 @@ export default function OfflineCustomers() {
               setCreditInfo(null);
               setCreditAmount(0);
               setCreditNote("");
+            }}>
+              {t('close')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Store Credit (Avoir) Management Dialog */}
+      <Dialog open={isStoreCreditDialogOpen} onOpenChange={setIsStoreCreditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('store_credit_management_title', { name: selectedCustomer?.name ?? '' })}</DialogTitle>
+            <DialogDescription>
+              {t('store_credit_management_desc')}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedCustomer && (
+            <div className="space-y-6">
+              {/* Current Store Credit */}
+              <Card className="bg-green-50 border-green-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-700">
+                    {t('current_store_credit')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-green-600">
+                    {formatCurrency(selectedCustomer.storeCredit || 0)}
+                  </p>
+                  <p className="text-xs text-gray-600 mt-1">
+                    {t('store_credit_available_to_use')}
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Add or Use Store Credit */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">{t('add_store_credit')}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">{t('amount')}</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={storeCreditAmount}
+                        onChange={(e) => setStoreCreditAmount(parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">{t('notes')}</label>
+                      <Input
+                        value={storeCreditNote}
+                        onChange={(e) => setStoreCreditNote(e.target.value)}
+                        placeholder={t('optional_note_placeholder')}
+                        className="mt-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleStoreCreditAdd} 
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      disabled={storeCreditAmount <= 0}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {t('add_credit')}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">{t('use_store_credit')}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">{t('amount')}</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={storeCreditAmount}
+                        onChange={(e) => setStoreCreditAmount(parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">{t('notes')}</label>
+                      <Input
+                        value={storeCreditNote}
+                        onChange={(e) => setStoreCreditNote(e.target.value)}
+                        placeholder={t('optional_note_placeholder')}
+                        className="mt-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleStoreCreditSubtract} 
+                      className="w-full"
+                      variant="outline"
+                      disabled={storeCreditAmount <= 0 || (selectedCustomer.storeCredit || 0) < storeCreditAmount}
+                    >
+                      <Minus className="w-4 h-4 mr-2" />
+                      {t('use_credit')}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsStoreCreditDialogOpen(false);
+              setStoreCreditAmount(0);
+              setStoreCreditNote("");
             }}>
               {t('close')}
             </Button>

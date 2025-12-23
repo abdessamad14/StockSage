@@ -96,7 +96,8 @@ export interface OfflineCustomer {
   email?: string;
   address?: string;
   creditLimit?: number;
-  creditBalance?: number;
+  creditBalance?: number; // Debt - customer owes store (pay later)
+  storeCredit?: number; // Avoir - store owes customer (coupons/refunds)
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -261,7 +262,7 @@ export interface OfflineStockTransaction {
   id: string;
   productId: string;
   warehouseId: string;
-  type: 'entry' | 'exit' | 'adjustment' | 'transfer';
+  type: 'entry' | 'exit' | 'adjustment' | 'transfer' | 'customer_return' | 'supplier_return' | 'sale';
   quantity: number;
   previousQuantity: number;
   newQuantity: number;
@@ -561,6 +562,7 @@ export const databaseCustomerStorage = {
       address: c.address || undefined,
       creditLimit: c.creditLimit || 0,
       creditBalance: c.creditBalance || 0,
+      storeCredit: c.storeCredit || 0,
       notes: c.notes || undefined,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt

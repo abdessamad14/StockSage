@@ -12,6 +12,7 @@ export interface ReceiptData {
   }>;
   subtotal: number;
   discountAmount?: number;
+  storeCreditUsed?: number; // Store credit (avoir) applied to this sale
   taxAmount?: number;
   total: number;
   paidAmount: number;
@@ -197,6 +198,12 @@ export class ThermalReceiptPrinter {
             <div style="display: flex; justify-content: space-between;">
               <span>Remise:</span>
               <span>-${receiptData.discountAmount.toFixed(2)}</span>
+            </div>
+          ` : ''}
+          ${receiptData.storeCreditUsed ? `
+            <div style="display: flex; justify-content: space-between; color: #059669;">
+              <span>Avoir utilisé:</span>
+              <span>-${receiptData.storeCreditUsed.toFixed(2)}</span>
             </div>
           ` : ''}
           ${receiptData.taxAmount ? `
@@ -499,6 +506,12 @@ export class ThermalReceiptPrinter {
               <span>-${receiptData.discountAmount.toFixed(2)} DH</span>
             </div>
           ` : ''}
+          ${receiptData.storeCreditUsed ? `
+            <div class="total-line" style="color: #059669;">
+              <span>Avoir utilisé:</span>
+              <span>-${receiptData.storeCreditUsed.toFixed(2)} DH</span>
+            </div>
+          ` : ''}
           ${receiptData.taxAmount ? `
             <div class="total-line">
               <span>TVA:</span>
@@ -662,6 +675,7 @@ export class ThermalReceiptPrinter {
     const totalsInfo = [
       formatTotalLine('Sous-total:', `${receiptData.subtotal.toFixed(2)} DH`),
       ...(receiptData.discountAmount ? [formatTotalLine('Remise:', `-${receiptData.discountAmount.toFixed(2)} DH`)] : []),
+      ...(receiptData.storeCreditUsed ? [formatTotalLine('Avoir utilise:', `-${receiptData.storeCreditUsed.toFixed(2)} DH`)] : []),
       ...(receiptData.taxAmount ? [formatTotalLine('TVA:', `${receiptData.taxAmount.toFixed(2)} DH`)] : []),
     ];
     

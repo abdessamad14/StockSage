@@ -157,6 +157,7 @@ export default function OfflinePOS() {
   const [creditInfo, setCreditInfo] = useState<any>(null);
   const [loadingCreditInfo, setLoadingCreditInfo] = useState(false);
   const [creditAmount, setCreditAmount] = useState(0);
+  const [storeCreditToUse, setStoreCreditToUse] = useState(0); // Store credit (avoir) to apply to this sale
   const [creditNote, setCreditNote] = useState('');
 
   // Product info modal state
@@ -254,6 +255,45 @@ export default function OfflinePOS() {
       })
       .reduce((sum, sale) => sum + sale.totalAmount, 0);
   }, [todaysOrders]);
+
+  // Calculate today's cash refunds from customer returns (only cash refunds, not avoir or exchange)
+  const [todaysCashRefunds, setTodaysCashRefunds] = useState(0);
+
+  useEffect(() => {
+    const fetchCashRefunds = async () => {
+      try {
+        const apiBase = typeof window !== 'undefined' 
+          ? `${window.location.protocol}//${window.location.hostname}:5003`
+          : 'http://localhost:5003';
+        const response = await fetch(`${apiBase}/api/offline/customer-returns`);
+        
+        if (response.ok) {
+          const returns = await response.json();
+          const today = new Date();
+          const todayStr = today.toISOString().split('T')[0];
+          
+          // Only count CASH refunds (not "avoir" or "exchange")
+          const cashRefunds = returns
+            .filter((ret: any) => {
+              const returnDate = new Date(ret.createdAt).toISOString().split('T')[0];
+              return returnDate === todayStr && ret.refundMethod === 'cash';
+            })
+            .reduce((sum: number, ret: any) => sum + ret.totalAmount, 0);
+          
+          setTodaysCashRefunds(cashRefunds);
+        }
+      } catch (error) {
+        console.error('Error fetching cash refunds:', error);
+        setTodaysCashRefunds(0);
+      }
+    };
+
+    fetchCashRefunds();
+    
+    // Refresh every minute to keep it updated
+    const interval = setInterval(fetchCashRefunds, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Calculate turnover stats from filtered orders
   const filteredTurnover = useMemo(() => {
@@ -844,6 +884,7 @@ export default function OfflinePOS() {
     setSelectedCustomer(null);
     setDiscountAmount(0);
     setPaidAmount(0);
+    setStoreCreditToUse(0); // Reset store credit usage
     setIsViewingFinishedOrder(false);
     setLoadedOrderId(null);
   };
@@ -966,7 +1007,8 @@ export default function OfflinePOS() {
   const subtotalAfterDiscount = Math.max(0, subtotal - discountValue);
   const tax = 0; // No tax
   const total = subtotalAfterDiscount;
-  const change = paidAmount - total;
+  const finalTotal = Math.max(0, total - storeCreditToUse); // Total after applying store credit
+  const change = paidAmount - finalTotal;
 
   // Print thermal receipt
   const printThermalReceipt = async () => {
@@ -1041,7 +1083,7 @@ export default function OfflinePOS() {
       }
     }
 
-    if (effectivePaymentMethod === 'cash' && effectivePaidAmount < total) {
+    if (effectivePaymentMethod === 'cash' && effectivePaidAmount < finalTotal) {
       toast({
         title: t('error'),
         description: t('insufficient_amount'),
@@ -1064,16 +1106,25 @@ export default function OfflinePOS() {
         updatedAt: new Date().toISOString()
       }));
 
+      // Calculate notes including store credit and discount
+      const notes: string[] = [];
+      if (discountValue > 0) {
+        notes.push(`Remise appliquée: ${discountType === 'percentage' ? `${discountAmount}%` : `${discountAmount} DH`}`);
+      }
+      if (storeCreditToUse > 0) {
+        notes.push(`Avoir utilisé: ${storeCreditToUse.toFixed(2)} DH`);
+      }
+
       // Create sale data (without id, createdAt, updatedAt as they're auto-generated)
       const saleData = {
         invoiceNumber: `INV-${Date.now()}`,
         date: new Date().toISOString(),
         customerId: selectedCustomer?.id ? parseInt(selectedCustomer.id) : null,
-        totalAmount: total,
+        totalAmount: total, // Original total before store credit
         discountAmount: discountValue,
         taxAmount: tax,
-        paidAmount: effectivePaymentMethod === 'cash' ? effectivePaidAmount : total,
-        changeAmount: effectivePaymentMethod === 'cash' ? (effectivePaidAmount - total) : 0,
+        paidAmount: effectivePaymentMethod === 'cash' ? effectivePaidAmount : finalTotal, // Use finalTotal
+        changeAmount: effectivePaymentMethod === 'cash' ? (effectivePaidAmount - finalTotal) : 0,
         paymentMethod: effectivePaymentMethod,
         status: 'completed',
         items: saleItems.map(item => ({
@@ -1083,7 +1134,7 @@ export default function OfflinePOS() {
           unitPrice: item.unitPrice,
           totalPrice: item.totalPrice
         })),
-        notes: discountValue > 0 ? `Remise appliquée: ${discountType === 'percentage' ? `${discountAmount}%` : `${discountAmount} DH`}` : undefined
+        notes: notes.length > 0 ? notes.join(' | ') : undefined
       };
 
       // Save sale to database
@@ -1123,6 +1174,50 @@ export default function OfflinePOS() {
           toast({
             title: t('warning'),
             description: t('offline_pos_credit_record_warning'),
+            variant: "destructive",
+          });
+        }
+      }
+
+      // Handle store credit (avoir) deduction
+      if (storeCreditToUse > 0 && selectedCustomer) {
+        try {
+          console.log('Deducting store credit for customer:', selectedCustomer.id, 'Amount:', storeCreditToUse);
+          
+          const currentStoreCredit = selectedCustomer.storeCredit || 0;
+          const newStoreCredit = Math.max(0, currentStoreCredit - storeCreditToUse);
+          
+          // Update customer store credit via API
+          const apiBase = typeof window !== 'undefined' 
+            ? `${window.location.protocol}//${window.location.hostname}:5003`
+            : 'http://localhost:5003';
+          const response = await fetch(`${apiBase}/api/offline/customers/${selectedCustomer.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ storeCredit: newStoreCredit })
+          });
+
+          if (response.ok) {
+            console.log('Store credit deducted successfully. New store credit:', newStoreCredit);
+            
+            // Update local customer state
+            setCustomers(prevCustomers => 
+              prevCustomers.map(c => 
+                c.id === selectedCustomer.id 
+                  ? { ...c, storeCredit: newStoreCredit }
+                  : c
+              )
+            );
+
+            // Update selected customer
+            setSelectedCustomer(prev => prev ? { ...prev, storeCredit: newStoreCredit } : null);
+          }
+          
+        } catch (storeCreditError) {
+          console.error('Error deducting store credit:', storeCreditError);
+          toast({
+            title: t('warning'),
+            description: t('store_credit_deduction_error'),
             variant: "destructive",
           });
         }
@@ -1238,10 +1333,11 @@ export default function OfflinePOS() {
           })),
           subtotal: subtotal,
           discountAmount: discountValue,
+          storeCreditUsed: storeCreditToUse, // Include store credit used
           taxAmount: tax,
-          total: total,
-          paidAmount: effectivePaymentMethod === 'cash' ? effectivePaidAmount : total,
-          changeAmount: effectivePaymentMethod === 'cash' ? (effectivePaidAmount - total) : 0,
+          total: finalTotal, // Use final total after store credit
+          paidAmount: effectivePaymentMethod === 'cash' ? effectivePaidAmount : finalTotal,
+          changeAmount: effectivePaymentMethod === 'cash' ? (effectivePaidAmount - finalTotal) : 0,
           paymentMethod: effectivePaymentMethod
         };
         
@@ -1355,9 +1451,11 @@ export default function OfflinePOS() {
                 onValueChange={(value) => {
                   if (value === 'walk-in') {
                     setSelectedCustomer(null);
+                    setStoreCreditToUse(0); // Reset store credit when customer changes
                   } else {
                     const customer = customers.find(c => c.id === value);
                     setSelectedCustomer(customer || null);
+                    setStoreCreditToUse(0); // Reset store credit when customer changes
                   }
                 }}
               >
@@ -1402,6 +1500,40 @@ export default function OfflinePOS() {
                           {creditInfo.currentBalance?.toFixed(2) || '0.00'} DH
                         </span>
                       </div>
+                      {/* Store Credit (Avoir) */}
+                      {(selectedCustomer.storeCredit || 0) > 0 && (
+                        <div className="mt-2 pt-2 border-t border-green-200">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-green-700 font-medium">{t('store_credit_available')}:</span>
+                            <span className="font-bold text-green-600">
+                              {(selectedCustomer.storeCredit || 0).toFixed(2)} DH
+                            </span>
+                          </div>
+                          {storeCreditToUse > 0 && (
+                            <div className="mt-1 flex justify-between items-center text-xs bg-green-50 p-1 rounded">
+                              <span className="text-green-700">{t('store_credit_to_use')}:</span>
+                              <span className="font-bold text-green-600">-{storeCreditToUse.toFixed(2)} DH</span>
+                            </div>
+                          )}
+                          <Button
+                            onClick={() => {
+                              const availableCredit = selectedCustomer.storeCredit || 0;
+                              const amountToUse = Math.min(availableCredit, total);
+                              setStoreCreditToUse(amountToUse);
+                              toast({
+                                title: t('success'),
+                                description: t('store_credit_applied', { amount: amountToUse.toFixed(2) })
+                              });
+                            }}
+                            size="sm"
+                            variant="outline"
+                            className="w-full mt-1 h-6 text-xs bg-green-50 border-green-300 hover:bg-green-100 text-green-700"
+                            disabled={storeCreditToUse > 0 || total === 0}
+                          >
+                            {storeCreditToUse > 0 ? t('store_credit_applied_label') : t('use_store_credit')}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-xs text-gray-500">{t('offline_pos_no_credit_info')}</div>
@@ -1713,10 +1845,18 @@ export default function OfflinePOS() {
                   <span className="font-semibold">{cart.reduce((sum, item) => sum + (item.product.weighable ? 1 : item.quantity), 0)} {t('items')}</span>
                 </div>
                 
+                {/* Store Credit Applied */}
+                {storeCreditToUse > 0 && (
+                  <div className="flex justify-between text-xs text-green-700 bg-green-50 px-2 py-1 rounded">
+                    <span>{t('store_credit_used')}:</span>
+                    <span className="font-semibold">-{storeCreditToUse.toFixed(2)} DH</span>
+                  </div>
+                )}
+                
                 {/* Total */}
                 <div className="flex justify-between font-bold text-sm border-t pt-1 bg-gradient-to-r from-[#06d6a0]/20 via-[#118ab2]/20 to-[#4cc9f0]/20 px-2 py-1 rounded-lg border-[#0f866c]/20">
                   <span>{t('total').toUpperCase()}:</span>
-                  <span>{total.toFixed(2)} DH</span>
+                  <span>{finalTotal.toFixed(2)} DH</span>
                 </div>
               </div>
             </div>
@@ -1753,10 +1893,10 @@ export default function OfflinePOS() {
                         return;
                       }
                       
-                      if (amount < total) {
+                      if (amount < finalTotal) {
                         toast({
                           title: t('insufficient_amount'),
-                          description: t('insufficient_amount_desc', { amount, required: total.toFixed(2) }),
+                          description: t('insufficient_amount_desc', { amount, required: finalTotal.toFixed(2) }),
                           variant: "destructive",
                         });
                         return;
@@ -1766,7 +1906,7 @@ export default function OfflinePOS() {
                       setPaymentMethod('cash');
                       setPaidAmount(amount);
                       
-                      const changeAmount = amount - total;
+                      const changeAmount = amount - finalTotal;
                       
                       // Show change notification
                       if (changeAmount > 0) {
@@ -1781,9 +1921,9 @@ export default function OfflinePOS() {
                       await processSale('cash', amount);
                     }}
                     className={`h-14 p-0 border-2 border-gray-300 transition-all relative overflow-hidden rounded-lg ${
-                      amount < total || isViewingFinishedOrder ? 'opacity-50' : 'hover:scale-105 hover:shadow-lg'
+                      amount < finalTotal || isViewingFinishedOrder ? 'opacity-50' : 'hover:scale-105 hover:shadow-lg'
                     }`}
-                    disabled={amount < total || isViewingFinishedOrder}
+                    disabled={amount < finalTotal || isViewingFinishedOrder}
                   >
                     {/* Full Banknote Background */}
                     <img 
@@ -2925,6 +3065,7 @@ export default function OfflinePOS() {
         }}
         currentShift={currentShift}
         todaysCashSales={todaysCashSales}
+        todaysCashRefunds={todaysCashRefunds}
       />
     )}
 

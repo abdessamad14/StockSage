@@ -164,7 +164,8 @@ export default function OfflineInventory() {
       };
       loadTransactions();
     }
-  }, [showStockHistory, historyProduct, selectedLocation, getTransactionsByProduct]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showStockHistory, historyProduct?.id, selectedLocation]);
 
   const getProductStockInLocation = (productId: string, locationId: string): number => {
     // Look up actual warehouse-specific stock quantity
@@ -481,6 +482,8 @@ export default function OfflineInventory() {
       case 'transfer': return 'Stock Transfer';
       case 'entry': return 'Stock Entry';
       case 'exit': return 'Stock Exit';
+      case 'customer_return': return t('customer_return') || 'Customer Return';
+      case 'supplier_return': return t('supplier_return') || 'Supplier Return';
       default: return type;
     }
   };
@@ -493,6 +496,8 @@ export default function OfflineInventory() {
       case 'transfer': return <ArrowRightLeft className="w-4 h-4 text-blue-600" />;
       case 'entry': return <Plus className="w-4 h-4 text-green-600" />;
       case 'exit': return <Minus className="w-4 h-4 text-red-600" />;
+      case 'customer_return': return <TrendingUp className="w-4 h-4 text-purple-600" />;
+      case 'supplier_return': return <TrendingDown className="w-4 h-4 text-yellow-600" />;
       default: return <FileText className="w-4 h-4" />;
     }
   };
@@ -1506,7 +1511,7 @@ export default function OfflineInventory() {
                           filteredTransactions = productTransactions.filter((t: any) => t.warehouseId === selectedLocation);
                         }
                         
-                        if (productTransactions.length === 0) {
+                        if (filteredTransactions.length === 0) {
                           return (
                             <TableRow>
                               <TableCell colSpan={8} className="text-center py-8 text-gray-500">
@@ -1521,7 +1526,7 @@ export default function OfflineInventory() {
                           );
                         }
 
-                        return productTransactions.map((transaction) => {
+                        return filteredTransactions.map((transaction) => {
                           const location = stockLocations.find(l => l.id === transaction.warehouseId);
                           const isIncrease = transaction.quantity > 0;
                           

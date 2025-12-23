@@ -1847,8 +1847,8 @@ router.post('/customer-returns', async (req, res) => {
         await db.insert(stockTransactions).values({
           tenantId: 'default',
           productId: parseInt(item.productId),
-          warehouseId: 'main',
-          type: 'entry',
+          warehouseId: '1',
+          type: 'customer_return',
           quantity: parseInt(item.quantity),
           previousQuantity: currentProduct.quantity,
           newQuantity: item.condition === 'good' 
@@ -1881,13 +1881,13 @@ router.post('/customer-returns', async (req, res) => {
           .where(eq(cashShifts.id, shift.id));
       }
     } else if (refundMethod === 'credit' && customerId) {
-      // Add credit to customer account
+      // Add store credit (avoir) to customer account - money that store owes to customer
       const customer = await db.select().from(customers).where(eq(customers.id, parseInt(customerId))).limit(1);
       
       if (customer.length > 0) {
         await db.update(customers)
           .set({ 
-            creditBalance: (customer[0].creditBalance || 0) + totalAmount 
+            storeCredit: (customer[0].storeCredit || 0) + totalAmount 
           })
           .where(eq(customers.id, parseInt(customerId)));
       }
@@ -1931,7 +1931,7 @@ router.post('/customer-returns', async (req, res) => {
           await db.insert(stockTransactions).values({
             tenantId: 'default',
             productId: parseInt(exchangeItem.productId),
-            warehouseId: 'main',
+            warehouseId: '1',
             type: 'sale',
             quantity: parseInt(exchangeItem.quantity),
             previousQuantity: currentProduct.quantity,
@@ -2155,8 +2155,8 @@ router.post('/supplier-returns', async (req, res) => {
         await db.insert(stockTransactions).values({
           tenantId: 'default',
           productId: parseInt(item.productId),
-          warehouseId: 'main',
-          type: 'adjustment',
+          warehouseId: '1',
+          type: 'supplier_return',
           quantity: parseInt(item.quantity),
           previousQuantity: currentProduct.defectiveStock || 0,
           newQuantity: newDefectiveStock,

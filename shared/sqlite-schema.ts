@@ -63,6 +63,7 @@ export const customers = sqliteTable("customers", {
   address: text("address"),
   creditLimit: real("credit_limit").default(0),
   creditBalance: real("credit_balance").default(0),
+  storeCredit: real("store_credit").default(0), // Avoir - money store owes to customer
   notes: text("notes"),
 });
 

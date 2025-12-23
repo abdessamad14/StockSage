@@ -15,6 +15,7 @@ interface CloseCashShiftDialogProps {
   onConfirm: (actualTotal: number, notes?: string) => Promise<void>;
   currentShift: OfflineCashShift;
   todaysCashSales: number;
+  todaysCashRefunds?: number; // Cash refunds from customer returns
 }
 
 export function CloseCashShiftDialog({
@@ -22,7 +23,8 @@ export function CloseCashShiftDialog({
   onOpenChange,
   onConfirm,
   currentShift,
-  todaysCashSales
+  todaysCashSales,
+  todaysCashRefunds = 0
 }: CloseCashShiftDialogProps) {
   const [actualTotal, setActualTotal] = useState('');
   const [notes, setNotes] = useState('');
@@ -30,7 +32,8 @@ export function CloseCashShiftDialog({
   const { toast } = useToast();
   const { t } = useI18n();
 
-  const expectedTotal = currentShift.startingCash + todaysCashSales;
+  // Expected total = Starting cash + Cash sales - Cash refunds
+  const expectedTotal = currentShift.startingCash + todaysCashSales - todaysCashRefunds;
   const actualAmount = parseFloat(actualTotal) || 0;
   const difference = actualAmount - expectedTotal;
   const hasDifference = actualTotal && Math.abs(difference) > 0.01;
@@ -96,6 +99,12 @@ export function CloseCashShiftDialog({
               <span className="text-muted-foreground">{t('cash_shift_todays_sales')}:</span>
               <span className="font-semibold text-green-600">+{todaysCashSales.toFixed(2)} DH</span>
             </div>
+            {todaysCashRefunds > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t('cash_shift_cash_refunds')}:</span>
+                <span className="font-semibold text-red-600">-{todaysCashRefunds.toFixed(2)} DH</span>
+              </div>
+            )}
             <div className="border-t pt-2 flex justify-between">
               <span className="font-semibold">{t('cash_shift_expected')}:</span>
               <span className="font-bold text-lg">{expectedTotal.toFixed(2)} DH</span>
