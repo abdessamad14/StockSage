@@ -51,24 +51,24 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
   const drawerPositionClass = isRTL ? 'right-0 left-auto' : 'left-0 right-auto';
 
   const linkClasses = (path: string) => {
-    const base = `flex items-center px-4 py-3 ${sideBorderClass} border-transparent`;
-    const activeClasses = `text-primary bg-blue-50 border-primary`;
-    const inactiveClasses = `text-textPrimary hover:bg-gray-100`;
+    const base = `flex items-center px-4 py-3 ${sideBorderClass} border-transparent transition-colors`;
+    const activeClasses = `text-primary bg-accent border-primary`;
+    const inactiveClasses = `text-card-foreground hover:bg-muted`;
     return `${base} ${isActive(path) ? activeClasses : inactiveClasses}`;
   };
 
   return (
-    <div className={`fixed top-0 ${drawerPositionClass} h-full w-72 bg-white shadow-lg z-50 drawer flex flex-col ${isOpen ? 'drawer-open' : 'drawer-closed'}`}>
-      <div className="p-4 bg-primary flex items-center border-b border-gray-200 flex-shrink-0">
-        <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center mr-3 overflow-hidden">
+    <div className={`fixed top-0 ${drawerPositionClass} h-full w-72 bg-card shadow-lg z-50 drawer flex flex-col ${isOpen ? 'drawer-open' : 'drawer-closed'}`}>
+      <div className="p-4 bg-primary flex items-center border-b border-border flex-shrink-0">
+        <div className="h-12 w-12 rounded-full bg-background flex items-center justify-center mr-3 overflow-hidden">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10 text-primary">
             <rect width="20" height="14" x="2" y="5" rx="2" />
             <line x1="2" y1="10" x2="22" y2="10" />
           </svg>
         </div>
         <div>
-          <p className="text-white font-bold text-lg">{settings?.businessName || 'igoodar'}</p>
-          <p className="text-white text-sm opacity-80">{t('offline_mode')}</p>
+          <p className="text-primary-foreground font-bold text-lg">{settings?.businessName || 'igoodar'}</p>
+          <p className="text-primary-foreground text-sm opacity-80">{t('offline_mode')}</p>
         </div>
       </div>
       
@@ -173,18 +173,18 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
         </div>
       </div>
       
-      <div className="border-t border-gray-200 p-4 flex-shrink-0">
+      <div className="border-t border-border p-4 flex-shrink-0">
         {/* User Info and Logout */}
         {user && (
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+          <div className="mb-4 p-3 bg-muted rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                <p className="text-sm font-medium text-card-foreground">{user.name}</p>
+                <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
               </div>
               <button
                 onClick={logout}
-                className="flex items-center px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                className="flex items-center px-3 py-1 text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors"
                 title={t('logout')}
               >
                 <LogOut className="w-4 h-4 mr-1" />
@@ -194,16 +194,16 @@ export default function NavigationDrawer({ isOpen }: NavigationDrawerProps) {
           </div>
         )}
         
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
           <button 
             onClick={() => setLanguage('fr')} 
-            className={`px-3 py-1 rounded mr-2 text-sm ${language === 'fr' ? 'bg-primary text-white font-medium' : 'bg-gray-200 text-gray-700 font-medium'}`}
+            className={`px-3 py-1 rounded text-sm transition-colors ${language === 'fr' ? 'bg-primary text-primary-foreground font-medium' : 'bg-muted text-muted-foreground font-medium hover:bg-accent'}`}
           >
             {t('language_fr')}
           </button>
           <button 
             onClick={() => setLanguage('ar')} 
-            className={`px-3 py-1 rounded text-sm ${language === 'ar' ? 'bg-primary text-white font-medium' : 'bg-gray-200 text-gray-700 font-medium'}`}
+            className={`px-3 py-1 rounded text-sm transition-colors ${language === 'ar' ? 'bg-primary text-primary-foreground font-medium' : 'bg-muted text-muted-foreground font-medium hover:bg-accent'}`}
           >
             {t('language_ar')}
           </button>
