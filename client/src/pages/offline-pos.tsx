@@ -798,7 +798,7 @@ export default function OfflinePOS() {
     // Handle pack sales
     if (isPack && product.packSize && product.packPrice) {
       const packQuantity = product.packSize;
-      const packUnitPrice = product.packPrice / packQuantity;
+      const packUnitPrice = Math.round((product.packPrice / packQuantity) * 100) / 100; // Round to 2 decimals
       const newItem: CartItem = {
         product,
         quantity: packQuantity,
@@ -1767,7 +1767,7 @@ export default function OfflinePOS() {
                       <input
                           type="text"
                           disabled={isViewingFinishedOrder}
-                          value={priceInputs[item.product.id] ?? ((item.product as any).weighable ? item.totalPrice.toFixed(2) : item.unitPrice.toString())}
+                          value={priceInputs[item.product.id] ?? ((item.product as any).weighable ? item.totalPrice.toFixed(2) : item.unitPrice.toFixed(2))}
                           onChange={(e) => {
                             const value = e.target.value;
                             // Update local input state immediately
