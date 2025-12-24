@@ -664,6 +664,9 @@ export default function OfflineProducts() {
         unit: product.unit || "",
         image: product.image || "",
         weighable: product.weighable || false,
+        packSize: product.packSize,
+        packPrice: product.packPrice,
+        packBarcode: product.packBarcode || "",
         active: product.active
       });
     } else {
@@ -680,6 +683,9 @@ export default function OfflineProducts() {
         wholesalePrice: 0,
         quantity: 0,
         minStockLevel: 0,
+        packSize: undefined,
+        packPrice: undefined,
+        packBarcode: "",
         unit: "",
         image: "",
         weighable: false,
