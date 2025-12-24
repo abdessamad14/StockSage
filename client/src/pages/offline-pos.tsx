@@ -2662,7 +2662,7 @@ export default function OfflinePOS() {
                           })}
                         </div>
                         <div className="text-sm text-slate-800">
-                          {order.items.length} {t('items')}
+                          {order.items.reduce((sum, item) => sum + item.quantity, 0)} {t('items')}
                         </div>
                         <div className="text-sm font-semibold text-[#c1121f]">
                           {order.totalAmount.toFixed(0)} DH
