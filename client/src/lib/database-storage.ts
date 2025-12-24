@@ -314,6 +314,9 @@ export const databaseProductStorage = {
       unit: p.unit ?? undefined,
       image: p.image ?? undefined,
       weighable: p.weighable ?? false,
+      packSize: p.packSize ?? undefined,
+      packPrice: p.packPrice ?? undefined,
+      packBarcode: p.packBarcode ?? undefined,
       active: p.active !== false,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt
@@ -338,6 +341,9 @@ export const databaseProductStorage = {
         unit: product.unit ?? undefined,
         image: product.image ?? undefined,
         weighable: product.weighable ?? false,
+        packSize: product.packSize ?? undefined,
+        packPrice: product.packPrice ?? undefined,
+        packBarcode: product.packBarcode ?? undefined,
         active: product.active !== false,
         createdAt: product.createdAt,
         updatedAt: product.updatedAt
@@ -364,6 +370,9 @@ export const databaseProductStorage = {
         unit: product.unit,
         image: product.image,
         weighable: product.weighable ?? false, // Include weighable field
+        packSize: product.packSize,
+        packPrice: product.packPrice,
+        packBarcode: product.packBarcode,
         active: product.active !== false
       })
     });
@@ -383,6 +392,9 @@ export const databaseProductStorage = {
       unit: created.unit ?? undefined,
       image: created.image ?? undefined,
       weighable: created.weighable ?? false, // Include weighable in response
+      packSize: created.packSize ?? undefined,
+      packPrice: created.packPrice ?? undefined,
+      packBarcode: created.packBarcode ?? undefined,
       active: created.active !== false,
       createdAt: created.createdAt,
       updatedAt: created.updatedAt
@@ -509,6 +521,9 @@ export const databaseProductStorage = {
         unit: updates.unit,
         image: updates.image,
         weighable: updates.weighable,
+        packSize: updates.packSize,
+        packPrice: updates.packPrice,
+        packBarcode: updates.packBarcode,
         active: updates.active
       })
     });
@@ -528,6 +543,9 @@ export const databaseProductStorage = {
       unit: updated.unit ?? undefined,
       image: updated.image ?? undefined,
       weighable: updated.weighable ?? false, // Include weighable in response
+      packSize: updated.packSize ?? undefined,
+      packPrice: updated.packPrice ?? undefined,
+      packBarcode: updated.packBarcode ?? undefined,
       active: updated.active !== false,
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt

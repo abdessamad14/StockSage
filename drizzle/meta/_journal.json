@@ -50,6 +50,13 @@
       "when": 1734895400000,
       "tag": "0012_add_store_credit_to_customers",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1735068000000,
+      "tag": "0013_add_pack_pricing_to_products",
+      "breakpoints": true
     }
   ]
 }

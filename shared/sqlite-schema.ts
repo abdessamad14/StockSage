@@ -50,6 +50,9 @@ export const products = sqliteTable("products", {
   unit: text("unit").default("pièce"),
   image: text("image"),
   weighable: integer("weighable", { mode: "boolean" }).notNull().default(false), // For products sold by weight (kg)
+  packSize: integer("pack_size"), // Number of units in a pack (e.g., 6 for 6-pack)
+  packPrice: real("pack_price"), // Price for a full pack
+  packBarcode: text("pack_barcode"), // Optional separate barcode for pack
   active: integer("active", { mode: "boolean" }).notNull().default(true),
 });
 
@@ -456,6 +459,10 @@ export interface OfflineProduct {
   minStockLevel?: number;
   unit?: string;
   image?: string;
+  weighable?: boolean;
+  packSize?: number; // Number of units in a pack (e.g., 6 for 6-pack)
+  packPrice?: number; // Price for a full pack
+  packBarcode?: string; // Optional separate barcode for pack
   active: boolean;
   createdAt: string;
   updatedAt: string;

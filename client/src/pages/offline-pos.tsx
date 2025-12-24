@@ -785,11 +785,29 @@ export default function OfflinePOS() {
   }, [products, searchTerm, selectedCategory, categories]);
 
   // Cart functions
-  const addToCart = (product: OfflineProduct, customQuantity?: number, customPrice?: number) => {
+  const addToCart = (product: OfflineProduct, customQuantity?: number, customPrice?: number, isPack?: boolean) => {
     // Check if product is weighable
     if ((product as any).weighable && !customQuantity) {
       setSelectedWeighableProduct(product);
       setWeighableDialogOpen(true);
+      return;
+    }
+    
+    // Handle pack sales
+    if (isPack && product.packSize && product.packPrice) {
+      const packQuantity = product.packSize;
+      const packUnitPrice = product.packPrice / packQuantity;
+      const newItem: CartItem = {
+        product,
+        quantity: packQuantity,
+        unitPrice: packUnitPrice,
+        totalPrice: product.packPrice
+      };
+      setCart([...cart, newItem]);
+      toast({
+        title: t('product_added'),
+        description: `${product.name} (Pack de ${packQuantity}) ajouté`
+      });
       return;
     }
     
@@ -925,11 +943,21 @@ export default function OfflinePOS() {
       
       switch (numericInput.mode) {
         case 'barcode':
-          // Search for product by barcode
-          const product = products.find(p => p.barcode === numericInput.value);
+          // Search for product by barcode - check pack barcode first, then regular barcode
+          let product = products.find(p => p.packBarcode && p.packBarcode === numericInput.value);
+          let isPack = false;
+          
           if (product) {
-            addToCart(product);
-            toast({ title: t('product_added_short', { name: product.name }) });
+            isPack = true;
+          } else {
+            product = products.find(p => p.barcode === numericInput.value);
+          }
+          
+          if (product) {
+            addToCart(product, undefined, undefined, isPack);
+            if (!isPack) {
+              toast({ title: t('product_added_short', { name: product.name }) });
+            }
           } else {
             toast({ title: t('product_not_found'), variant: 'destructive' });
           }

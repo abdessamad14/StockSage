@@ -35,6 +35,9 @@ const productSchema = z.object({
   unit: z.string().optional(),
   image: z.string().optional(),
   weighable: z.boolean().default(false), // For products sold by weight
+  packSize: z.number().min(1, "Pack size must be at least 1").optional(), // Number of units in a pack
+  packPrice: z.number().min(0, "Pack price must be positive").optional(), // Price for a full pack
+  packBarcode: z.string().optional(), // Optional separate barcode for pack
   active: z.boolean().default(true)
 });
 
@@ -1216,6 +1219,94 @@ export default function OfflineProducts() {
                   </FormItem>
                 )}
               />
+
+              {/* Pack Pricing Section */}
+              <div className="rounded-lg border p-4 space-y-4 bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  <h4 className="font-semibold">{t('pack_pricing')} ({t('optional')})</h4>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('pack_pricing_description')}
+                </p>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={productForm.control}
+                    name="packSize"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('pack_size')}</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number"
+                            placeholder="6"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            value={field.value || ''}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={productForm.control}
+                    name="packPrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('pack_price')}</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            placeholder="85.00"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                            value={field.value || ''}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={productForm.control}
+                    name="packBarcode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('pack_barcode')} ({t('optional')})</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field}
+                            placeholder="123456789"
+                            value={field.value || ''}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                {/* Display unit price vs pack price savings */}
+                {productForm.watch('packSize') && productForm.watch('packPrice') && productForm.watch('sellingPrice') && (
+                  <div className="text-sm p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-md">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">{t('unit_price_in_pack')}:</span>
+                      <span className="font-semibold">
+                        {(productForm.watch('packPrice')! / productForm.watch('packSize')!).toFixed(2)} DH
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-muted-foreground">{t('savings_per_unit')}:</span>
+                      <span className="font-semibold text-green-600 dark:text-green-400">
+                        {(productForm.watch('sellingPrice') - (productForm.watch('packPrice')! / productForm.watch('packSize')!)).toFixed(2)} DH
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Image Upload */}
               <FormField
