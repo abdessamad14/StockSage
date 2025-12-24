@@ -132,6 +132,8 @@ export default function OfflinePOS() {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('percentage');
   const [barcodeBuffer, setBarcodeBuffer] = useState('');
+  const [packSelectionProduct, setPackSelectionProduct] = useState<OfflineProduct | null>(null);
+  const [showPackSelectionDialog, setShowPackSelectionDialog] = useState(false);
   const [dateFilter, setDateFilter] = useState<string>('today');
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
@@ -2454,12 +2456,27 @@ export default function OfflinePOS() {
                     ];
                     const bgColor = colors[index % colors.length];
                     
+                    const hasPack = product.packSize && product.packPrice;
+                    
                     return (
                       <div
                         key={product.id}
-                        onClick={() => addToCart(product)}
+                        onClick={() => {
+                          if (hasPack) {
+                            setPackSelectionProduct(product);
+                            setShowPackSelectionDialog(true);
+                          } else {
+                            addToCart(product);
+                          }
+                        }}
                         className={`${bgColor} text-white rounded-xl p-4 cursor-pointer hover:shadow-xl transform hover:scale-105 transition-all duration-200 active:scale-95 relative overflow-hidden border border-white/20`}
                       >
+                        {hasPack && (
+                          <div className="absolute top-1 right-1 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-lg">
+                            <Package className="h-3 w-3" />
+                            Pack
+                          </div>
+                        )}
                         <div className="text-center">
                           {product.image ? (
                             <div className="mb-2 relative">
@@ -2485,6 +2502,11 @@ export default function OfflinePOS() {
                             <div className="font-bold text-lg">
                               {(product.sellingPrice || 0).toFixed(0)} DH
                             </div>
+                            {hasPack && (
+                              <div className="text-xs text-white/90 mt-1">
+                                Pack {product.packSize}: {product.packPrice?.toFixed(0)} DH
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -3073,6 +3095,64 @@ export default function OfflinePOS() {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    {/* Pack Selection Dialog */}
+    <Dialog open={showPackSelectionDialog} onOpenChange={setShowPackSelectionDialog}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t('select_sale_type')}</DialogTitle>
+        </DialogHeader>
+        {packSelectionProduct && (
+          <div className="space-y-4">
+            <div className="text-center p-4 bg-muted rounded-lg">
+              <h3 className="font-bold text-lg mb-2">{packSelectionProduct.name}</h3>
+              <div className="text-sm text-muted-foreground">
+                {t('stock')}: {getProductStock(packSelectionProduct.id)} {t('units')}
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              {/* Sell by Unit */}
+              <Button
+                onClick={() => {
+                  addToCart(packSelectionProduct, undefined, undefined, false);
+                  setShowPackSelectionDialog(false);
+                  setPackSelectionProduct(null);
+                }}
+                className="h-auto flex-col py-6 bg-blue-600 hover:bg-blue-700"
+              >
+                <Package className="h-8 w-8 mb-2" />
+                <div className="text-sm font-semibold">{t('sell_by_unit')}</div>
+                <div className="text-xs opacity-90 mt-1">1 × {packSelectionProduct.sellingPrice?.toFixed(2)} DH</div>
+                <div className="text-lg font-bold mt-2">{packSelectionProduct.sellingPrice?.toFixed(2)} DH</div>
+              </Button>
+              
+              {/* Sell by Pack */}
+              <Button
+                onClick={() => {
+                  addToCart(packSelectionProduct, undefined, undefined, true);
+                  setShowPackSelectionDialog(false);
+                  setPackSelectionProduct(null);
+                }}
+                className="h-auto flex-col py-6 bg-green-600 hover:bg-green-700"
+              >
+                <Package className="h-8 w-8 mb-2" />
+                <div className="text-sm font-semibold">{t('sell_by_pack')}</div>
+                <div className="text-xs opacity-90 mt-1">
+                  {packSelectionProduct.packSize} × {((packSelectionProduct.packPrice || 0) / (packSelectionProduct.packSize || 1)).toFixed(2)} DH
+                </div>
+                <div className="text-lg font-bold mt-2">{packSelectionProduct.packPrice?.toFixed(2)} DH</div>
+                {packSelectionProduct.packPrice && packSelectionProduct.packSize && packSelectionProduct.sellingPrice && (
+                  <div className="text-xs bg-yellow-400 text-yellow-900 px-2 py-1 rounded mt-2 font-semibold">
+                    -{((packSelectionProduct.sellingPrice * packSelectionProduct.packSize - packSelectionProduct.packPrice).toFixed(2))} DH
+                  </div>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
 
     {/* Cash Shift Dialogs */}
     <OpenCashShiftDialog
