@@ -1349,41 +1349,11 @@ export default function OfflinePOS() {
       await refreshProductStocks(products, stockLocations);
       console.log('Product stocks refreshed successfully');
 
-      // Auto-print thermal receipt after successful payment
-      try {
-        const receiptData = {
-          invoiceNumber: createdSale.invoiceNumber,
-          date: new Date(createdSale.date),
-          customerName: selectedCustomer?.name,
-          items: cart.map(item => ({
-            name: item.product.name,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice
-          })),
-          subtotal: subtotal,
-          discountAmount: discountValue,
-          storeCreditUsed: storeCreditToUse, // Include store credit used
-          taxAmount: tax,
-          total: finalTotal, // Use final total after store credit
-          paidAmount: effectivePaymentMethod === 'cash' ? effectivePaidAmount : finalTotal,
-          changeAmount: effectivePaymentMethod === 'cash' ? (effectivePaidAmount - finalTotal) : 0,
-          paymentMethod: effectivePaymentMethod
-        };
-        
-        await ThermalReceiptPrinter.printReceipt(receiptData);
-        
+      // Show success message (no auto-print, user must click "Imprimer le reçu")
       toast({
         title: t('sale_completed'),
-        description: t('offline_pos_receipt_auto_printed'),
+        description: t('offline_pos_receipt_ready_to_print'),
       });
-    } catch (printError) {
-      console.error('Auto-print error:', printError);
-      toast({
-        title: t('sale_completed'),
-        description: t('offline_pos_sale_completed_print_error'),
-      });
-    }
   } catch (error) {
     console.error('Error processing sale:', error);
     console.error('Error details:', {
