@@ -237,6 +237,9 @@ router.put('/products/:id', async (req, res) => {
       unit: req.body.unit ?? existing.unit,
       image: req.body.image ?? existing.image,
       weighable: req.body.weighable !== undefined ? Boolean(req.body.weighable) : Boolean(existing.weighable),
+      packSize: req.body.packSize ?? existing.packSize,
+      packPrice: req.body.packPrice ?? existing.packPrice,
+      packBarcode: req.body.packBarcode ?? existing.packBarcode,
       active: req.body.active ?? existing.active,
       updatedAt: new Date().toISOString()
     };
